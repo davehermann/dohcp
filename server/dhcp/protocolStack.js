@@ -1,5 +1,6 @@
 // Application modules
 const { ParseOptions } = require(`./rfc2132`),
+    { MACAddressFromHex } = require(`./utilities`),
     { Trace, Debug } = require(`../logging`);
 
 let _offset = new WeakMap(),
@@ -114,17 +115,7 @@ class DHCP {
         // This is hardcoded to expect MAC addresses
         switch (type) {
             case 1:
-                {
-                    let newAddress = [],
-                        idx = 0;
-
-                    while (idx < address.length) {
-                        newAddress.push(address[idx] + address[idx + 1]);
-                        idx += 2;
-                    }
-
-                    address = newAddress.join(`:`);
-                }
+                address = MACAddressFromHex(address);
                 break;
 
             default:

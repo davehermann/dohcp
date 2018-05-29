@@ -1,7 +1,8 @@
 // Options are defined by RFC 2132
 
 // Application modules
-const { Dev, Trace, Warn } = require(`../logging`);
+const { MACAddressFromHex } = require(`./utilities`),
+    { Dev, Trace, Warn } = require(`../logging`);
 // JSON data
 const rawOptionDefinition = require(`./rfc2132.json`);
 
@@ -64,11 +65,12 @@ function parseOptions(currentMessage, _offset) {
 
                 // Any arguments that need to be sent to the decode method must be explicitly passed
                 Dev({ args });
-                value = currentMessage[method].apply(currentMessage, args);
-            }
+                let rawValue = currentMessage[method].apply(currentMessage, args);
+                Dev({ rawValue });
 
-            if (!!option.valueMap && !!option.valueMap[value])
-                value = option.valueMap[value];
+                // As a number of options require additional parsing, the value goes through the extra parser
+                value = optionDecoder(option, rawValue);
+            }
 
             options[option.propertyName] = value;
 
@@ -89,6 +91,57 @@ function parseOptions(currentMessage, _offset) {
     Trace({ optionLengths });
 
     return options;
+}
+
+function optionDecoder(option, rawValue) {
+    let value = null;
+
+    switch (option.propertyName) {
+        case `clientIdentifier`: {
+            let id = { uniqueId: rawValue };
+
+            // An ethernet address should be parsed
+            let type = parseInt(rawValue.substr(0, 2), 16);
+            // Type 1 is ethernet
+            if ((type == 1) && (rawValue.length == 14)) {
+                id.type = `Ethernet MAC`;
+                id.address = MACAddressFromHex(rawValue.substr(2));
+            }
+
+            value = id;
+        }
+            break;
+
+        case `dhcpMessageType`:
+            value = option.valueMap[rawValue];
+            break;
+
+        case `parameterRequestList`: {
+            // This is a list of codes
+
+            let requestedParameters = [];
+            while (rawValue.length > 0) {
+                let code = parseInt(rawValue.substr(0, 2), 16),
+                    matchingOption = optionDefinition[code];
+
+                if (!!matchingOption)
+                    requestedParameters.push({ code, name: matchingOption.name });
+                else
+                    Warn(`Option not found: ${code}`);
+
+                rawValue = rawValue.substr(2);
+            }
+
+            value = requestedParameters;
+        }
+            break;
+
+        default:
+            value = rawValue;
+            break;
+    }
+
+    return value;
 }
 
 module.exports.ParseOptions = parseOptions;
