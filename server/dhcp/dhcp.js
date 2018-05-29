@@ -1,7 +1,8 @@
 // Node/NPM modules
 const dgram = require(`dgram`);
 // Application modules
-const { Trace, Debug, Info, Error } = require(`../logging`);
+const { DhcpStack } = require(`./protocolStack`),
+    { Trace, Debug, Info, Error } = require(`../logging`);
 
 const SERVER_PORT = 67;
 
@@ -28,8 +29,7 @@ function newV4DhcpSocket(ipAddress) {
 
     // Every time a message is received
     server.on(`message`, (msg, rinfo) => {
-        Trace({ rinfo });
-        Debug({ msg });
+        let dhcpOperation = new DhcpStack(msg, rinfo);
     });
 
     // On any error, log the error, but do not close the socket

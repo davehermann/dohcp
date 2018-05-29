@@ -1,0 +1,63 @@
+[
+    { "code": 0, "name": "Pad Option", "noLength": true, "isPad": true, "description": "The pad option can be used to cause subsequent fields to align on word boundaries." },
+    { "code": 255, "name": "End Option", "noLength": true, "isEnd": true, "description": "The end option marks the end of valid information in the vendor field.  Subsequent octets should be filled with pad options." },
+    { "code": 1, "name": "Subnet Mask", "decode": "_readIpAddress", "description": "The subnet mask option specifies the client's subnet mask as per RFC 950" },
+    {
+        "code": 12,
+        "name": "Host Name Option",
+        "description": "This option specifies the name of the client.  The name may or may not be qualified with the local domain name",
+        "decode": { "method": "_readString", "args": ["optionLength"] }
+    },
+    {
+        "code": 50,
+        "name": "Requested IP Address",
+        "description": "This option is used in a client request (DHCPDISCOVER) to allow the client to request that a particular IP address be assigned.",
+        "decode": "_readIpAddress"
+    },
+    {
+        "code": 53,
+        "name": "DHCP Message Type",
+        "description": "This option is used to convey the type of the DHCP message.",
+        "decode": "_readUInt8",
+        "valueMap": {
+            "1": "DHCPDISCOVER",
+            "2": "DHCPOFFER",
+            "3": "DHCPREQUEST",
+            "4": "DHCPDECLINE",
+            "5": "DHCPACK",
+            "6": "DHCPNAK",
+            "7": "DHCPRELEASE",
+            "8": "DHCPINFORM"
+        }
+    },
+    {
+        "code": 54,
+        "name": "Server Identifier",
+        "description": "This option is used in DHCPOFFER and DHCPREQUEST messages, and may optionally be included in the DHCPACK and DHCPNAK messages.  DHCP servers include this option in the DHCPOFFER in order to allow the client to distinguish between lease offers.  DHCP clients use the contents of the 'server identifier' field as the destination address for any DHCP messages unicast to the DHCP server.  DHCP clients also indicate which of several lease offers is being accepted by including this option in a DHCPREQUEST message.\n\n The identifier is the IP address of the selected server.",
+        "decode": "_readIpAddress"
+    },
+    {
+        "code": 55,
+        "name": "Parameter Request List",
+        "description": "This option is used by a DHCP client to request values for specified configuration parameters.  The list of requested parameters is specified as n octets, where each octet is a valid DHCP option code as defined in this document.",
+        "decode": { "method": "_readString", "args": ["optionLength", "hex"] }
+    },
+    {
+        "code": 57,
+        "name": "Maximum DHCP Message Size",
+        "description": "This option specifies the maximum length DHCP message that it is willing to accept.  The length is specified as an unsigned 16-bit integer.  A client may use the maximum DHCP message size option in DHCPDISCOVER or DHCPREQUEST messages, but should not use the option in DHCPDECLINE messages. The minimum legal value is 576 octets.",
+        "decode": "_readUInt16"
+    },
+    {
+        "code": 60,
+        "name": "Vendor Class Identifier",
+        "description": "This option is used by DHCP clients to optionally identify the vendor type and configuration of a DHCP client. Servers not equipped to interpret the class-specific information sent by a client MUST ignore it (although it may be reported). Servers that respond SHOULD only use option 43 to return the vendor-specific information to the client.",
+        "decode": { "method": "_readString", "args": ["optionLength"] }
+    },
+    {
+        "code": 61,
+        "name": "Client Identifier",
+        "description": "This option is used by DHCP clients to specify their unique identifier.  DHCP servers use this value to index their database of address bindings.  This value is expected to be unique for all clients in an administrative domain.\n\nIdentifiers SHOULD be treated as opaque objects by DHCP servers.",
+        "decode": { "method": "_readString", "args": ["optionLength", "hex"] }
+    }
+]

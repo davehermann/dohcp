@@ -1,5 +1,6 @@
 // Log levels
 const levels = {
+    dev: 0,
     trace: 10,
     debug: 20,
     info: 30,
@@ -19,6 +20,9 @@ function writeLog(logLevelId, data, asIs) {
         console[logLevel < levels.error ? `log` : `error`]((asIs || (typeof data !== `object`) ? data : JSON.stringify(data, null, 4)));
 }
 
+// Development-only level (Not recommended)
+function dev(data, asIs) { writeLog(`dev`, data, asIs); }
+
 // Trace-level
 function trace(data, asIs) { writeLog(`trace`, data, asIs); }
 
@@ -28,11 +32,16 @@ function debug(data, asIs) { writeLog(`debug`, data, asIs); }
 // Info-level
 function info(data, asIs) { writeLog(`info`, data, asIs); }
 
+// Warn level
+function warn(data, asIs) { writeLog(`warn`, data, asIs); }
+
 // Error-level
 function err(data, asIs) { writeLog(`error`, data, asIs); }
 
 module.exports.LogLevels = levels;
+module.exports.Dev = dev;
 module.exports.Trace = trace;
 module.exports.Debug = debug;
 module.exports.Info = info;
+module.exports.Warn = warn;
 module.exports.Error = err;
