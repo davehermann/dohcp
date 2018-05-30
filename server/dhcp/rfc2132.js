@@ -1,7 +1,7 @@
 // Options are defined by RFC 2132
 
 // Application modules
-const { MACAddressFromHex } = require(`./utilities`),
+const { MACAddressFromHex, ReadIpAddress, ReadString, ReadUInt8, ReadUInt16 } = require(`./utilities`),
     { Dev, Trace, Warn } = require(`../logging`);
 // JSON data
 const rawOptionDefinition = require(`./rfc2132.json`);
@@ -15,8 +15,8 @@ rawOptionDefinition.forEach(opt => {
     optionDefinition[opt.code] = opt;
 });
 
-function parseOptions(currentMessage, _offset) {
-    Trace({ [`Options Hexadecimal`]: currentMessage.message.toString(`hex`, _offset.get(currentMessage)) });
+function parseOptions(buf, offset) {
+    Dev({ [`Options Hexadecimal`]: buf.toString(`hex`, offset) });
 
     let options = {},
         // For debugging
@@ -25,15 +25,18 @@ function parseOptions(currentMessage, _offset) {
     // Each option will be defined by a code octect
     // Many specify the length (in octets) of the data
 
-    while (_offset.get(currentMessage) < currentMessage.message.length) {
-        let optionCode = currentMessage._readUInt8();
-
-        let option = optionDefinition[optionCode],
+    while (offset < buf.length) {
+        let optionCode,
             optionLength = null;
+
+        // Get the option code
+        ({ value: optionCode, offset } = ReadUInt8(buf, offset));
+
+        let option = optionDefinition[optionCode];
 
         // Get the length field, which will be the next octect unless explicitly defined as not existing
         if (!option || !option.noLength)
-            optionLength = currentMessage._readUInt8();
+            ({ value: optionLength, offset} = ReadUInt8(buf, offset));
 
         // If the option is the end-of-options code, we can end all processing
         if (!!option && option.isEnd)
@@ -41,31 +44,46 @@ function parseOptions(currentMessage, _offset) {
 
         // If the option is the pad code, we can move forward one octet
         else if (!!option && option.isPad)
-            _offset.set(currentMessage, _offset.get(currentMessage) + 1);
+            offset++;
 
         // With an option, get the value and transform as per the settings
         else if (!!option) {
             let value = null;
             if (!!option.decode) {
                 let method = null,
-                    args = null;
+                    args = [buf, offset];
 
                 if (typeof option.decode == `object`) {
                     method = option.decode.method;
 
                     if (!!option.decode.args)
-                        args = option.decode.args.map(arg => {
+                        option.decode.args.forEach(arg => {
                             if (arg == `optionLength`)
-                                return optionLength;
+                                arg = optionLength;
 
-                            return arg;
+                            args.push(arg);
                         });
                 } else
                     method = option.decode;
 
                 // Any arguments that need to be sent to the decode method must be explicitly passed
-                Dev({ args });
-                let rawValue = currentMessage[method].apply(currentMessage, args);
+                Dev({ name: option.name, method, args: args.slice(1) });
+                let rawValue, action;
+                switch (method) {
+                    case `ReadUInt8`:
+                        action = ReadUInt8;
+                        break;
+                    case `ReadUInt16`:
+                        action = ReadUInt16;
+                        break;
+                    case `ReadString`:
+                        action = ReadString;
+                        break;
+                    case `ReadIpAddress`:
+                        action = ReadIpAddress;
+                        break;
+                }
+                ({ value: rawValue, offset} = action.apply(action, args));
                 Dev({ rawValue });
 
                 // As a number of options require additional parsing, the value goes through the extra parser
@@ -82,9 +100,8 @@ function parseOptions(currentMessage, _offset) {
         // Just advance offset by length, and warn on the missing code
         else {
             // Skip the length, and report the code
-            _offset.set(currentMessage, _offset.get(currentMessage) + optionLength);
-
             Warn(`Option not found: ${optionCode}`);
+            offset += optionLength;
         }
     }
 
