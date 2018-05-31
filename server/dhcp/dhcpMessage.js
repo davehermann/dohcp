@@ -1,7 +1,11 @@
 // Application modules
-const { ParseOptions } = require(`./rfc2132`),
-    { MACAddressFromHex, ReadString, ReadUInt8, ReadUInt16, ReadUInt32, ReadIpAddress } = require(`./utilities`),
+const { ParseOptions, EncodeOptions } = require(`./rfc2132`),
+    { MACAddressFromHex, HexFromMACAddress,
+        ReadIpAddress, ReadString, ReadUInt8, ReadUInt16, ReadUInt32,
+        WriteIpAddress, WriteString, WriteUInt8, WriteUInt16, WriteUInt32 } = require(`./utilities`),
     { Error } = require(`../logging`);
+
+let _bufferMessage = new WeakMap();
 
 let _op = new WeakMap(),
     _htype = new WeakMap(),
@@ -87,11 +91,11 @@ class Message {
     get isDhcpMessage() {
         let isDhcp = true;
         MAGIC_COOKIE.forEach((value, idx) => {
-            if (value !== this.magicCookie[idx])
+            if (!!this.magicCookie && (value !== this.magicCookie[idx]))
                 isDhcp = false;
         });
 
-        return isDhcp && (this.magicCookie.length == MAGIC_COOKIE.length);
+        return isDhcp && !!this.magicCookie && (this.magicCookie.length == MAGIC_COOKIE.length);
     }
     get magicCookie() { return _magicCookie.get(this); }
     set magicCookie(val) { _magicCookie.set(this, val); }
@@ -117,6 +121,13 @@ class Message {
 
         return { value: address, offset };
     }
+    _writeHardwareAddress(buf, data, offset, lengthInOctets) {
+        let hexAddress = HexFromMACAddress(data);
+
+        offset = WriteString(buf, hexAddress, offset, 16, `hex`);
+
+        return offset;
+    }
     _readMagicCookie(buf, offset) {
         let vendorIdCookie = [];
         for (let idx = 0; idx < 4; idx++) {
@@ -127,10 +138,15 @@ class Message {
 
         return { value: vendorIdCookie, offset };
     }
+    _writeMagicCookie(buf, offset) {
+        MAGIC_COOKIE.forEach(value => {
+            offset = WriteUInt8(buf, value, offset);
+        });
+        return offset;
+    }
 
     Decode(messageBuffer) {
-        // Specify an offset object that can be automatically adjusted by the read function
-        // let offset = { offset: 0 };
+        // Specify an offset object that will be automatically adjusted by the read functions
         let offset = 0;
 
         ({ value: this.op, offset } = ReadUInt8(messageBuffer, offset));
@@ -154,11 +170,43 @@ class Message {
     }
 
     Encode() {
+        let offset = 0;
 
+        // Create a sufficiently large buffer
+        let encodedMessage = Buffer.alloc(2000);
+
+        offset = WriteUInt8(encodedMessage, this.op, offset);
+        offset = WriteUInt8(encodedMessage, this.htype, offset);
+        offset = WriteUInt8(encodedMessage, this.hlen, offset);
+        offset = WriteUInt8(encodedMessage, this.hops, offset);
+        offset = WriteUInt32(encodedMessage, this.xid, offset);
+        offset = WriteUInt16(encodedMessage, this.secs, offset);
+        offset = WriteUInt16(encodedMessage, this.flags, offset);
+        offset = WriteIpAddress(encodedMessage, this.ciaddr, offset);
+        offset = WriteIpAddress(encodedMessage, this.yiaddr, offset);
+        offset = WriteIpAddress(encodedMessage, this.siaddr, offset);
+        offset = WriteIpAddress(encodedMessage, this.giaddr, offset);
+        offset = this._writeHardwareAddress(encodedMessage, this.chaddr, offset, this.hlen);
+        offset = WriteString(encodedMessage, this.sname, offset, 64);
+        offset = WriteString(encodedMessage, this.file, offset, 128);
+        offset = this._writeMagicCookie(encodedMessage, offset);
+
+        // As options are the last component of a message, we don't need the offset back
+        EncodeOptions(encodedMessage, this.options, offset);
+
+        // Start at the back of the buffer, and step forward until the first data octet
+        let lastData = 0;
+        for (let idx = encodedMessage.length - 1; idx >= 0; idx--)
+            if (encodedMessage[idx] !== 0x00) {
+                lastData = idx;
+                break;
+            }
+
+        _bufferMessage.set(this, encodedMessage.slice(0, lastData + 2));
     }
 
-    toString() {
-
+    toString(format = `hex`) {
+        return _bufferMessage.get(this).toString(format);
     }
 
     toJSON() {

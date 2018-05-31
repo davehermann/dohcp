@@ -1,18 +1,21 @@
 // Options are defined by RFC 2132
 
 // Application modules
-const { MACAddressFromHex, ReadIpAddress, ReadString, ReadUInt8, ReadUInt16 } = require(`./utilities`),
-    { Dev, Trace, Warn } = require(`../logging`);
+const { MACAddressFromHex,
+        ReadIpAddress, ReadString, ReadUInt8, ReadUInt16,
+        WriteIpAddress, WriteString, WriteUInt8, WriteUInt16 } = require(`./utilities`),
+    { Dev, Warn } = require(`../logging`);
 // JSON data
 const rawOptionDefinition = require(`./rfc2132.json`);
 
-let optionDefinition = {};
+let optionDefinition = { byCode: {}, byProperty: {} };
 rawOptionDefinition.forEach(opt => {
     let nameParts = opt.name.split(` `);
     nameParts[0] = nameParts[0].toLowerCase();
     opt.propertyName = nameParts.join(``);
 
-    optionDefinition[opt.code] = opt;
+    optionDefinition.byCode[opt.code] = opt;
+    optionDefinition.byProperty[opt.propertyName] = opt;
 });
 
 function parseOptions(buf, offset) {
@@ -32,10 +35,10 @@ function parseOptions(buf, offset) {
         // Get the option code
         ({ value: optionCode, offset } = ReadUInt8(buf, offset));
 
-        let option = optionDefinition[optionCode];
+        let option = optionDefinition.byCode[optionCode];
 
         // Get the length field, which will be the next octect unless explicitly defined as not existing
-        if (!option || !option.noLength)
+        if (!option || !!option.length)
             ({ value: optionLength, offset} = ReadUInt8(buf, offset));
 
         // If the option is the end-of-options code, we can end all processing
@@ -47,39 +50,27 @@ function parseOptions(buf, offset) {
             offset++;
 
         // With an option, get the value and transform as per the settings
-        else if (!!option) {
+        else if (!!option && !!option.encoding) {
             let value = null;
-            if (!!option.decode) {
-                let method = null,
-                    args = [buf, offset];
 
-                if (typeof option.decode == `object`) {
-                    method = option.decode.method;
-
-                    if (!!option.decode.args)
-                        option.decode.args.forEach(arg => {
-                            if (arg == `optionLength`)
-                                arg = optionLength;
-
-                            args.push(arg);
-                        });
-                } else
-                    method = option.decode;
+            if (!!option.encoding) {
+                let args = [buf, offset],
+                    method = encodingParser(option, args, optionLength);
 
                 // Any arguments that need to be sent to the decode method must be explicitly passed
                 Dev({ name: option.name, method, args: args.slice(1) });
                 let rawValue, action;
                 switch (method) {
-                    case `ReadUInt8`:
+                    case `UInt8`:
                         action = ReadUInt8;
                         break;
-                    case `ReadUInt16`:
+                    case `UInt16`:
                         action = ReadUInt16;
                         break;
-                    case `ReadString`:
+                    case `String`:
                         action = ReadString;
                         break;
-                    case `ReadIpAddress`:
+                    case `IpAddress`:
                         action = ReadIpAddress;
                         break;
                 }
@@ -105,9 +96,72 @@ function parseOptions(buf, offset) {
         }
     }
 
-    Trace({ optionLengths });
+    Dev({ optionLengths });
 
     return options;
+}
+
+function encodeOptions(buf, options, offset) {
+    for (let propertyName in options) {
+        let optionDef = optionDefinition.byProperty[propertyName],
+            optionValue = optionEncoder(optionDef, options[propertyName]),
+            args = [buf, optionValue, `offset`],
+            method = encodingParser(optionDef, args),
+            optionLength = optionDef.length;
+
+        // Set the option length if used
+        if (optionLength !== undefined) {
+            // -1 means the length is not defined and will be calculated
+            if (optionLength < 0)
+                switch (method) {
+                    case `String`:
+                        if (args[args.length - 1] == `hex`)
+                            optionLength = optionValue.length / 2;
+                        else
+                            optionLength = optionValue.length;
+                        break;
+                }
+
+            // Replace optionLength in args array
+            args = args.map(arg => { return (arg == `optionLength`) ? optionLength : arg; });
+        }
+
+        Dev({ propertyName, optionDef, method, optionLength, offset, args: args.slice(1) });
+
+        // Add the code
+        offset = WriteUInt8(buf, optionDef.code, offset);
+        Dev({ offset });
+
+        // Add the length, if one is required
+        if (optionLength !== undefined)
+            offset = WriteUInt8(buf, optionLength, offset);
+        Dev({ offset });
+
+        // Add a decoded value
+        let action;
+        switch (method) {
+            case `UInt8`:
+                action = WriteUInt8;
+                break;
+            case `UInt16`:
+                action = WriteUInt16;
+                break;
+            case `String`:
+                action = WriteString;
+                break;
+            case `IpAddress`:
+                action = WriteIpAddress;
+                break;
+        }
+
+        // Replace offset in args array
+        args = args.map(arg => { return (arg == `offset`) ? offset : arg; });
+        offset = action.apply(action, args);
+        Dev({ offset });
+    }
+
+    // Write an end option
+    offset = WriteUInt8(buf, optionDefinition.byProperty[`endOption`].code, offset);
 }
 
 function optionDecoder(option, rawValue) {
@@ -139,7 +193,7 @@ function optionDecoder(option, rawValue) {
             let requestedParameters = [];
             while (rawValue.length > 0) {
                 let code = parseInt(rawValue.substr(0, 2), 16),
-                    matchingOption = optionDefinition[code];
+                    matchingOption = optionDefinition.byCode[code];
 
                 if (!!matchingOption)
                     requestedParameters.push({ code, name: matchingOption.name });
@@ -161,4 +215,56 @@ function optionDecoder(option, rawValue) {
     return value;
 }
 
+function optionEncoder(option, decodedValue) {
+    let value = null;
+
+    switch (option.propertyName) {
+        case `clientIdentifier`:
+            value = decodedValue.uniqueId;
+            break;
+
+        case `dhcpMessageType`:
+            for (let id in option.valueMap)
+                if (option.valueMap[id] == decodedValue) {
+                    value = +id;
+                    break;
+                }
+            break;
+
+        case `parameterRequestList`:
+            value = ``;
+
+            decodedValue.forEach(opt => {
+                value += opt.code.toString(16).padStart(2, `0`);
+            });
+            break;
+
+        default:
+            value = decodedValue;
+            break;
+    }
+
+    return value;
+}
+
+function encodingParser(option, args, optionLength) {
+    let method = null;
+
+    if (typeof option.encoding == `object`) {
+        method = option.encoding.method;
+
+        if (!!option.encoding.args)
+            option.encoding.args.forEach(arg => {
+                if (!!optionLength && (arg == `optionLength`))
+                    arg = optionLength;
+
+                args.push(arg);
+            });
+    } else
+        method = option.encoding;
+
+    return method;
+}
+
 module.exports.ParseOptions = parseOptions;
+module.exports.EncodeOptions = encodeOptions;

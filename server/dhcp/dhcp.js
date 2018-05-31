@@ -3,7 +3,7 @@ const dgram = require(`dgram`);
 // Application modules
 const { Allocations } = require(`./allocations`),
     { DHCPMessage } = require(`./dhcpMessage`),
-    { Trace, Debug, Info, Error } = require(`../logging`);
+    { LogLevels, Trace, Debug, Info, Error } = require(`../logging`);
 
 const SERVER_PORT = 67;
 let _configuration = null,
@@ -42,6 +42,13 @@ function newV4DhcpSocket(ipAddress) {
 
         let message = new DHCPMessage();
         message.Decode(msg);
+
+        // Encode the message, and compare, for testing
+        if (global.logLevel <= LogLevels[`trace`]) {
+            message.Encode();
+            Trace({ [`Encoded hex message`]: message.toString() });
+        }
+
         Debug({ [`Decoded message`]: message });
 
         switch (message.options.dhcpMessageType) {
