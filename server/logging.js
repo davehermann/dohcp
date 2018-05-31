@@ -44,4 +44,4 @@ module.exports.Trace = trace;
 module.exports.Debug = debug;
 module.exports.Info = info;
 module.exports.Warn = warn;
-module.exports.Error = err;
+module.exports.Err = err;

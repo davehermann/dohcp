@@ -2,7 +2,8 @@
     { "code": 0, "name": "Pad Option", "isPad": true, "description": "The pad option can be used to cause subsequent fields to align on word boundaries." },
     { "code": 255, "name": "End Option", "isEnd": true, "description": "The end option marks the end of valid information in the vendor field.  Subsequent octets should be filled with pad options." },
     { "code": 1, "length": 4, "name": "Subnet Mask", "encoding": "IpAddress", "description": "The subnet mask option specifies the client's subnet mask as per RFC 950" },
-    { "code": 3, "length": -1, "name": "Time Server Option", "description": "The time server option specifies a list of RFC 868 [6] time servers available to the client.  Servers SHOULD be listed in order of preference." },
+    { "code": 3, "length": -1, "name": "Router Option", "description": "The router option specifies a list of IP addresses for routers on the client's subnet.  Routers SHOULD be listed in order of preference." },
+    { "code": 4, "length": -1, "name": "Time Server Option", "description": "The time server option specifies a list of RFC 868 [6] time servers available to the client.  Servers SHOULD be listed in order of preference." },
     { "code": 6, "length": -1, "name": "Domain Name Server Option", "description": "The domain name server option specifies a list of Domain Name System (STD 13, RFC 1035 [8]) name servers available to the client.  Servers SHOULD be listed in order of preference." },
     {
         "code": 12,

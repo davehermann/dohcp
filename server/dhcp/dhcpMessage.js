@@ -3,7 +3,7 @@ const { ParseOptions, EncodeOptions } = require(`./rfc2132`),
     { MACAddressFromHex, HexFromMACAddress,
         ReadIpAddress, ReadString, ReadUInt8, ReadUInt16, ReadUInt32,
         WriteIpAddress, WriteString, WriteUInt8, WriteUInt16, WriteUInt32 } = require(`./utilities`),
-    { Error } = require(`../logging`);
+    { Err } = require(`../logging`);
 
 let _bufferMessage = new WeakMap();
 
@@ -104,6 +104,9 @@ class Message {
     get options() { return _options.get(this); }
     set options(val) { _options.set(this, val); }
 
+    // Message as a buffer
+    get binaryMessage() { return _bufferMessage.get(this); }
+
     _readHardwareAddress(buf, offset, type, lengthInOctets) {
         let address;
         // The hardware address slot is 16 octets long
@@ -203,6 +206,17 @@ class Message {
             }
 
         _bufferMessage.set(this, encodedMessage.slice(0, lastData + 2));
+    }
+
+    Parse(jsObject) {
+        for (let prop in jsObject)
+            switch (prop) {
+                case `isDhcpMessage`:
+                    break;
+
+                default:
+                    this[prop] = jsObject[prop];
+            }
     }
 
     toString(format = `hex`) {

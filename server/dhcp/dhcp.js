@@ -3,7 +3,7 @@ const dgram = require(`dgram`);
 // Application modules
 const { Allocations } = require(`./allocations`),
     { DHCPMessage } = require(`./dhcpMessage`),
-    { LogLevels, Trace, Debug, Info, Error } = require(`../logging`);
+    { LogLevels, Trace, Debug, Info, Err } = require(`../logging`);
 
 const SERVER_PORT = 67;
 let _configuration = null,
@@ -60,8 +60,8 @@ function newV4DhcpSocket(ipAddress) {
 
     // On any error, log the error, but do not close the socket
     server.on(`error`, (err) => {
-        Error(`An error has occurred`);
-        Error(err);
+        Err(`An error has occurred`);
+        Err(err);
         // server.close();
     });
 
