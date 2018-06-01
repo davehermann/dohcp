@@ -1,8 +1,12 @@
+// Node/NPM modules
+const fs = require(`fs`),
+    path = require(`path`);
 // Application modules
 const { AllocatedAddress } = require(`./allocatedAddress`),
     { Trace, Debug } = require(`../logging`);
 
-let _configuration = new WeakMap();
+let _configuration = new WeakMap(),
+    _allocations = new WeakMap();
 
 class Allocations {
     constructor(configuration) {
@@ -12,6 +16,7 @@ class Allocations {
     }
 
     get configuration() { return _configuration.get(this); }
+    get allocatedAddresses() { return _allocations.get(this); }
 
     _allocateAddressing() {
         let allocations = this._LoadFromDisk();
@@ -56,7 +61,7 @@ class Allocations {
         });
 
         Debug({ allocations });
-        return allocations;
+        _allocations.set(this, allocations);
     }
 
     _incrementAddress(startAddress, endAddress, idx, callback) {
@@ -84,13 +89,73 @@ class Allocations {
         return null;
     }
 
+    _offerOpenAddress(currentTime) {
+        let openAddresses = [],
+            knownAllocations = [];
+        for (let ip in this.allocatedAddresses.byIp) {
+            let data = this.allocatedAddresses.byIp[ip];
+            if (!data)
+                openAddresses.push(ip);
+        }
+
+        for (let clientId in this.allocatedAddresses.byClientId) {
+            let ip = this.allocatedAddresses.byClientId[clientId],
+                data = this.allocatedAddresses.byIp[ip];
+
+            // Only add expired leases
+            if (data.leaseExpirationTimestamp < currentTime.getTime())
+                knownAllocations.push(ip);
+        }
+
+        // 3a) Prefer never-used addresses first
+        let poolAddresses = openAddresses.filter(ip => { return knownAllocations.indexOf(ip) < 0; });
+        if (poolAddresses.length == 0) {
+            // Take all known allocations, sort chronologically by lease expiration, and add only the IP that expired first
+            let knownAddresses = knownAllocations.map(ip => { return { ip, data: this.allocatedAddresses.byIp[ip] }; });
+            knownAddresses.sort((a, b) => { return a.data.leaseExpirationTimestamp - b.data.leaseExpirationTimestamp; });
+
+            if (knownAddresses.length > 0)
+                poolAddresses.push(knownAddresses[0]);
+        }
+
+        // Select a random address from the pool
+        if (poolAddresses.length > 0)
+            return poolAddresses[Math.floor(Math.random() * poolAddresses.length)];
+
+        return null;
+    }
+
+    _addAllocation(assignedAddress) {
+        // Add the assignment to the byIp list
+        this.allocatedAddresses.byIp[assignedAddress.ipAddress] = assignedAddress;
+
+        // Add a confirmed assignment to the byClientId list
+        if (assignedAddress.isConfirmed)
+            this.allocatedAddresses.byClientId[assignedAddress.clientId] = assignedAddress.ipAddress;
+
+        // Write the allocations to disk
+        return new Promise((resolve, reject) => {
+            let dataFile = path.join(process.cwd(), `status`, `status.json`);
+            Trace({ dataFile });
+            fs.writeFile(dataFile, JSON.stringify(this.allocatedAddresses, null, 4), { encoding: `utf8` }, (err) => {
+                if (!!err)
+                    reject(err);
+
+                resolve();
+            });
+        });
+    }
+
     OfferAddress(dhcpMessage) {
+        let pOffer = Promise.resolve();
+
         let clientId = dhcpMessage.options.clientIdentifier,
             // Check pre-configured addresses
             allStaticLeases = this.configuration.dhcp.leases.static,
             // As uniqueId could be either an ID or a type/id name-value pair, check for just the value match
             staticLease = allStaticLeases[clientId.uniqueId] || allStaticLeases[clientId.address],
-            assignedAddress = new AllocatedAddress(clientId);
+            assignedAddress = new AllocatedAddress(clientId),
+            currentTime = new Date();
 
         // A match means offer the match (Static allocation)
         if (!!staticLease) {
@@ -101,13 +166,27 @@ class Allocations {
         }
         // No match means offer an address from the pool (Dynamic allocation)
         else {
-            // If the client requests a specific address, use it if it's never been assigned, or if the client is the previous assignee
-            // Otherwise, use the address previously assigned to the client
-            // If no address has previously been assigned, use any open address
-            // Prefer never-used addresses to previously allocated (Automatic allocation)
+            // Address assignment steps
+            // 1) If the client has a previously assigned address, use that
+            // 2) If the client requests a specific address, use that if it's free
+            // 3) Use any open address
+            let ip = this._offerOpenAddress(currentTime);
+            if (!!ip)
+                assignedAddress.ipAddress = ip;
         }
 
+        if (!!assignedAddress.ipAddress) {
+            // Add the provided hostname to the lease
+            if (!!dhcpMessage.options.hostNameOption)
+                assignedAddress.providedHost = dhcpMessage.options.hostNameOption;
 
+            // Add the allocation to the tracking
+            pOffer = this._addAllocation(assignedAddress)
+                // Return the address
+                .then(() => Promise.resolve(assignedAddress));
+        }
+
+        return pOffer;
     }
 }
 

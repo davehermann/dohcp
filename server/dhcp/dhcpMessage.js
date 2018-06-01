@@ -24,12 +24,15 @@ let _op = new WeakMap(),
     _magicCookie = new WeakMap(),
     _options = new WeakMap();
 
-const MAGIC_COOKIE = [99, 130, 83, 99];
+const BOOTREQUEST = 1,
+    BOOTREPLY = 2,
+    MAGIC_COOKIE = [99, 130, 83, 99];
 
 class Message {
     constructor() {}
 
     // Request or reply
+    set isReply(val) { this.op = val ? BOOTREPLY : BOOTREQUEST; }
     get op() { return _op.get(this); }
     set op(val) { _op.set(this, val); }
 
@@ -142,6 +145,7 @@ class Message {
         return { value: vendorIdCookie, offset };
     }
     _writeMagicCookie(buf, offset) {
+        this.magicCookie = MAGIC_COOKIE;
         MAGIC_COOKIE.forEach(value => {
             offset = WriteUInt8(buf, value, offset);
         });

@@ -1,10 +1,28 @@
 [
     { "code": 0, "name": "Pad Option", "isPad": true, "description": "The pad option can be used to cause subsequent fields to align on word boundaries." },
     { "code": 255, "name": "End Option", "isEnd": true, "description": "The end option marks the end of valid information in the vendor field.  Subsequent octets should be filled with pad options." },
-    { "code": 1, "length": 4, "name": "Subnet Mask", "encoding": "IpAddress", "description": "The subnet mask option specifies the client's subnet mask as per RFC 950" },
-    { "code": 3, "length": -1, "name": "Router Option", "description": "The router option specifies a list of IP addresses for routers on the client's subnet.  Routers SHOULD be listed in order of preference." },
+    {
+        "code": 1,
+        "length": 4,
+        "name": "Subnet Mask",
+        "description": "The subnet mask option specifies the client's subnet mask as per RFC 950",
+        "encoding": "IpAddress"
+    },
+    {
+        "code": 3,
+        "length": -1,
+        "name": "Router Option",
+        "description": "The router option specifies a list of IP addresses for routers on the client's subnet.  Routers SHOULD be listed in order of preference.",
+        "encoding": { "isArray": true, "method": "IpAddress" }
+    },
     { "code": 4, "length": -1, "name": "Time Server Option", "description": "The time server option specifies a list of RFC 868 [6] time servers available to the client.  Servers SHOULD be listed in order of preference." },
-    { "code": 6, "length": -1, "name": "Domain Name Server Option", "description": "The domain name server option specifies a list of Domain Name System (STD 13, RFC 1035 [8]) name servers available to the client.  Servers SHOULD be listed in order of preference." },
+    {
+        "code": 6,
+        "length": -1,
+        "name": "Domain Name Server Option",
+        "description": "The domain name server option specifies a list of Domain Name System (STD 13, RFC 1035 [8]) name servers available to the client.  Servers SHOULD be listed in order of preference.",
+        "encoding": { "isArray": true, "method": "IpAddress" }
+    },
     {
         "code": 12,
         "length": -1,
@@ -12,9 +30,21 @@
         "description": "This option specifies the name of the client.  The name may or may not be qualified with the local domain name",
         "encoding": { "method": "String", "args": ["optionLength"] }
     },
-    { "code": 15, "length": -1, "name": "Domain Name", "description": "This option specifies the domain name that client should use when resolving hostnames via the Domain Name System." },
+    {
+        "code": 15,
+        "length": -1,
+        "name": "Domain Name",
+        "description": "This option specifies the domain name that client should use when resolving hostnames via the Domain Name System.",
+        "encoding": { "method": "String", "args": ["optionLength"] }
+    },
     { "code": 26, "length": 2, "name": "Interface MTU Option", "description": "This option specifies the MTU to use on this interface.  The MTU is specified as a 16-bit unsigned integer.  The minimum legal value for the MTU is 68." },
-    { "code": 28, "length": 4, "name": "Broadcast Address Option", "description": "This option specifies the broadcast address in use on the client's subnet.  Legal values for broadcast addresses are specified in section 3.2.1.3 of RFC 1122" },
+    {
+        "code": 28,
+        "length": 4,
+        "name": "Broadcast Address Option",
+        "description": "This option specifies the broadcast address in use on the client's subnet.  Legal values for broadcast addresses are specified in section 3.2.1.3 of RFC 1122",
+        "encoding": "IpAddress"
+    },
     { "code": 43, "length": -1, "name": "Vendor Specific Information", "description": "This option is used by clients and servers to exchange vendor- specific information.  The information is an opaque object of n octets, presumably interpreted by vendor-specific code on the clients and servers.  The definition of this information is vendor specific. The vendor is indicated in the vendor class identifier option." },
     {
         "code": 50,
@@ -23,7 +53,13 @@
         "description": "This option is used in a client request (DHCPDISCOVER) to allow the client to request that a particular IP address be assigned.",
         "encoding": "IpAddress"
     },
-    { "code": 51, "length": 4, "name": "IP Address Lease Time", "description": "This option is used in a client request (DHCPDISCOVER or DHCPREQUEST) to allow the client to request a lease time for the IP address.  In a server reply (DHCPOFFER), a DHCP server uses this option to specify the lease time it is willing to offer.\n\nThe time is in units of seconds, and is specified as a 32-bit unsigned integer." },
+    {
+        "code": 51,
+        "length": 4,
+        "name": "IP Address Lease Time",
+        "description": "This option is used in a client request (DHCPDISCOVER or DHCPREQUEST) to allow the client to request a lease time for the IP address.  In a server reply (DHCPOFFER), a DHCP server uses this option to specify the lease time it is willing to offer.\n\nThe time is in units of seconds, and is specified as a 32-bit unsigned integer.",
+        "encoding": "UInt32"
+    },
     {
         "code": 53,
         "length": 1,
@@ -62,8 +98,22 @@
         "description": "This option specifies the maximum length DHCP message that it is willing to accept.  The length is specified as an unsigned 16-bit integer.  A client may use the maximum DHCP message size option in DHCPDISCOVER or DHCPREQUEST messages, but should not use the option in DHCPDECLINE messages. The minimum legal value is 576 octets.",
         "encoding": "UInt16"
     },
-    { "code": 58, "length": 4, "name": "Renewal (T1) Time Value", "description": "This option specifies the time interval from address assignment until the client transitions to the RENEWING state.\n\nThe value is in units of seconds, and is specified as a 32-bit unsigned integer." },
-    { "code": 59, "length": 4, "name": "Rebinding (T2) Time Value", "description": "This option specifies the time interval from address assignment until the client transitions to the REBINDING state.\n\nThe value is in units of seconds, and is specified as a 32-bit unsigned integer." },
+    {
+        "code": 58,
+        "length": 4,
+        "name": "Renewal (T1) Time Value",
+        "propertyName": "renewalTimeValue",
+        "description": "This option specifies the time interval from address assignment until the client transitions to the RENEWING state.\n\nThe value is in units of seconds, and is specified as a 32-bit unsigned integer.",
+        "encoding": "UInt32"
+    },
+    {
+        "code": 59,
+        "length": 4,
+        "name": "Rebinding (T2) Time Value",
+        "propertyName": "rebindingTimeValue",
+        "description": "This option specifies the time interval from address assignment until the client transitions to the REBINDING state.\n\nThe value is in units of seconds, and is specified as a 32-bit unsigned integer.",
+        "encoding": "UInt32"
+    },
     {
         "code": 60,
         "length": -1,

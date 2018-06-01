@@ -2,17 +2,19 @@
 
 // Application modules
 const { MACAddressFromHex,
-        ReadIpAddress, ReadString, ReadUInt8, ReadUInt16,
-        WriteIpAddress, WriteString, WriteUInt8, WriteUInt16 } = require(`./utilities`),
+        ReadIpAddress, ReadString, ReadUInt8, ReadUInt16, ReadUInt32,
+        WriteIpAddress, WriteString, WriteUInt8, WriteUInt16, WriteUInt32 } = require(`./utilities`),
     { Dev, Warn } = require(`../logging`);
 // JSON data
 const rawOptionDefinition = require(`./rfc2132.json`);
 
 let optionDefinition = { byCode: {}, byProperty: {} };
 rawOptionDefinition.forEach(opt => {
-    let nameParts = opt.name.split(` `);
-    nameParts[0] = nameParts[0].toLowerCase();
-    opt.propertyName = nameParts.join(``);
+    if (!opt.propertyName) {
+        let nameParts = opt.name.split(` `);
+        nameParts[0] = nameParts[0].toLowerCase();
+        opt.propertyName = nameParts.join(``);
+    }
 
     optionDefinition.byCode[opt.code] = opt;
     optionDefinition.byProperty[opt.propertyName] = opt;
@@ -67,6 +69,9 @@ function parseOptions(buf, offset) {
                     case `UInt16`:
                         action = ReadUInt16;
                         break;
+                    case `UInt32`:
+                        action = ReadUInt32;
+                        break;
                     case `String`:
                         action = ReadString;
                         break;
@@ -105,22 +110,33 @@ function encodeOptions(buf, options, offset) {
     for (let propertyName in options) {
         let optionDef = optionDefinition.byProperty[propertyName],
             optionValue = optionEncoder(optionDef, options[propertyName]),
-            args = [buf, optionValue, `offset`],
+            args = [buf, `optionValue`, `offset`],
             method = encodingParser(optionDef, args),
+            isArray = (typeof optionDef.encoding == `object`) && optionDef.encoding.isArray,
             optionLength = optionDef.length;
 
         // Set the option length if used
         if (optionLength !== undefined) {
             // -1 means the length is not defined and will be calculated
-            if (optionLength < 0)
-                switch (method) {
-                    case `String`:
-                        if (args[args.length - 1] == `hex`)
-                            optionLength = optionValue.length / 2;
-                        else
-                            optionLength = optionValue.length;
-                        break;
-                }
+            if (optionLength < 0) {
+                optionLength = 0;
+                let valueList = isArray ? optionValue : [optionValue];
+
+                valueList.forEach(itemValue => {
+                    switch (method) {
+                        case `IpAddress`:
+                            optionLength += 4;
+                            break;
+
+                        case `String`:
+                            if (args[args.length - 1] == `hex`)
+                                optionLength += itemValue.length / 2;
+                            else
+                                optionLength += itemValue.length;
+                            break;
+                    }
+                });
+            }
 
             // Replace optionLength in args array
             args = args.map(arg => { return (arg == `optionLength`) ? optionLength : arg; });
@@ -146,6 +162,9 @@ function encodeOptions(buf, options, offset) {
             case `UInt16`:
                 action = WriteUInt16;
                 break;
+            case `UInt32`:
+                action = WriteUInt32;
+                break;
             case `String`:
                 action = WriteString;
                 break;
@@ -155,8 +174,20 @@ function encodeOptions(buf, options, offset) {
         }
 
         // Replace offset in args array
-        args = args.map(arg => { return (arg == `offset`) ? offset : arg; });
-        offset = action.apply(action, args);
+        let valueArray = isArray ? optionValue : [optionValue];
+        valueArray.forEach(itemValue => {
+            let argList = args.map(arg => {
+                switch (arg) {
+                    case `offset`:
+                        return offset;
+                    case `optionValue`:
+                        return itemValue;
+                    default:
+                        return arg;
+                }
+            });
+            offset = action.apply(action, argList);
+        });
         Dev({ offset });
     }
 
@@ -266,5 +297,6 @@ function encodingParser(option, args, optionLength) {
     return method;
 }
 
+module.exports.DHCPOptions = optionDefinition;
 module.exports.ParseOptions = parseOptions;
 module.exports.EncodeOptions = encodeOptions;
