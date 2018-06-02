@@ -1,7 +1,7 @@
 {
-  "name": "dhcpdns",
+  "name": "d-o-hcp",
   "version": "0.0.1",
-  "description": "DHCP and DNS server",
+  "description": "DHCP and DNS-over-HTTPS server",
   "private": true,
   "main": "server/server.js",
   "author": "Dave Hermann <6787333+davehermann@users.noreply.github.com>",

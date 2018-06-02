@@ -18,11 +18,13 @@ function startServer(config) {
 }
 
 function ipv4DHCP() {
-    // Bind to the UDP port for a DHCP server, and exclusively to the addresses specified
-    if (_configuration.ipv4Addresses.length > 0)
-        _configuration.ipv4Addresses.forEach(addressData => newV4DhcpSocket(addressData.address));
-    else
-        newV4DhcpSocket();
+    // // Bind to the UDP port for a DHCP server, and exclusively to the addresses specified
+    // if (_configuration.ipv4Addresses.length > 0)
+    //     _configuration.ipv4Addresses.forEach(addressData => newV4DhcpSocket(addressData.address));
+    // else
+
+    // Bind to all interfaces until Node has a way to filter by source interface
+    newV4DhcpSocket();
 }
 
 function newV4DhcpSocket(ipAddress) {
@@ -70,7 +72,7 @@ function newV4DhcpSocket(ipAddress) {
     // On any error, log the error, but do not close the socket
     server.on(`error`, (err) => {
         Err(`An error has occurred`);
-        Err(new Error(err));
+        Err(err, true);
         // server.close();
     });
 

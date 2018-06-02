@@ -3,7 +3,7 @@ const fs = require(`fs`),
     path = require(`path`);
 // Application modules
 const { AllocatedAddress } = require(`./allocatedAddress`),
-    { Trace, Debug } = require(`../logging`);
+    { Dev, Trace } = require(`../logging`);
 
 let _configuration = new WeakMap(),
     _allocations = new WeakMap();
@@ -46,7 +46,7 @@ class Allocations {
             });
         });
 
-        Trace({ poolIps, staticIps });
+        Dev({ poolIps, staticIps });
 
         // Clean up prior allocations by stepping through existing IPs, and remove any that are not in the pool
         for (let ip in allocations.byIp)
@@ -60,7 +60,7 @@ class Allocations {
                 allocations.byIp[ip] = null;
         });
 
-        Debug({ allocations });
+        Dev({ allocations });
         _allocations.set(this, allocations);
     }
 
