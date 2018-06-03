@@ -6,7 +6,9 @@ const { Allocations } = require(`./allocations`),
     { DHCPOptions } = require(`./rfc2132`),
     { LogLevels, Trace, Debug, Info, Err } = require(`../logging`);
 
-const SERVER_PORT = 67;
+const SERVER_PORT = 67,
+    CLIENT_PORT = 68,
+    BROADCAST_IP = `255.255.255.255`;
 let _configuration = null,
     _allocations = null;
 
@@ -18,13 +20,11 @@ function startServer(config) {
 }
 
 function ipv4DHCP() {
-    // // Bind to the UDP port for a DHCP server, and exclusively to the addresses specified
-    // if (_configuration.ipv4Addresses.length > 0)
-    //     _configuration.ipv4Addresses.forEach(addressData => newV4DhcpSocket(addressData.address));
-    // else
-
-    // Bind to all interfaces until Node has a way to filter by source interface
-    newV4DhcpSocket();
+    // Bind to the UDP port for a DHCP server, and exclusively to the addresses specified
+    if (_configuration.ipv4Addresses.length > 0)
+        _configuration.ipv4Addresses.forEach(addressData => newV4DhcpSocket(addressData.address));
+    else
+        newV4DhcpSocket();
 }
 
 function newV4DhcpSocket(ipAddress) {
@@ -34,6 +34,8 @@ function newV4DhcpSocket(ipAddress) {
     server.on(`listening`, () => {
         const address = server.address();
         Info({ address });
+
+        server.setBroadcast(true);
     });
 
     // Every time a message is received
@@ -58,11 +60,32 @@ function newV4DhcpSocket(ipAddress) {
 
         switch (message.options.dhcpMessageType) {
             case `DHCPDISCOVER`:
-                pResponse = offerAddress(message, ipAddress);
+                pResponse = offerAddress(message);
+                break;
+
+            case `DHCPREQUEST`:
+                // Only process is the client message identifies this server
+                if (message.options.serverIdentifier == _configuration.serverIpAddress)
+                    pResponse = confirmAddress(message);
+                else
+                    Debug(`Not targeted at ${_configuration.serverIpAddress}`);
                 break;
         }
 
         pResponse
+            .then(sendMessage => {
+                if (!!sendMessage)
+                    // Send the message
+                    return new Promise((resolve, reject) => {
+                        Debug(`Sending message: ${sendMessage.dhcpMessage.options.dhcpMessageType}`);
+                        server.send(sendMessage.dhcpMessage.binaryMessage, CLIENT_PORT, sendMessage.toBroadcast ? BROADCAST_IP : sendMessage.toIP, (err) => {
+                            if (!!err)
+                                reject(err);
+                            else
+                                resolve();
+                        });
+                    });
+            })
             .catch(err => {
                 Err(`Error in DHCP response processing`);
                 Err(err, true);
@@ -76,100 +99,48 @@ function newV4DhcpSocket(ipAddress) {
         // server.close();
     });
 
-    server.bind({ port: SERVER_PORT, address: ipAddress });
+    // Bind to all interfaces until Node has a way to filter by source interface
+    // server.bind({ port: SERVER_PORT, address: ipAddress });
+    server.bind(SERVER_PORT);
 }
 
-function offerAddress(dhcpDiscoverMessage, boundIp) {
+function confirmAddress(dhcpRequestMessage) {
+    Trace(`Confirming address request`);
+    return _allocations.ConfirmAddress(dhcpRequestMessage)
+        .then(assignment => {
+            if (!!assignment) {
+                Trace(`Has assigned address`);
+
+                // Send an ACK message
+                let dhcpAcknowledge = new DHCPMessage();
+
+                dhcpAcknowledge.GenerateReply(dhcpRequestMessage, assignment, _configuration);
+                dhcpAcknowledge.options.dhcpMessageType = DHCPOptions.byProperty.dhcpMessageType.valueMap[`5`];
+
+                // Encode the binary message
+                dhcpAcknowledge.Encode();
+                Trace({
+                    hex: dhcpAcknowledge.toString(),
+                    data: dhcpAcknowledge
+                });
+
+                return Promise.resolve({ dhcpMessage: dhcpAcknowledge, toBroadcast: true });
+            } else {
+                Trace(`No assigned address`);
+                // Send an NACK
+            }
+        });
+}
+
+function offerAddress(dhcpDiscoverMessage) {
     return _allocations.OfferAddress(dhcpDiscoverMessage)
         .then(assignment => {
             if (!!assignment) {
                 // Send a DHCP Offer back to the client
                 let dhcpOfferMessage = new DHCPMessage();
 
-                dhcpOfferMessage.isReply = true;
-                dhcpOfferMessage.htype = dhcpDiscoverMessage.htype;
-                dhcpOfferMessage.hlen = dhcpDiscoverMessage.hlen;
-                dhcpOfferMessage.hops = dhcpDiscoverMessage.hops;
-                dhcpOfferMessage.xid = dhcpDiscoverMessage.xid;
-                dhcpOfferMessage.secs = dhcpDiscoverMessage.secs;
-                dhcpOfferMessage.flags = dhcpDiscoverMessage.flags;
-                dhcpOfferMessage.ciaddr = `0.0.0.0`;
-                dhcpOfferMessage.yiaddr = assignment.ipAddress;
-                dhcpOfferMessage.siaddr = boundIp || `0.0.0.0`; // This server's IP
-                // Ignore relays for now
-                dhcpOfferMessage.giaddr = `0.0.0.0`;
-                dhcpOfferMessage.chaddr = dhcpDiscoverMessage.chaddr;
-                // Don't provide a hostname for this server
-                dhcpOfferMessage.sname = null;
-                // Don't provide a boot file path
-                dhcpOfferMessage.file = null;
-
-                // Specify the parameters the server will include as part of the response
-                let serverDefinedParameters = [
-                    `dhcpMessageType`,
-                    `serverIdentifier`,
-                    `ipAddressLeaseTime`,
-                    `renewalTimeValue`,
-                    `rebindingTimeValue`
-                ];
-
-                // Convert to a list of codes
-                let parameters = serverDefinedParameters.map(propertyName => { Trace(propertyName); return DHCPOptions.byProperty[propertyName].code; });
-
-                // Supply the requested parameters
-                dhcpDiscoverMessage.options.parameterRequestList.forEach(param => {
-                    if (parameters.indexOf(param.code) < 0)
-                        parameters.push(param.code);
-                });
-
-                let options = {};
-
-                parameters.forEach(code => {
-                    let dhcpOption = DHCPOptions.byCode[code],
-                        value = undefined;
-
-                    switch (dhcpOption.propertyName) {
-                        case `broadcastAddressOption`: {
-                            // Value is the last address in the subnet for the client's IP
-                            let mask = _configuration.dhcp.leases.pool.networkMask.split(`.`),
-                                address = assignment.ipAddress.split(`.`).map((octet, idx) => { return +mask[idx] == 255 ? octet : 255; });
-                            value = address.join(`.`);
-                        }
-                            break;
-                        case `dhcpMessageType`:
-                            value = DHCPOptions.byProperty.dhcpMessageType.valueMap[`2`];
-                            break;
-                        case `dhcpServerIdentifier`:
-                            value = dhcpOfferMessage.siaddr;
-                            break;
-                        case `domainName`:
-                            value = _configuration.dns.domain;
-                            break;
-                        case `domainNameServerOption`:
-                            value = _configuration.dns.servers;
-                            break;
-                        case `ipAddressLeaseTime`:
-                            value = _configuration.dhcp.leases.pool.leaseSeconds;
-                            break;
-                        case `rebindingTimeValue`:
-                            value = Math.round(_configuration.dhcp.leases.pool.leaseSeconds * 0.875);
-                            break;
-                        case `renewalTimeValue`:
-                            value = Math.round(_configuration.dhcp.leases.pool.leaseSeconds * 0.5);
-                            break;
-                        case `routerOption`:
-                            value = _configuration.dhcp.routers;
-                            break;
-                        case `subnetMask`:
-                            value = _configuration.dhcp.leases.pool.networkMask;
-                            break;
-                    }
-
-                    if (value !== undefined)
-                        options[dhcpOption.propertyName] = value;
-                });
-
-                dhcpOfferMessage.options = options;
+                dhcpOfferMessage.GenerateReply(dhcpDiscoverMessage, assignment, _configuration);
+                dhcpOfferMessage.options.dhcpMessageType = DHCPOptions.byProperty.dhcpMessageType.valueMap[`2`];
 
                 // Encode the binary message
                 dhcpOfferMessage.Encode();
@@ -179,6 +150,7 @@ function offerAddress(dhcpDiscoverMessage, boundIp) {
                 });
 
                 // Send back to the client
+                return Promise.resolve({ dhcpMessage: dhcpOfferMessage, toBroadcast: true });
             }
             // TO DO: Handle responses when all addresses in a pool have been assigned
             else {

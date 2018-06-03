@@ -89,6 +89,20 @@ class Allocations {
         return null;
     }
 
+    _writeToDisk() {
+        // Write the allocations to disk
+        return new Promise((resolve, reject) => {
+            let dataFile = path.join(process.cwd(), `status`, `dhcp.json`);
+            Trace({ dataFile });
+            fs.writeFile(dataFile, JSON.stringify(this.allocatedAddresses, null, 4), { encoding: `utf8` }, (err) => {
+                if (!!err)
+                    reject(err);
+
+                resolve();
+            });
+        });
+    }
+
     _offerOpenAddress(currentTime) {
         let openAddresses = [],
             knownAllocations = [];
@@ -134,16 +148,7 @@ class Allocations {
             this.allocatedAddresses.byClientId[assignedAddress.clientId] = assignedAddress.ipAddress;
 
         // Write the allocations to disk
-        return new Promise((resolve, reject) => {
-            let dataFile = path.join(process.cwd(), `status`, `status.json`);
-            Trace({ dataFile });
-            fs.writeFile(dataFile, JSON.stringify(this.allocatedAddresses, null, 4), { encoding: `utf8` }, (err) => {
-                if (!!err)
-                    reject(err);
-
-                resolve();
-            });
-        });
+        return this._writeToDisk();
     }
 
     OfferAddress(dhcpMessage) {
@@ -156,6 +161,10 @@ class Allocations {
             staticLease = allStaticLeases[clientId.uniqueId] || allStaticLeases[clientId.address],
             assignedAddress = new AllocatedAddress(clientId),
             currentTime = new Date();
+
+        assignedAddress.lastMessageId = dhcpMessage.xid;
+        // Expire the address in 30 seconds, to ensure the next cleanup cycle removes it if the client never responds
+        assignedAddress.SetExpiration(currentTime, 30);
 
         // A match means offer the match (Static allocation)
         if (!!staticLease) {
@@ -187,6 +196,32 @@ class Allocations {
         }
 
         return pOffer;
+    }
+
+    ConfirmAddress(dhcpMessage) {
+        let pConfirm = Promise.resolve();
+
+        let clientId = dhcpMessage.options.clientIdentifier,
+            requestedIp = dhcpMessage.options.requestedIPAddress;
+
+        // Check the requested IP against the assignment list
+        let assignedAddress = this.allocatedAddresses.byIp[requestedIp];
+
+        // If the client identifier matches for the assigned IP
+        Trace({ clientId, requestedIp, assignedAddress });
+
+        if (assignedAddress.clientId == clientId.uniqueId) {
+            // Confirm the address
+            assignedAddress.ConfirmAddress();
+            // Add to the known addresses
+            this.allocatedAddresses.byClientId[clientId] = assignedAddress.ipAddress;
+            // Write the updated status
+            pConfirm = this._writeToDisk()
+                // Return the address
+                .then(() => Promise.resolve(assignedAddress));
+        }
+
+        return pConfirm;
     }
 }
 

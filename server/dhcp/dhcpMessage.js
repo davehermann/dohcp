@@ -1,9 +1,9 @@
 // Application modules
-const { ParseOptions, EncodeOptions } = require(`./rfc2132`),
+const { DHCPOptions, ParseOptions, EncodeOptions } = require(`./rfc2132`),
     { MACAddressFromHex, HexFromMACAddress,
         ReadIpAddress, ReadString, ReadUInt8, ReadUInt16, ReadUInt32,
         WriteIpAddress, WriteString, WriteUInt8, WriteUInt16, WriteUInt32 } = require(`./utilities`),
-    { Err } = require(`../logging`);
+    { Trace, Err } = require(`../logging`);
 
 let _bufferMessage = new WeakMap();
 
@@ -210,6 +210,94 @@ class Message {
             }
 
         _bufferMessage.set(this, encodedMessage.slice(0, lastData + 2));
+    }
+
+    GenerateReply(requestMessage, assignedAddress, configuration) {
+        this.isReply = true;
+        this.htype = requestMessage.htype;
+        this.hlen = requestMessage.hlen;
+        this.hops = requestMessage.hops;
+        this.xid = requestMessage.xid;
+        this.secs = requestMessage.secs;
+        this.flags = requestMessage.flags;
+        this.ciaddr = `0.0.0.0`;
+        this.yiaddr = assignedAddress.ipAddress;
+        this.siaddr = configuration.serverIpAddress || `0.0.0.0`; // This server's IP
+        // Ignore relays for now
+        this.giaddr = `0.0.0.0`;
+        this.chaddr = requestMessage.chaddr;
+        // Don't provide a hostname for this server
+        this.sname = null;
+        // Don't provide a boot file path
+        this.file = null;
+
+        // Specify the parameters the server will include as part of the response
+        let serverDefinedParameters = [
+            `dhcpMessageType`,
+            `serverIdentifier`,
+            `ipAddressLeaseTime`,
+            `renewalTimeValue`,
+            `rebindingTimeValue`
+        ];
+
+        // Convert to a list of codes
+        let parameters = serverDefinedParameters.map(propertyName => { Trace(propertyName); return DHCPOptions.byProperty[propertyName].code; });
+
+        // Supply the requested parameters
+        requestMessage.options.parameterRequestList.forEach(param => {
+            if (parameters.indexOf(param.code) < 0)
+                parameters.push(param.code);
+        });
+
+        let options = {};
+
+        parameters.forEach(code => {
+            let dhcpOption = DHCPOptions.byCode[code],
+                value = undefined;
+
+            switch (dhcpOption.propertyName) {
+                case `broadcastAddressOption`: {
+                    // Value is the last address in the subnet for the client's IP
+                    let mask = configuration.dhcp.leases.pool.networkMask.split(`.`),
+                        address = assignedAddress.ipAddress.split(`.`).map((octet, idx) => { return +mask[idx] == 255 ? octet : 255; });
+                    value = address.join(`.`);
+                }
+                    break;
+                case `dhcpMessageType`:
+                    value = null;
+                    break;
+                case `domainName`:
+                    value = configuration.dns.domain;
+                    break;
+                case `domainNameServerOption`:
+                    value = configuration.dns.servers;
+                    break;
+                case `ipAddressLeaseTime`:
+                    value = configuration.dhcp.leases.pool.leaseSeconds;
+                    break;
+                case `rebindingTimeValue`:
+                    value = Math.round(configuration.dhcp.leases.pool.leaseSeconds * 0.875);
+                    break;
+                case `renewalTimeValue`:
+                    value = Math.round(configuration.dhcp.leases.pool.leaseSeconds * 0.5);
+                    break;
+                case `routerOption`:
+                    value = configuration.dhcp.routers;
+                    break;
+                case `serverIdentifier`:
+                    value = this.siaddr;
+                    break;
+                case `subnetMask`:
+                    value = configuration.dhcp.leases.pool.networkMask;
+                    break;
+            }
+
+            if (value !== undefined)
+                options[dhcpOption.propertyName] = value;
+        });
+
+        this.options = options;
+
     }
 
     Parse(jsObject) {

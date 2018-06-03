@@ -1,6 +1,8 @@
 let _clientIdentification = new WeakMap(),
+    _expirationTime = new WeakMap(),
     _ipAddress = new WeakMap(),
     _isConfirmed = new WeakMap(),
+    _messageId = new WeakMap(),
     _providedHostname = new WeakMap(),
     _staticHostname = new WeakMap();
 
@@ -20,6 +22,11 @@ class AllocatedAddress {
     set ipAddress(val) { _ipAddress.set(this, val); }
     get ipAddress() { return _ipAddress.get(this); }
 
+    get lastMessageId() { return _messageId.get(this); }
+    set lastMessageId(val) { _messageId.set(this, val); }
+
+    get leaseExpirationTimestamp() { return _expirationTime.get(this); }
+
     set providedHost(val) { _providedHostname.set(this, val); }
     set staticHost(val) { _staticHostname.set(this, val); }
 
@@ -31,6 +38,15 @@ class AllocatedAddress {
     }
 
     get isConfirmed() { return _isConfirmed.get(this); }
+
+    ConfirmAddress() {
+        _isConfirmed.set(this, true);
+        _messageId.set(this, null);
+    }
+
+    SetExpiration(currentTime, leaseSeconds) {
+        _expirationTime.set(this, currentTime.getTime() + (leaseSeconds * 1000));
+    }
 
     toJSON() {
         return {
