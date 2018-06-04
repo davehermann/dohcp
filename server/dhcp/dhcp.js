@@ -13,95 +13,116 @@ let _configuration = null,
     _allocations = null;
 
 function startServer(config) {
+    Debug(`Starting DHCP Server`);
+
     _configuration = config;
     _allocations = new Allocations(_configuration);
 
-    ipv4DHCP();
+    return ipv4DHCP();
 }
 
-function ipv4DHCP() {
-    // Bind to the UDP port for a DHCP server, and exclusively to the addresses specified
-    if (_configuration.ipv4Addresses.length > 0)
-        _configuration.ipv4Addresses.forEach(addressData => newV4DhcpSocket(addressData.address));
+// Bind to the UDP port for a DHCP server, and exclusively to the addresses specified
+function ipv4DHCP(remainingAddresses) {
+    if (remainingAddresses === undefined) {
+        remainingAddresses = _configuration.ipv4Addresses.filter(() => { return true; });
+
+        if (remainingAddresses.length == 0)
+            remainingAddresses.push(null);
+    }
+
+    if (remainingAddresses.length > 0)
+        return newV4DhcpSocket(remainingAddresses.shift())
+            .then(() => ipv4DHCP(remainingAddresses));
     else
-        newV4DhcpSocket();
+        return Promise.resolve();
 }
 
 function newV4DhcpSocket(ipAddress) {
-    let server = dgram.createSocket({ type: `udp4` });
+    return new Promise((resolve, reject) => {
+        let server = dgram.createSocket({ type: `udp4` }),
+            bindingSucceeded = false;
 
-    // When the server starts listening
-    server.on(`listening`, () => {
-        const address = server.address();
-        Info({ address });
+        // When the server starts listening
+        server.on(`listening`, () => {
+            const address = server.address();
+            Info({ address });
 
-        server.setBroadcast(true);
-    });
+            server.setBroadcast(true);
 
-    // Every time a message is received
-    server.on(`message`, (msg, rinfo) => {
-        Trace({
-            [`Remote address information`]: rinfo,
-            [`Hexadecimal message`]: msg.toString(`hex`)
+            bindingSucceeded = true;
+            resolve();
         });
 
-        let message = new DHCPMessage();
-        message.Decode(msg);
-
-        // Encode the message, and compare, for testing
-        if (global.logLevel <= LogLevels[`trace`]) {
-            message.Encode();
-            Trace({ [`Encoded hex message`]: message.toString() });
-        }
-
-        Debug({ [`Decoded message`]: message });
-
-        let pResponse = Promise.resolve();
-
-        switch (message.options.dhcpMessageType) {
-            case `DHCPDISCOVER`:
-                pResponse = offerAddress(message);
-                break;
-
-            case `DHCPREQUEST`:
-                // Only process is the client message identifies this server
-                if (message.options.serverIdentifier == _configuration.serverIpAddress)
-                    pResponse = confirmAddress(message);
-                else
-                    Debug(`Not targeted at ${_configuration.serverIpAddress}`);
-                break;
-        }
-
-        pResponse
-            .then(sendMessage => {
-                if (!!sendMessage)
-                    // Send the message
-                    return new Promise((resolve, reject) => {
-                        Debug(`Sending message: ${sendMessage.dhcpMessage.options.dhcpMessageType}`);
-                        server.send(sendMessage.dhcpMessage.binaryMessage, CLIENT_PORT, sendMessage.toBroadcast ? BROADCAST_IP : sendMessage.toIP, (err) => {
-                            if (!!err)
-                                reject(err);
-                            else
-                                resolve();
-                        });
-                    });
-            })
-            .catch(err => {
-                Err(`Error in DHCP response processing`);
-                Err(err, true);
+        // Every time a message is received
+        server.on(`message`, (msg, rinfo) => {
+            Trace({
+                [`Remote address information`]: rinfo,
+                [`Hexadecimal message`]: msg.toString(`hex`)
             });
-    });
 
-    // On any error, log the error, but do not close the socket
-    server.on(`error`, (err) => {
-        Err(`An error has occurred`);
-        Err(err, true);
-        // server.close();
-    });
+            let message = new DHCPMessage();
+            message.Decode(msg);
 
-    // Bind to all interfaces until Node has a way to filter by source interface
-    // server.bind({ port: SERVER_PORT, address: ipAddress });
-    server.bind(SERVER_PORT);
+            // Encode the message, and compare, for testing
+            if (global.logLevel <= LogLevels[`trace`]) {
+                message.Encode();
+                Trace({ [`Encoded hex message`]: message.toString() });
+            }
+
+            Debug({ [`Decoded message`]: message });
+
+            let pResponse = Promise.resolve();
+
+            switch (message.options.dhcpMessageType) {
+                case `DHCPDISCOVER`:
+                    pResponse = offerAddress(message);
+                    break;
+
+                case `DHCPREQUEST`:
+                    // Only process is the client message identifies this server
+                    if (message.options.serverIdentifier == _configuration.serverIpAddress)
+                        pResponse = confirmAddress(message);
+                    else
+                        Debug(`Not targeted at ${_configuration.serverIpAddress}`);
+                    break;
+            }
+
+            pResponse
+                .then(sendMessage => {
+                    if (!!sendMessage)
+                        // Send the message
+                        return new Promise((resolve, reject) => {
+                            Debug(`Sending message: ${sendMessage.dhcpMessage.options.dhcpMessageType}`);
+                            server.send(sendMessage.dhcpMessage.binaryMessage, CLIENT_PORT, sendMessage.toBroadcast ? BROADCAST_IP : sendMessage.toIP, (err) => {
+                                if (!!err)
+                                    reject(err);
+                                else
+                                    resolve();
+                            });
+                        });
+                })
+                .catch(err => {
+                    Err(`Error in DHCP response processing`);
+                    Err(err, true);
+                });
+        });
+
+        // On any error, log the error, but do not close the socket
+        server.on(`error`, (err) => {
+            Err(`An error has occurred`);
+            Err(err, true);
+
+            // If the error was on binding, reject the Promise
+            if (!bindingSucceeded)
+                reject(err);
+
+            // server.close();
+        });
+
+        // Bind to all interfaces until Node has a way to filter by source interface
+        // server.bind({ port: SERVER_PORT, address: ipAddress });
+        server.bind(SERVER_PORT);
+    });
 }
 
 function confirmAddress(dhcpRequestMessage) {
