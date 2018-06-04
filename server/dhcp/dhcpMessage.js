@@ -2,7 +2,7 @@
 const { DHCPOptions, ParseOptions, EncodeOptions } = require(`./rfc2132`),
     { MACAddressFromHex, HexFromMACAddress,
         ReadIpAddress, ReadString, ReadUInt8, ReadUInt16, ReadUInt32,
-        WriteIpAddress, WriteString, WriteUInt8, WriteUInt16, WriteUInt32 } = require(`./utilities`),
+        WriteIpAddress, WriteString, WriteUInt8, WriteUInt16, WriteUInt32 } = require(`../utilities`),
     { Trace, Err } = require(`../logging`);
 
 let _bufferMessage = new WeakMap();

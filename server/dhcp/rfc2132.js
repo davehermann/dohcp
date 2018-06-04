@@ -3,7 +3,7 @@
 // Application modules
 const { MACAddressFromHex,
         ReadIpAddress, ReadString, ReadUInt8, ReadUInt16, ReadUInt32,
-        WriteIpAddress, WriteString, WriteUInt8, WriteUInt16, WriteUInt32 } = require(`./utilities`),
+        WriteIpAddress, WriteString, WriteUInt8, WriteUInt16, WriteUInt32 } = require(`../utilities`),
     { Dev, Warn } = require(`../logging`);
 // JSON data
 const rawOptionDefinition = require(`./rfc2132.json`);
