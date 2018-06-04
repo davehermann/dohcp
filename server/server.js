@@ -1,21 +1,30 @@
 // Node/NPM modules
 const os = require(`os`);
 // Application modules
-const { LogLevels, Trace } = require(`./logging`),
-    { DHCPServer } = require(`./dhcp/dhcp`);
+const { LogLevels, Dev, Trace, Debug } = require(`./logging`),
+    { DHCPServer } = require(`./dhcp/dhcp`),
+    { DNSServer } = require(`./dns/dns`);
 // JSON data
 const configuration = require(`../configuration.json`);
 
 // Set the global logging level
 global.logLevel = !!configuration.logLevel ? LogLevels[configuration.logLevel] : LogLevels[`warn`];
 
-Trace({ [`Configuration`]: configuration });
+Dev({ [`Configuration`]: configuration });
 Trace({ [`Found network interfaces`]: os.networkInterfaces() });
 
-let configInUse = buildConfiguration(configuration);
+let configInUse = buildConfiguration(configuration),
+    pServerLaunch = Promise.resolve();
 
-if (!!configInUse.dhcp)
-    DHCPServer(configInUse);
+Debug({ [`Active configuration`]: configInUse });
+
+if (!!configInUse.dhcp && !configInUse.dhcp.disabled)
+    pServerLaunch = pServerLaunch
+        .then(() => DHCPServer(configInUse));
+
+if (!!configInUse.dns && !configInUse.dns.disabled)
+    pServerLaunch = pServerLaunch
+        .then(() => DNSServer(configInUse));
 
 function buildConfiguration(configuration) {
     // Copy the configuration

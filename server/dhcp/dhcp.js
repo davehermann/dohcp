@@ -6,7 +6,7 @@ const { Allocations } = require(`./allocations`),
     { DHCPOptions } = require(`./rfc2132`),
     { LogLevels, Trace, Debug, Info, Err } = require(`../logging`);
 
-const SERVER_PORT = 67,
+const DHCP_SERVER_PORT = 67,
     CLIENT_PORT = 68,
     BROADCAST_IP = `255.255.255.255`;
 let _configuration = null,
@@ -120,8 +120,8 @@ function newV4DhcpSocket(ipAddress) {
         });
 
         // Bind to all interfaces until Node has a way to filter by source interface
-        // server.bind({ port: SERVER_PORT, address: ipAddress });
-        server.bind(SERVER_PORT);
+        // server.bind({ port: DHCP_SERVER_PORT, address: ipAddress });
+        server.bind(DHCP_SERVER_PORT);
     });
 }
 
