@@ -1,0 +1,22 @@
+{
+    "primary": "cloudflare",
+    "resolvers": [
+        {
+            "name": "cloudflare",
+            "servers": ["1.1.1.1", "1.0.0.1"],
+            "doh": {
+                "hostname": "cloudflare-dns.com",
+                "path": "/dns-query",
+                "defaultMethod": "POST",
+                "methods": [
+                    {
+                        "method": "POST",
+                        "headers": [
+                            { "Content-Type": "application/dns-udpwireformat" }
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}

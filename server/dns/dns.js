@@ -1,8 +1,10 @@
 // Node/NPM modules
 const dgram = require(`dgram`),
-    https = require(`https`);
+    https = require(`https`),
+    { Resolver } = require(`dns`);
 // Application modules
-const { LogLevels, Dev, Trace, Debug, Info, Err } = require(`../logging`);
+const { DNSMessage } = require(`./rfc1035/dnsMessage`),
+    { Dev, Trace, Debug, Info, Err } = require(`../logging`);
 
 const DNS_SERVER_PORT = 53;
 
@@ -54,9 +56,22 @@ function newDNSSocket(ipAddress) {
                 [`Hexadecimal message`]: msg.toString(`hex`)
             });
 
+            let message = new DNSMessage();
+            message.Decode(msg);
+            Debug({ [`Decoded DNS Query`]: message });
+
             lookupInDns(msg)
                 .then(response => {
                     Trace({ [`Complete Response`]: response.toString(`hex`) });
+                    let responseMessage = new DNSMessage();
+                    responseMessage.Decode(response);
+                    Debug(responseMessage);
+
+                    // Cache the response based on the TTLs
+
+                    return response;
+                })
+                .then(response => {
                     // Send response
                     server.send(response, rinfo.port, rinfo.address);
                 })
@@ -80,41 +95,80 @@ function newDNSSocket(ipAddress) {
 }
 
 function lookupInDns(msg) {
+    return resolveDnsHost()
+        .then(dohResolver => {
+            Trace(`Retrieving DNS`);
+
+            return new Promise((resolve, reject) => {
+                let request = {
+                    hostname: dohResolver.doh.ipAddress[0],
+                    path: dohResolver.doh.path,
+                    headers: {
+                        [`Host`]: dohResolver.doh.hostname,
+                        [`Content-Length`]: msg.length,
+                    },
+                };
+
+                let useMethod = dohResolver.doh.methods.filter(method => { return method.method == dohResolver.doh.defaultMethod; })[0];
+
+                request.method = useMethod.method;
+                useMethod.headers.forEach(header => {
+                    for (let name in header)
+                        request.headers[name] = header[name];
+                });
+
+                Dev({ request });
+
+                let req = https.request(request, (res) => {
+                    Trace({ status: res.statusCode, headers: res.headers });
+
+                    let data = [];
+
+                    res.on(`data`, chunk => {
+                        // chunk is a buffer
+                        Dev({ chunk: chunk.toString(`hex`) });
+                        data.push(chunk.toString(`hex`));
+                    });
+
+                    res.on(`end`, () => {
+                        Dev({ data });
+                        resolve(Buffer.from(data.join(``), `hex`));
+                    });
+                });
+
+                req.on(`error`, (err) => {
+                    Err(err);
+                    reject(err);
+                });
+
+                req.write(msg);
+                req.end();
+            });
+        });
+}
+
+function resolveDnsHost() {
     return new Promise((resolve, reject) => {
-        let request = {
-            hostname: `cloudflare-dns.com`,
-            method: `POST`,
-            path: `/dns-query`,
-            headers: {
-                [`Content-Type`]: `application/dns-udpwireformat`,
-                [`Content-Length`]: msg.length,
+        // Check configuration for the resolver to use
+        let resolver = _configuration.dns.upstream.resolvers.filter(resolver => { return resolver.name == _configuration.dns.upstream.primary; })[0];
+
+        Trace({ resolver });
+
+        // Resolve the hostname (may be in cache, or perform a DNS lookup)
+        let dnsResolve = new Resolver();
+        dnsResolve.setServers(resolver.servers);
+        dnsResolve.resolve4(resolver.doh.hostname, { ttl: true }, (err, records) => {
+            if (!!err) {
+                Err(`DoH hostname resolution error`);
+                reject(err);
+            } else {
+                Trace({ [`hostname`]: resolver.doh.hostname, records });
+                resolver.doh.ipAddress = records.map(entry => { return entry.address; });
+                resolve(resolver);
             }
-        };
-
-        let req = https.request(request, (res) => {
-            Trace({ status: res.statusCode, headers: res.headers });
-
-            let data = [];
-
-            res.on(`data`, chunk => {
-                // chunk is a buffer
-                Dev({ chunk: chunk.toString(`hex`) });
-                data.push(chunk.toString(`hex`));
-            });
-
-            res.on(`end`, () => {
-                Dev({ data });
-                resolve(Buffer.from(data.join(``), `hex`));
-            });
         });
 
-        req.on(`error`, (err) => {
-            Err(err);
-            reject(err);
-        });
-
-        req.write(msg);
-        req.end();
+        // Provide the IP, and resolver parameters
     });
 }
 

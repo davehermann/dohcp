@@ -5,28 +5,33 @@ const { LogLevels, Dev, Trace, Debug } = require(`./logging`),
     { DHCPServer } = require(`./dhcp/dhcp`),
     { DNSServer } = require(`./dns/dns`);
 // JSON data
-const configuration = require(`../configuration.json`);
+const configuration = require(`../configuration.json`),
+    dnsResolvers = require(`../dns-resolvers.json`);
 
 // Set the global logging level
 global.logLevel = !!configuration.logLevel ? LogLevels[configuration.logLevel] : LogLevels[`warn`];
 
-Dev({ [`Configuration`]: configuration });
+Dev({ [`Configuration`]: configuration, [`DNS Resolution`]: dnsResolvers });
 Trace({ [`Found network interfaces`]: os.networkInterfaces() });
 
-let configInUse = buildConfiguration(configuration),
-    pServerLaunch = Promise.resolve();
+let configInUse = null;
 
-Debug({ [`Active configuration`]: configInUse });
+Promise.resolve()
+    .then(() => buildConfiguration())
+    .then(useConfiguration => {
+        configInUse = useConfiguration;
+        Debug({ [`Active configuration`]: configInUse });
+    })
+    .then(() => {
+        if (!!configInUse.dhcp && !configInUse.dhcp.disabled)
+            return DHCPServer(configInUse);
+    })
+    .then(() => {
+        if (!!configInUse.dns && !configInUse.dns.disabled)
+            return DNSServer(configInUse);
+    });
 
-if (!!configInUse.dhcp && !configInUse.dhcp.disabled)
-    pServerLaunch = pServerLaunch
-        .then(() => DHCPServer(configInUse));
-
-if (!!configInUse.dns && !configInUse.dns.disabled)
-    pServerLaunch = pServerLaunch
-        .then(() => DNSServer(configInUse));
-
-function buildConfiguration(configuration) {
+function buildConfiguration() {
     // Copy the configuration
     let computedConfig = JSON.parse(JSON.stringify(configuration)),
         interfaces = os.networkInterfaces();
@@ -54,6 +59,10 @@ function buildConfiguration(configuration) {
                 computedConfig.serverIpAddress = computedConfig.ipv4Addresses[0].address;
         }
     }
+
+    if (!!configuration.dns)
+        // Add the upstream configuration
+        computedConfig.dns.upstream = dnsResolvers;
 
     return computedConfig;
 }
