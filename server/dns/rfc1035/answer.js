@@ -6,7 +6,8 @@ let _compressedName = new WeakMap(),
     _name = new WeakMap(),
     _rdLength = new WeakMap(),
     _rdata = new WeakMap(),
-    _ttl = new WeakMap();
+    _ttl = new WeakMap(),
+    _ttlSetTime = new WeakMap();
 
 class Answer extends ResourceRecord {
     constructor() {
@@ -15,14 +16,29 @@ class Answer extends ResourceRecord {
 
     get compressedName() { return _compressedName.get(this); }
     set compressedName(val) { _compressedName.set(this, val); }
-    get compressedNameBinary() { return parseInt(this.compressedName, 16).toString(2).padStart(this.compressedName.length * 4, `0`); }
-    get isCompressedName() { return this.compressedNameBinary.substr(0, 2) === `11`; }
-    get nameOffset() { return this.isCompressedName ? parseInt(this.compressedNameBinary.substr(2), 2) : null; }
+    get compressedNameBinary() { return !!this.compressedName ? parseInt(this.compressedName, 16).toString(2).padStart(this.compressedName.length * 4, `0`) : undefined; }
+    get isCompressedName() { return !!this.compressedNameBinary ? this.compressedNameBinary.substr(0, 2) === `11` : undefined; }
+    get nameOffset() { return this.isCompressedName ? parseInt(this.compressedNameBinary.substr(2), 2) : undefined; }
     get name() { return _name.get(this); }
     set name(val) { _name.set(this, val); }
 
-    get ttl() { return _ttl.get(this); }
-    set ttl(val) { _ttl.set(this, val); }
+    get ttl() {
+        let ttl = _ttl.get(this);
+        if (!!ttl) {
+            // The TTL should be adjusted based on elapsed time from initial set
+            let currentTime = (new Date()).getTime(),
+                elapsedTTLTime = currentTime - _ttlSetTime.get(this);
+
+            ttl -= Math.round(elapsedTTLTime / 1000);
+        }
+
+        return ttl;
+    }
+    set ttl(val) {
+        _ttl.set(this, val);
+        // Record the timestamp for when this was set
+        _ttlSetTime.set(this, (new Date()).getTime());
+    }
 
     get rdLength() { return _rdLength.get(this); }
     set rdLength(val) { _rdLength.set(this, val); }
@@ -60,6 +76,19 @@ class Answer extends ResourceRecord {
             ({ value: this.name } = Answer.DecodeLabel(messageBuffer, this.nameOffset));
 
         return offset;
+    }
+
+    Copy() {
+        let newAnswer = new Answer();
+
+        newAnswer.name = this.name;
+        newAnswer.rrTypeId = this.rrTypeId;
+        newAnswer.rrClassId = this.rrClassId;
+        newAnswer.ttl = this.ttl;
+        newAnswer.rdLength = this.rdLength;
+        newAnswer.rData = this.rData;
+
+        return newAnswer;
     }
 
     toJSON() {

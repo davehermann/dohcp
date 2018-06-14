@@ -11,6 +11,8 @@ let _bufferMessage = new WeakMap(),
 class DNSMessage {
     constructor() {}
 
+    get rawMessage() { return _bufferMessage.get(this); }
+
     get answers() { return _answerList.get(this); }
     set answers(val) { _answerList.set(this, val); }
 

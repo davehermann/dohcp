@@ -3,8 +3,9 @@ const dgram = require(`dgram`),
     https = require(`https`),
     { Resolver } = require(`dns`);
 // Application modules
-const { DNSMessage } = require(`./rfc1035/dnsMessage`),
-    { Dev, Trace, Debug, Info, Err } = require(`../logging`);
+const { AddToCache, FindInCache } = require(`./cache`),
+    { DNSMessage } = require(`./rfc1035/dnsMessage`),
+    { Dev, Trace, Debug, Info, Warn, Err } = require(`../logging`);
 
 const DNS_SERVER_PORT = 53;
 
@@ -56,20 +57,18 @@ function newDNSSocket(ipAddress) {
                 [`Hexadecimal message`]: msg.toString(`hex`)
             });
 
-            let message = new DNSMessage();
-            message.Decode(msg);
-            Debug({ [`Decoded DNS Query`]: message });
+            let dnsQuery = new DNSMessage();
+            dnsQuery.Decode(msg);
+            Debug({ [`Decoded DNS Query`]: dnsQuery });
 
-            lookupInDns(msg)
-                .then(response => {
-                    Trace({ [`Complete Response`]: response.toString(`hex`) });
-                    let responseMessage = new DNSMessage();
-                    responseMessage.Decode(response);
-                    Debug(responseMessage);
+            resolveDNSQuery(dnsQuery)
+                .then(responseMessage => {
+                    Trace({ [`Raw Response`]: responseMessage.rawMessage.toString(`hex`) });
+                    Debug({ responseMessage });
 
                     // Cache the response based on the TTLs
 
-                    return response;
+                    return responseMessage.rawMessage;
                 })
                 .then(response => {
                     // Send response
@@ -94,7 +93,35 @@ function newDNSSocket(ipAddress) {
     });
 }
 
-function lookupInDns(msg) {
+function resolveDNSQuery(dnsQuery) {
+    let hasWarning = false,
+        pLookup = Promise.resolve();
+
+    // Log anything unexpected to Warn
+    if (dnsQuery.header.numberOfQuestions !== 1 || (dnsQuery.questions.filter(q => { return q.rrType !== `A`; }).length > 0)) {
+        Warn({ [`Unexpected Query`]: dnsQuery });
+        hasWarning = true;
+    }
+
+    // Check cache first
+    if (!hasWarning) {
+        let cacheHit = FindInCache(dnsQuery.questions[0].question);
+        Debug({ cacheHit });
+        if (!!cacheHit)
+            pLookup = pLookup
+                .then(() => { return respondFromCache(dnsQuery, cacheHit); });
+    }
+
+    return pLookup
+        .then(answer => { return !!answer ? answer : lookupInDns(dnsQuery); });
+}
+
+function respondFromCache(msg, cachedAnswer) {
+    Trace({ [`Responding from cache`]: cachedAnswer });
+    return Promise.resolve();
+}
+
+function lookupInDns(dnsQuery) {
     return resolveDnsHost()
         .then(dohResolver => {
             Trace(`Retrieving DNS`);
@@ -105,7 +132,7 @@ function lookupInDns(msg) {
                     path: dohResolver.doh.path,
                     headers: {
                         [`Host`]: dohResolver.doh.hostname,
-                        [`Content-Length`]: msg.length,
+                        [`Content-Length`]: dnsQuery.rawMessage.length,
                     },
                 };
 
@@ -141,13 +168,24 @@ function lookupInDns(msg) {
                     reject(err);
                 });
 
-                req.write(msg);
+                req.write(dnsQuery.rawMessage);
                 req.end();
             });
+        })
+        .then(response => {
+            Dev({ [`Complete Response`]: response.toString(`hex`) });
+
+            let responseMessage = new DNSMessage();
+            responseMessage.Decode(response);
+
+            AddToCache(responseMessage);
+
+            return responseMessage;
         });
 }
 
 function resolveDnsHost() {
+    // Query a DNS server for the DNS-over-HTTPS host
     return new Promise((resolve, reject) => {
         // Check configuration for the resolver to use
         let resolver = _configuration.dns.upstream.resolvers.filter(resolver => { return resolver.name == _configuration.dns.upstream.primary; })[0];
