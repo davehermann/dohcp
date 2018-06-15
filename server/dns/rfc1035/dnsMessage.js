@@ -1,50 +1,74 @@
 // Application modules
-const { Answer } = require(`./answer`),
-    { Header } = require(`./header`),
+const { Header } = require(`./header`),
+    { Answer } = require(`./answer`),
     { Question } = require(`./question`);
 
-let _bufferMessage = new WeakMap(),
+let _originalMessage = new WeakMap(),
+    _generatedMessage = new WeakMap(),
     _header = new WeakMap(),
     _questionList = new WeakMap(),
     _answerList = new WeakMap();
 
 class DNSMessage {
-    constructor() {}
-
-    get rawMessage() { return _bufferMessage.get(this); }
-
-    get answers() { return _answerList.get(this); }
-    set answers(val) { _answerList.set(this, val); }
+    constructor(messageBuffer) {
+        // If a message is passed in, decode it
+        if (!!messageBuffer) {
+            _originalMessage.set(this, messageBuffer);
+            this._decode();
+        }
+    }
 
     get header() { return _header.get(this); }
-    set header(val) { _header.set(this, val); }
+    get questions() { return !!_questionList.get(this) ? _questionList.get(this) : []; }
+    get answers() { return !!_answerList.get(this) ? _answerList.get(this) : []; }
 
-    get questions() { return _questionList.get(this); }
-    set questions(val) { _questionList.set(this, val); }
+    get buffer() {
+        // If an original message exists, and it differs from the generated, send the original
+        let original = _originalMessage.get(this),
+            generated = _generatedMessage.get(this);
 
-    Decode(messageBuffer) {
-        _bufferMessage.set(this, messageBuffer);
+        return (!!original && !original.equals(generated)) ? original : generated;
+    }
 
-        let offset;
+    _decode() {
+        let offset,
+            questions = [],
+            answers = [];
 
-        this.header = new Header();
-        offset = this.header.Decode(messageBuffer, offset);
+        _header.set(this, new Header(_originalMessage.get(this)));
 
-        let questions = [];
+        offset = this.header.length;
         for (let idx = 0, total = this.header.numberOfQuestions; idx < total; idx++) {
-            let q = new Question();
-            offset = q.Decode(messageBuffer, offset);
+            let q = new Question(_originalMessage.get(this), offset);
+            offset = q.endingOffset;
             questions.push(q);
         }
-        this.questions = questions;
+        if (questions.length > 0)
+            _questionList.set(this, questions);
 
-        let answers = [];
         for (let idx = 0, total = this.header.numberOfAnswers; idx < total; idx++) {
-            let a = new Answer();
-            offset = a.Decode(messageBuffer, offset);
+            let a = new Answer(_originalMessage.get(this), offset);
+            offset = a.endingOffset;
             answers.push(a);
         }
-        this.answers = answers;
+        if (answers.length > 0)
+            _answerList.set(this, answers);
+
+        // Generate a new buffer based on the decoded message
+        this.GenerateBuffer();
+    }
+
+    GenerateBuffer() {
+        _generatedMessage.set(this, Buffer.from(this.toHex(), `hex`));
+    }
+
+    toHex() {
+        let hexMessage = `${this.header.toHex()}${this.questions.map(q => { return q.toHex(); }).join(``)}`;
+        // To enable name compression, each answer needs to know the entire message as it exists to this point
+        this.answers.forEach(a => {
+            hexMessage += a.toHex(hexMessage);
+        });
+        return hexMessage;
     }
 
     toJSON() {
@@ -56,4 +80,4 @@ class DNSMessage {
     }
 }
 
-module.exports.DNSMessage = DNSMessage;
+module.exports.DNSMessage2 = DNSMessage;

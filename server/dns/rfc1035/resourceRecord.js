@@ -28,7 +28,10 @@ let classMap = {
 };
 
 let _type = new WeakMap(),
-    _class = new WeakMap();
+    _class = new WeakMap(),
+    _sourceStartingOffset = new WeakMap(),
+    _sourceEndingOffset = new WeakMap(),
+    _asHex = new WeakMap();
 
 class ResourceRecord {
     constructor() {}
@@ -44,6 +47,13 @@ class ResourceRecord {
     set rrClassId(val) { _class.set(this, val); }
     get rrClass() { return classMap[this.rrClassId]; }
 
+    set sourceStartingOffset(val) { _sourceStartingOffset.set(this, val); }
+    set sourceEndingOffset(val) { _sourceEndingOffset.set(this, val); }
+    get endingOffset() { return _sourceEndingOffset.get(this); }
+    get hexRepresentation() { return _asHex.get(this); }
+    set hexRepresentation(val) { _asHex.set(this, val); }
+    get length() { return this.hexRepresentation.length / 2; }
+
     static DecodeLabel(messageBuffer, offset) {
         let labelLength,
             labelData = [];
@@ -58,6 +68,26 @@ class ResourceRecord {
         } while (labelLength != 0);
 
         return { value: labelData.join(`.`), offset };
+    }
+
+    static EncodeLabelHex(labelString) {
+        let labelParts = labelString.split(`.`),
+            labelData = ``;
+
+        labelParts.forEach(label => {
+            // Convert each character
+            let labelHex = ``;
+            for (let idx = 0, total = label.length; idx < total; idx++)
+                labelHex += label.charCodeAt(idx).toString(16).padStart(2, `0`);
+
+            // Add the length as a hexadecimal number, and then the label
+            labelData += `${(labelHex.length / 2).toString(16).padStart(2, `0`)}${labelHex}`;
+        });
+
+        // End the labels
+        labelData += `00`;
+
+        return labelData;
     }
 }
 

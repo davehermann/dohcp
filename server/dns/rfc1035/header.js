@@ -1,57 +1,49 @@
 // Application modules
-const { ReadString, ReadUInt16 } = require(`../../utilities`);
+const { QueryParameters } = require(`./queryParameters`),
+    { ReadString, ReadUInt16 } = require(`../../utilities`);
 
 let _queryId = new WeakMap(),
-    _queryParametersHex = new WeakMap(),
+    _queryParameters = new WeakMap(),
     _numberOfQuestions = new WeakMap(),
     _numberOfAnswers = new WeakMap(),
     _numberOfAuthorityRecords = new WeakMap(),
     _numberOfAdditionalRecords = new WeakMap();
 
 class Header {
-    constructor() {}
+    constructor(messageBuffer) {
+        // Decode from the buffer
+        this.Decode(messageBuffer);
+    }
 
     get queryId() { return _queryId.get(this); }
     set queryId(val) { _queryId.set(this, val); }
+    get id() { return this.queryId.toString(16).padStart(4, `0`); }
 
     // Query Parameters
-    get queryParametersHex() { return _queryParametersHex.get(this); }
-    set queryParametersHex(val) { _queryParametersHex.set(this, val); }
-    get queryParametersBinary() { return parseInt(this.queryParametersHex, 16).toString(2).padStart(this.queryParametersHex.length * 4, `0`); }
-
-    // Query/Response [1 bit]
-    get qr() { return +this.queryParametersBinary.substr(0, 1); }
-    get isQuery() { return this.qr === 0; }
-    get isResponse() { return this.qr === 1; }
-    // Opcode [4 bits] (0 == standard, 1 == inverse, 2 == server status)
-    get opcode() {
-        let code = this.queryParametersBinary.substr(1, 4);
-        return parseInt(code, 2);
-    }
-    // Authoritative answer [1 bit]
-    get aa() { return +this.queryParametersBinary.substr(5, 1) === 1; }
-    // Truncated [1 bit]
-    get tc() { return +this.queryParametersBinary.substr(6, 1) === 1; }
-    // Recursion Desired [1 bit]
-    get rd() { return +this.queryParametersBinary.substr(7, 1) === 1; }
-    // Recursion Available [1 bit]
-    get ra() { return +this.queryParametersBinary.substr(8, 1) === 1; }
-    // Z - reserved for future and must always be 0 [3 bits]
-    get z() { return this.queryParametersBinary.substr(9, 3); }
-    // Response code [4 bits] (0 == no error, 1 == format error, 2 == server failure, 3 == name error - on AA only, 4 == not implemented - by the server, 5 == refused to perform operation)
-    get rcode() { return parseInt(this.queryParametersBinary.substr(12, 4), 2); }
+    set queryParametersHex(val) { _queryParameters.set(this, new QueryParameters(val)); }
+    get queryParameters() { return _queryParameters.get(this); }
+    get queryParameters_hex() { return this.queryParameters.toHex(); }
 
     get numberOfQuestions() { return _numberOfQuestions.get(this); }
     set numberOfQuestions(val) { _numberOfQuestions.set(this, val); }
+    get qdcount() { return this.numberOfQuestions.toString(16).padStart(4, `0`); }
+
     get numberOfAnswers() { return _numberOfAnswers.get(this); }
     set numberOfAnswers(val) { _numberOfAnswers.set(this, val); }
+    get ancount() { return this.numberOfAnswers.toString(16).padStart(4, `0`); }
+
     get numberOfAuthorityRecords() { return _numberOfAuthorityRecords.get(this); }
     set numberOfAuthorityRecords(val) { _numberOfAuthorityRecords.set(this, val); }
+    get nscount() { return this.numberOfAuthorityRecords.toString(16).padStart(4, `0`); }
+
     get numberOfAdditionalRecords() { return _numberOfAdditionalRecords.get(this); }
     set numberOfAdditionalRecords(val) { _numberOfAdditionalRecords.set(this, val); }
+    get arcount() { return this.numberOfAdditionalRecords.toString(16).padStart(4, `0`); }
 
-    Decode(messageBuffer, offset = 0) {
-        // Offset should be 0, but we'll define as a parameter to match the rest of the application
+    get length() { return this.toHex().length / 2; }
+
+    Decode(messageBuffer) {
+        let offset = 0;
 
         ({ value: this.queryId, offset } = ReadUInt16(messageBuffer, offset));
         ({ value: this.queryParametersHex, offset } = ReadString(messageBuffer, offset, 2, `hex`));
@@ -59,23 +51,16 @@ class Header {
         ({ value: this.numberOfAnswers, offset } = ReadUInt16(messageBuffer, offset));
         ({ value: this.numberOfAuthorityRecords, offset } = ReadUInt16(messageBuffer, offset));
         ({ value: this.numberOfAdditionalRecords, offset } = ReadUInt16(messageBuffer, offset));
+    }
 
-        return offset;
+    toHex() {
+        return `${this.id}${this.queryParameters_hex}${this.qdcount}${this.ancount}${this.nscount}${this.arcount}`;
     }
 
     toJSON() {
         return {
-            queryId: this.queryId,
-            queryParametersHex: this.queryParametersHex,
-            queryParametersBinary: this.queryParametersBinary,
-            qr: this.qr,
-            opcode: this.opcode,
-            aa: this.aa,
-            tc: this.tc,
-            rd: this.rd,
-            ra: this.ra,
-            z: this.z,
-            rcode: this.rcode,
+            id: this.queryId,
+            parameters: this.queryParameters,
             numberOfQuestions: this.numberOfQuestions,
             numberOfAnswers: this.numberOfAnswers,
             numberOfAuthorityRecords: this.numberOfAuthorityRecords,

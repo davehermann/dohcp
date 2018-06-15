@@ -5,17 +5,19 @@ let _cache = {};
 function add(dnsResponse) {
     // Any answers within the response need to be cached
     dnsResponse.answers.forEach(answer => {
-        let existing = _cache[answer.name];
+        let cacheAnswer = answer.toCache();
+
+        let existing = _cache[cacheAnswer.label];
         if (!!existing) {
             // Clear the TTL removal
             clearTimeout(existing.removal);
 
-            remove(answer.name);
+            remove(cacheAnswer.label);
         }
 
-        _cache[answer.name] = {
-            removal: setTimeout(() => { remove(answer.name); }, answer.ttl * 1000),
-            answer: answer.Copy()
+        _cache[cacheAnswer.label] = {
+            removal: setTimeout(() => { remove(cacheAnswer.label); }, cacheAnswer.maximumCacheLength * 1000),
+            answer: cacheAnswer
         };
     });
 }

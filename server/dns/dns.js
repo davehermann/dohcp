@@ -57,22 +57,14 @@ function newDNSSocket(ipAddress) {
                 [`Hexadecimal message`]: msg.toString(`hex`)
             });
 
-            let dnsQuery = new DNSMessage();
-            dnsQuery.Decode(msg);
-            Debug({ [`Decoded DNS Query`]: dnsQuery });
+            let dnsQuery = new DNSMessage(msg);
+            Debug({ [`Decoded as Hex`]: dnsQuery.toHex(), [`Decoded Query`]: dnsQuery });
 
             resolveDNSQuery(dnsQuery)
-                .then(responseMessage => {
-                    Trace({ [`Raw Response`]: responseMessage.rawMessage.toString(`hex`) });
-                    Debug({ responseMessage });
-
-                    // Cache the response based on the TTLs
-
-                    return responseMessage.rawMessage;
-                })
-                .then(response => {
+                .then(dnsAnswer => {
+                    Debug(`Sending response`);
                     // Send response
-                    server.send(response, rinfo.port, rinfo.address);
+                    server.send(dnsAnswer.buffer, rinfo.port, rinfo.address);
                 })
                 .catch(err => {
                     Err(err);
@@ -105,7 +97,7 @@ function resolveDNSQuery(dnsQuery) {
 
     // Check cache first
     if (!hasWarning) {
-        let cacheHit = FindInCache(dnsQuery.questions[0].question);
+        let cacheHit = FindInCache(dnsQuery.questions[0].label);
         Debug({ cacheHit });
         if (!!cacheHit)
             pLookup = pLookup
@@ -132,7 +124,7 @@ function lookupInDns(dnsQuery) {
                     path: dohResolver.doh.path,
                     headers: {
                         [`Host`]: dohResolver.doh.hostname,
-                        [`Content-Length`]: dnsQuery.rawMessage.length,
+                        [`Content-Length`]: dnsQuery.buffer.length,
                     },
                 };
 
@@ -168,19 +160,19 @@ function lookupInDns(dnsQuery) {
                     reject(err);
                 });
 
-                req.write(dnsQuery.rawMessage);
+                req.write(dnsQuery.buffer);
                 req.end();
             });
         })
         .then(response => {
-            Dev({ [`Complete Response`]: response.toString(`hex`) });
+            Trace({ [`Complete Response`]: response.toString(`hex`) });
 
-            let responseMessage = new DNSMessage();
-            responseMessage.Decode(response);
+            let dnsAnswer = new DNSMessage(response);
+            Debug({ [`Decoded as Hex`]: dnsAnswer.toHex(), [`Decoded Answer`]: dnsAnswer });
 
-            AddToCache(responseMessage);
+            AddToCache(dnsAnswer);
 
-            return responseMessage;
+            return dnsAnswer;
         });
 }
 
