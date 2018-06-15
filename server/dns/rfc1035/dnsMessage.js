@@ -1,7 +1,8 @@
 // Application modules
 const { Header } = require(`./header`),
     { Answer } = require(`./answer`),
-    { Question } = require(`./question`);
+    { Question } = require(`./question`),
+    { Warn } = require(`../../logging`);
 
 let _originalMessage = new WeakMap(),
     _generatedMessage = new WeakMap(),
@@ -27,7 +28,11 @@ class DNSMessage {
         let original = _originalMessage.get(this),
             generated = _generatedMessage.get(this);
 
-        return (!!original && !original.equals(generated)) ? original : generated;
+        if (!!original && !original.equals(generated)) {
+            Warn({ [`Generation Mismatch`]: true, original: original.toString(`hex`), generate: generated.toString(`hex`) });
+            return original;
+        } else
+            return generated;
     }
 
     _decode() {
@@ -80,4 +85,4 @@ class DNSMessage {
     }
 }
 
-module.exports.DNSMessage2 = DNSMessage;
+module.exports.DNSMessage = DNSMessage;
