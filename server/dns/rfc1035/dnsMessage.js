@@ -63,6 +63,20 @@ class DNSMessage {
         this.GenerateBuffer();
     }
 
+    ReplyFromCache(dnsQuery, cachedAnswer) {
+        let header = new Header();
+        header.queryId = dnsQuery.header.queryId;
+        _header.set(this, header);
+
+        _questionList.set(this, dnsQuery.questions);
+
+        _answerList.set(this, [cachedAnswer]);
+
+        this.header.GenerateHeader(this);
+
+        this.GenerateBuffer();
+    }
+
     GenerateBuffer() {
         _generatedMessage.set(this, Buffer.from(this.toHex(), `hex`));
     }

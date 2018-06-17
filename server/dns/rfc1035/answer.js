@@ -121,7 +121,7 @@ class Answer extends ResourceRecord {
 
     toJSON() {
         return {
-            name: _name.get(this),
+            name: this.label,
             nameEncoded: this.name,
             type: this.rrType,
             class: this.rrClass,

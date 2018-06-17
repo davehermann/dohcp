@@ -24,7 +24,18 @@ let _isQuery = new WeakMap(),
 
 class QueryParameters {
     constructor(asHexadecimal) {
-        this.Decode(asHexadecimal);
+        if (!!asHexadecimal)
+            this.Decode(asHexadecimal);
+        else {
+            _isQuery.set(this, false);
+            _operationCode.set(this, 0);
+            _authoritativeAnswer.set(this, false);
+            _truncated.set(this, false);
+            _recursionDesired.set(this, false);
+            _recursionAvailable.set(this, false);
+            _zFutureUse.set(this, 0);
+            _responseCode.set(this, 0);
+        }
     }
 
     // QR (Query/Response) [1 bit]

@@ -12,7 +12,10 @@ let _queryId = new WeakMap(),
 class Header {
     constructor(messageBuffer) {
         // Decode from the buffer
-        this.Decode(messageBuffer);
+        if (!!messageBuffer)
+            this.Decode(messageBuffer);
+        else
+            _queryParameters.set(this, new QueryParameters());
     }
 
     get queryId() { return _queryId.get(this); }
@@ -51,6 +54,13 @@ class Header {
         ({ value: this.numberOfAnswers, offset } = ReadUInt16(messageBuffer, offset));
         ({ value: this.numberOfAuthorityRecords, offset } = ReadUInt16(messageBuffer, offset));
         ({ value: this.numberOfAdditionalRecords, offset } = ReadUInt16(messageBuffer, offset));
+    }
+
+    GenerateHeader(message) {
+        this.numberOfQuestions = message.questions.length;
+        this.numberOfAnswers = message.answers.length;
+        this.numberOfAuthorityRecords = 0;
+        this.numberOfAdditionalRecords = 0;
     }
 
     toHex() {

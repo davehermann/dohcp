@@ -12,9 +12,9 @@ class Question extends ResourceRecord {
         this._decode(originalMessage, questionOffset);
     }
 
-    get label() { _label.get(this); }
+    get label() { return _label.get(this); }
     set label(val) { _label.set(this, val); }
-    get qname() { return Question.EncodeLabelHex(_label.get(this)); }
+    get qname() { return Question.EncodeLabelHex(this.label); }
     get qtype() { return this.rrTypeId.toString(16).padStart(4, `0`); }
     get qclass() { return this.rrClassId.toString(16).padStart(4, `0`); }
 
@@ -33,7 +33,7 @@ class Question extends ResourceRecord {
 
     toJSON() {
         return {
-            question: _label.get(this),
+            question: this.label,
             qType: this.rrType,
             qClass: this.rrClass,
         };

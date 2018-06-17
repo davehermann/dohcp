@@ -97,20 +97,29 @@ function resolveDNSQuery(dnsQuery) {
 
     // Check cache first
     if (!hasWarning) {
-        let cacheHit = FindInCache(dnsQuery.questions[0].label);
-        Debug({ cacheHit });
-        if (!!cacheHit)
+        let cacheHit = FindInCache(dnsQuery.questions[0].label),
+            cachedAnswer = !!cacheHit ? cacheHit.answer : null;
+        Debug({ cachedAnswer });
+        if (!!cachedAnswer)
             pLookup = pLookup
-                .then(() => { return respondFromCache(dnsQuery, cacheHit); });
+                .then(() => { return respondFromCache(dnsQuery, cachedAnswer); });
     }
 
     return pLookup
         .then(answer => { return !!answer ? answer : lookupInDns(dnsQuery); });
 }
 
-function respondFromCache(msg, cachedAnswer) {
-    Trace({ [`Responding from cache`]: cachedAnswer });
-    return Promise.resolve();
+function respondFromCache(dnsQuery, cachedAnswer) {
+    Trace(`Responding from cache`);
+
+    // Create a new message
+    let dnsAnswer = new DNSMessage();
+    Trace({ dnsQuery, cachedAnswer });
+    dnsAnswer.ReplyFromCache(dnsQuery, cachedAnswer);
+    Trace(`Reply generated`);
+    Debug({ [`Decoded as Hex`]: dnsAnswer.toHex(), [`Decoded Answer`]: dnsAnswer });
+
+    return Promise.resolve(dnsAnswer);
 }
 
 function lookupInDns(dnsQuery) {
@@ -172,7 +181,7 @@ function lookupInDns(dnsQuery) {
 
             AddToCache(dnsAnswer);
 
-            return dnsAnswer;
+            return Promise.resolve(dnsAnswer);
         });
 }
 
