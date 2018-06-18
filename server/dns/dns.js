@@ -97,12 +97,11 @@ function resolveDNSQuery(dnsQuery) {
 
     // Check cache first
     if (!hasWarning) {
-        let cacheHit = FindInCache(dnsQuery.questions[0].label),
-            cachedAnswer = !!cacheHit ? cacheHit.answer : null;
-        Debug({ cachedAnswer });
-        if (!!cachedAnswer)
+        let cacheHit = FindInCache(dnsQuery.questions[0].label);
+        Debug({ cacheHit });
+        if (!!cacheHit)
             pLookup = pLookup
-                .then(() => { return respondFromCache(dnsQuery, cachedAnswer); });
+                .then(() => { return respondFromCache(dnsQuery, cacheHit); });
     }
 
     return pLookup

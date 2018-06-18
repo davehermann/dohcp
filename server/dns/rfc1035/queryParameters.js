@@ -55,6 +55,11 @@ class QueryParameters {
     get tc() { return !this.isTruncated ? 0 : 1; }
     // Recursion Desired [1 bit]
     get isRecursionDesired() { return _recursionDesired.get(this); }
+    set isRecursionDesired(val) {
+        _recursionDesired.set(this, val);
+        if (val)
+            _recursionAvailable.set(this, true);
+    }
     get rd() { return !this.isRecursionDesired ? 0 : 1; }
     // Recursion Available [1 bit]
     get isRecursionAvailable() { return _recursionAvailable.get(this); }

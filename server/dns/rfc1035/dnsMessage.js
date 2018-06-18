@@ -70,9 +70,9 @@ class DNSMessage {
 
         _questionList.set(this, dnsQuery.questions);
 
-        _answerList.set(this, [cachedAnswer]);
+        _answerList.set(this, cachedAnswer);
 
-        this.header.GenerateHeader(this);
+        this.header.GenerateHeader(this, dnsQuery);
 
         this.GenerateBuffer();
     }

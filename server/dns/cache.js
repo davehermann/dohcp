@@ -29,7 +29,22 @@ function add(dnsResponse) {
 }
 
 function lookup(name) {
-    return _cache[name];
+    let found = [],
+        inCache = null;
+
+    while (!!name) {
+        inCache = _cache[name];
+        name = null;
+
+        if (!!inCache) {
+            found.push(inCache);
+
+            if (inCache.answer.rrType == `CNAME`)
+                name = inCache.answer.resourceData;
+        }
+    }
+
+    return (found.length > 0) ? found.map(cacheEntry => { return cacheEntry.answer; }) : null;
 }
 
 function remove(nameToRemove) {

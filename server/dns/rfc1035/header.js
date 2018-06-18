@@ -56,11 +56,14 @@ class Header {
         ({ value: this.numberOfAdditionalRecords, offset } = ReadUInt16(messageBuffer, offset));
     }
 
-    GenerateHeader(message) {
+    GenerateHeader(message, dnsQuery) {
         this.numberOfQuestions = message.questions.length;
         this.numberOfAnswers = message.answers.length;
         this.numberOfAuthorityRecords = 0;
         this.numberOfAdditionalRecords = 0;
+
+        if (dnsQuery.header.queryParameters.isRecursionDesired)
+            this.queryParameters.isRecursionDesired = true;
     }
 
     toHex() {
