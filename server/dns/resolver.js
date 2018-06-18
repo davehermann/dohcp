@@ -1,91 +1,13 @@
 // Node/NPM modules
-const dgram = require(`dgram`),
-    https = require(`https`),
+const https = require(`https`),
     { Resolver } = require(`dns`);
+
 // Application modules
 const { AddToCache, FindInCache } = require(`./cache`),
     { DNSMessage } = require(`./rfc1035/dnsMessage`),
-    { Dev, Trace, Debug, Info, Warn, Err } = require(`../logging`);
+    { Dev, Trace, Debug, Warn, Err } = require(`../logging`);
 
-const DNS_SERVER_PORT = 53;
-
-let _configuration = null;
-
-function startServer(config) {
-    Debug(`Starting DNS Server`);
-
-    _configuration = config;
-
-    return dns();
-}
-
-function dns(remainingAddresses) {
-    // Step through servers configuration
-    // Any entry that is "primaryIP", or an IP on the configured interface, will listen for DNS
-    if (remainingAddresses === undefined)
-        remainingAddresses = _configuration.dns.servers.filter(ip => {
-            return (ip == `primaryIP`) || (_configuration.ipv4Addresses.map(addr => { return addr.address; }).indexOf(ip) >= 0);
-        }).map(ip => {
-            return (ip == `primaryIP`) ? _configuration.serverIpAddress : ip;
-        });
-
-    Dev({ remainingAddresses });
-    if (remainingAddresses.length > 0) {
-        return newDNSSocket(remainingAddresses.shift())
-            .then(() => dns(remainingAddresses));
-    } else
-        return Promise.resolve();
-}
-
-function newDNSSocket(ipAddress) {
-    return new Promise((resolve, reject) => {
-        let server = dgram.createSocket({ type: `udp4` }),
-            bindingSucceeded = false;
-
-        server.on(`listening`, () => {
-            const address = server.address();
-            Info({ address });
-
-            bindingSucceeded = true;
-            resolve();
-        });
-
-        // Every time a message is received
-        server.on(`message`, (msg, rinfo) => {
-            Trace({
-                [`Remote address information`]: rinfo,
-                [`Hexadecimal message`]: msg.toString(`hex`)
-            });
-
-            let dnsQuery = new DNSMessage(msg);
-            Debug({ [`Decoded as Hex`]: dnsQuery.toHex(), [`Decoded Query`]: dnsQuery });
-
-            resolveDNSQuery(dnsQuery)
-                .then(dnsAnswer => {
-                    Debug(`Sending response`);
-                    // Send response
-                    server.send(dnsAnswer.buffer, rinfo.port, rinfo.address);
-                })
-                .catch(err => {
-                    Err(err);
-                });
-        });
-
-        server.on(`error`, (err) => {
-            Err(`An error has occurred`);
-            Err(err, true);
-
-            // If the error was on binding, reject the Promise
-            if (!bindingSucceeded)
-                reject(err);
-        });
-
-        // Bind to the IP
-        server.bind({ port: DNS_SERVER_PORT, address: ipAddress });
-    });
-}
-
-function resolveDNSQuery(dnsQuery) {
+function resolveQuery(dnsQuery, configuration) {
     let hasWarning = false,
         pLookup = Promise.resolve();
 
@@ -104,12 +26,19 @@ function resolveDNSQuery(dnsQuery) {
                 .then(() => { return respondFromCache(dnsQuery, cacheHit); });
     }
 
+    // If cache didn't find it, return a lookup
     return pLookup
-        .then(answer => { return !!answer ? answer : lookupInDns(dnsQuery); });
+        .then(answer => { return !!answer ? answer : lookupInDns(dnsQuery, configuration); })
+        .then(dnsAnswer => {
+            // If the bottom record is a CNAME, then we need to resolve the CNAME and add to the answers here
+            return dnsAnswer;
+        });
 }
 
 function respondFromCache(dnsQuery, cachedAnswer) {
     Trace(`Responding from cache`);
+
+    // If the answer is a CNAME that doesn't have the entry in cache, a lookup is required
 
     // Create a new message
     let dnsAnswer = new DNSMessage();
@@ -121,8 +50,8 @@ function respondFromCache(dnsQuery, cachedAnswer) {
     return Promise.resolve(dnsAnswer);
 }
 
-function lookupInDns(dnsQuery) {
-    return resolveDnsHost()
+function lookupInDns(dnsQuery, configuration) {
+    return resolveDnsHost(configuration)
         .then(dohResolver => {
             Trace(`Retrieving DNS`);
 
@@ -184,11 +113,11 @@ function lookupInDns(dnsQuery) {
         });
 }
 
-function resolveDnsHost() {
+function resolveDnsHost(configuration) {
     // Query a DNS server for the DNS-over-HTTPS host
     return new Promise((resolve, reject) => {
         // Check configuration for the resolver to use
-        let resolver = _configuration.dns.upstream.resolvers.filter(resolver => { return resolver.name == _configuration.dns.upstream.primary; })[0];
+        let resolver = configuration.dns.upstream.resolvers.filter(resolver => { return resolver.name == configuration.dns.upstream.primary; })[0];
 
         Trace({ resolver });
 
@@ -210,4 +139,4 @@ function resolveDnsHost() {
     });
 }
 
-module.exports.DNSServer = startServer;
+module.exports.ResolveDNSQuery = resolveQuery;
