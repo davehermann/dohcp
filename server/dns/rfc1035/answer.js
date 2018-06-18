@@ -59,9 +59,20 @@ class Answer extends ResourceRecord {
 
                 return rData;
             }
+
+            case `CNAME`: {
+                // Resource is a name
+                let recordData = Buffer.from(_rData.get(this), `hex`),
+                    offset = 0,
+                    value;
+
+                ({ value, offset } = Answer.DecodeLabel(recordData, offset));
+
+                return value;
+            }
         }
 
-        return null;
+        return _rData.get(this);
     }
     get rdata() {
         let data = _rData.get(this);
@@ -127,6 +138,7 @@ class Answer extends ResourceRecord {
             class: this.rrClass,
             ttl: this.maximumCacheLength,
             resourceData: this.resourceData,
+            rawRData: _rData.get(this),
         };
     }
 }
