@@ -39,6 +39,7 @@ function lookup(name) {
         if (!!inCache) {
             found.push(inCache);
 
+            // Checking here for any CNAME resolution will short-circuit additional lookups
             if (inCache.answer.rrType == `CNAME`)
                 name = inCache.answer.resourceData;
         }

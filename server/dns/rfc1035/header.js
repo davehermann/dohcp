@@ -26,6 +26,8 @@ class Header {
     set queryParametersHex(val) { _queryParameters.set(this, new QueryParameters(val)); }
     get queryParameters() { return _queryParameters.get(this); }
     get queryParameters_hex() { return this.queryParameters.toHex(); }
+    set isQuery(val) { this.queryParameters.isQuery = val; }
+    set recursionDesired(val) { this.queryParameters.isRecursionDesired = val; }
 
     get numberOfQuestions() { return _numberOfQuestions.get(this); }
     set numberOfQuestions(val) { _numberOfQuestions.set(this, val); }
@@ -62,7 +64,7 @@ class Header {
         this.numberOfAuthorityRecords = 0;
         this.numberOfAdditionalRecords = 0;
 
-        if (dnsQuery.header.queryParameters.isRecursionDesired)
+        if (!!dnsQuery && dnsQuery.header.queryParameters.isRecursionDesired)
             this.queryParameters.isRecursionDesired = true;
     }
 

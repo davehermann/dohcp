@@ -27,7 +27,7 @@ class QueryParameters {
         if (!!asHexadecimal)
             this.Decode(asHexadecimal);
         else {
-            _isQuery.set(this, false);
+            this.isQuery = false;
             _operationCode.set(this, 0);
             _authoritativeAnswer.set(this, false);
             _truncated.set(this, false);
@@ -40,6 +40,7 @@ class QueryParameters {
 
     // QR (Query/Response) [1 bit]
     get isQuery() { return _isQuery.get(this); }
+    set isQuery(val) { _isQuery.set(this, val); }
     get isResponse() { return !this.isQuery; }
     get qr() { return this.isQuery ? 0 : 1; }
 
@@ -57,7 +58,8 @@ class QueryParameters {
     get isRecursionDesired() { return _recursionDesired.get(this); }
     set isRecursionDesired(val) {
         _recursionDesired.set(this, val);
-        if (val)
+
+        if (val && this.isResponse)
             _recursionAvailable.set(this, true);
     }
     get rd() { return !this.isRecursionDesired ? 0 : 1; }
@@ -75,7 +77,7 @@ class QueryParameters {
         // Convert to binary representation
         let parametersBinary = parseInt(parametersHex, 16).toString(2).padStart(parametersHex.length * 4, `0`);
 
-        _isQuery.set(this, (+parametersBinary.substr(0, 1) === 0));
+        this.isQuery = (+parametersBinary.substr(0, 1) === 0);
         _operationCode.set(this, parseInt(parametersBinary.substr(1, 4), 2));
         _authoritativeAnswer.set(this, +parametersBinary.substr(5, 1) === 1);
         _truncated.set(this, +parametersBinary.substr(6, 1) === 1);

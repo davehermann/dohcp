@@ -7,9 +7,11 @@ let _label = new WeakMap();
 class Question extends ResourceRecord {
     constructor(originalMessage, questionOffset) {
         super();
-        this.sourceStartingOffset = questionOffset;
 
-        this._decode(originalMessage, questionOffset);
+        if (!!originalMessage) {
+            this.sourceStartingOffset = questionOffset;
+            this._decode(originalMessage, questionOffset);
+        }
     }
 
     get label() { return _label.get(this); }

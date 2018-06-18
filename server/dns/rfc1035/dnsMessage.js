@@ -77,6 +77,24 @@ class DNSMessage {
         this.GenerateBuffer();
     }
 
+    Query(label) {
+        let header = new Header();
+        header.queryId = Math.round(Math.random() * 65000);
+        header.isQuery = true;
+        header.recursionDesired = true;
+        _header.set(this, header);
+
+        let question = new Question();
+        question.label = label;
+        question.rrTypeId = 1;
+        question.rrClassId = 1;
+        _questionList.set(this, [question]);
+
+        this.header.GenerateHeader(this);
+
+        this.GenerateBuffer();
+    }
+
     GenerateBuffer() {
         _generatedMessage.set(this, Buffer.from(this.toHex(), `hex`));
     }

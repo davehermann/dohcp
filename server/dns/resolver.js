@@ -19,8 +19,9 @@ function resolveQuery(dnsQuery, configuration) {
 
     // Check cache first
     if (!hasWarning) {
-        let cacheHit = FindInCache(dnsQuery.questions[0].label);
-        Debug({ cacheHit });
+        let label = dnsQuery.questions[0].label,
+            cacheHit = FindInCache(label);
+        Debug({ label, cacheHit });
         if (!!cacheHit)
             pLookup = pLookup
                 .then(() => { return respondFromCache(dnsQuery, cacheHit); });
@@ -30,19 +31,38 @@ function resolveQuery(dnsQuery, configuration) {
     return pLookup
         .then(answer => { return !!answer ? answer : lookupInDns(dnsQuery, configuration); })
         .then(dnsAnswer => {
+            let pAnswer = Promise.resolve(dnsAnswer);
+
             // If the bottom record is a CNAME, then we need to resolve the CNAME and add to the answers here
-            return dnsAnswer;
+            if (dnsAnswer.answers[dnsAnswer.answers.length - 1].rrType == `CNAME`) {
+                // Perform the lookup with a new query object
+                let subQuery = new DNSMessage();
+                subQuery.Query(dnsAnswer.answers[dnsAnswer.answers.length - 1].resourceData);
+
+                Trace({ [`Sub-query Hex`]: subQuery.toHex(), subQuery });
+
+                pAnswer = resolveQuery(subQuery, configuration)
+                    .then(subAnswer => {
+                        // Integrate all answers with the answers list in this answer
+                        subAnswer.answers.forEach(a => { dnsAnswer.answers.push(a); });
+                        // Update the header
+                        dnsAnswer.header.GenerateHeader(dnsAnswer, dnsQuery);
+                        dnsAnswer.GenerateBuffer();
+
+                        return dnsAnswer;
+                    });
+            }
+
+            return pAnswer;
         });
 }
 
 function respondFromCache(dnsQuery, cachedAnswer) {
     Trace(`Responding from cache`);
-
-    // If the answer is a CNAME that doesn't have the entry in cache, a lookup is required
+    Trace({ dnsQuery, cachedAnswer });
 
     // Create a new message
     let dnsAnswer = new DNSMessage();
-    Trace({ dnsQuery, cachedAnswer });
     dnsAnswer.ReplyFromCache(dnsQuery, cachedAnswer);
     Trace(`Reply generated`);
     Debug({ [`Decoded as Hex`]: dnsAnswer.toHex(), [`Decoded Answer`]: dnsAnswer });
