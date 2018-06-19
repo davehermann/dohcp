@@ -10,7 +10,7 @@ const DNS_SERVER_PORT = 53;
 let _configuration = null;
 
 function startServer(config) {
-    Debug(`Starting DNS Server`);
+    Info(`Starting DNS Server`);
 
     _configuration = config;
 
@@ -42,7 +42,7 @@ function newDNSSocket(ipAddress) {
 
         server.on(`listening`, () => {
             const address = server.address();
-            Info({ address });
+            Info({ [`Binding address`]: address });
 
             bindingSucceeded = true;
             resolve();
@@ -50,17 +50,21 @@ function newDNSSocket(ipAddress) {
 
         // Every time a message is received
         server.on(`message`, (msg, rinfo) => {
+            let timestamp = new Date(),
+                newDenotation = ` New Query `,
+                denotationMask = 45;
+            Debug(newDenotation.padStart(newDenotation.length + denotationMask, `-`).padEnd(newDenotation.length + (denotationMask * 2), `-`));
             Trace({
                 [`Remote address information`]: rinfo,
-                [`Hexadecimal message`]: msg.toString(`hex`)
+                [`Hexadecimal query`]: msg.toString(`hex`)
             });
 
             let dnsQuery = new DNSMessage(msg);
-            Debug({ [`Decoded as Hex`]: dnsQuery.toHex(), [`Decoded Query`]: dnsQuery });
+            Debug({ [`Decoded query as hex`]: dnsQuery.toHex(), [`Parsed Query`]: dnsQuery });
 
             ResolveDNSQuery(dnsQuery, _configuration)
                 .then(dnsAnswer => {
-                    Debug(`Sending response`);
+                    Info(`DNS Query (${rinfo.address}) - ${dnsQuery.header.queryId} - ${(new Date()).getTime() - timestamp.getTime()}ms - ${dnsQuery.questions.map(q => { return q.label; }).join(`, `)}: ${dnsAnswer.answers.map(a => { return a.summary; }).join(`, `)}`);
                     // Send response
                     server.send(dnsAnswer.buffer, rinfo.port, rinfo.address);
                 })

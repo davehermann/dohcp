@@ -65,15 +65,16 @@ function respondFromCache(dnsQuery, cachedAnswer) {
     let dnsAnswer = new DNSMessage();
     dnsAnswer.ReplyFromCache(dnsQuery, cachedAnswer);
     Trace(`Reply generated`);
-    Debug({ [`Decoded as Hex`]: dnsAnswer.toHex(), [`Decoded Answer`]: dnsAnswer });
+    Debug({ [`Decoded cached response as Hex`]: dnsAnswer.toHex(), [`Parsed cached response`]: dnsAnswer });
 
     return Promise.resolve(dnsAnswer);
 }
 
 function lookupInDns(dnsQuery, configuration) {
+    Trace(`Forwarding to public resolver`);
     return resolveDnsHost(configuration)
         .then(dohResolver => {
-            Trace(`Retrieving DNS`);
+            Trace(`Resolving query in forward DNS`);
 
             return new Promise((resolve, reject) => {
                 let request = {
@@ -93,16 +94,16 @@ function lookupInDns(dnsQuery, configuration) {
                         request.headers[name] = header[name];
                 });
 
-                Dev({ request });
+                Dev({ [`DoH request`]: request });
 
                 let req = https.request(request, (res) => {
-                    Trace({ status: res.statusCode, headers: res.headers });
+                    Trace({[`DoH response`]: { status: res.statusCode, headers: res.headers }});
 
                     let data = [];
 
                     res.on(`data`, chunk => {
                         // chunk is a buffer
-                        Dev({ chunk: chunk.toString(`hex`) });
+                        Dev({ [`Data chunk`]: chunk.toString(`hex`) });
                         data.push(chunk.toString(`hex`));
                     });
 
@@ -125,7 +126,7 @@ function lookupInDns(dnsQuery, configuration) {
             Trace({ [`Complete Response`]: response.toString(`hex`) });
 
             let dnsAnswer = new DNSMessage(response);
-            Debug({ [`Decoded as Hex`]: dnsAnswer.toHex(), [`Decoded Answer`]: dnsAnswer });
+            Debug({ [`Decoded response as hex`]: dnsAnswer.toHex(), [`Parsed response`]: dnsAnswer });
 
             AddToCache(dnsAnswer);
 
@@ -139,7 +140,7 @@ function resolveDnsHost(configuration) {
         // Check configuration for the resolver to use
         let resolver = configuration.dns.upstream.resolvers.filter(resolver => { return resolver.name == configuration.dns.upstream.primary; })[0];
 
-        Trace({ resolver });
+        Trace({ [`Loading resolver`]: resolver });
 
         // Resolve the hostname (may be in cache, or perform a DNS lookup)
         let dnsResolve = new Resolver();
@@ -149,7 +150,7 @@ function resolveDnsHost(configuration) {
                 Err(`DoH hostname resolution error`);
                 reject(err);
             } else {
-                Trace({ [`hostname`]: resolver.doh.hostname, records });
+                Trace({ [`Resolver hostname`]: resolver.doh.hostname, [`Resolver address`]: records });
                 resolver.doh.ipAddress = records.map(entry => { return entry.address; });
                 resolve(resolver);
             }

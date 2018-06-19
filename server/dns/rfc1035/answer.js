@@ -80,6 +80,10 @@ class Answer extends ResourceRecord {
         return `${(data.length / 2).toString(16).padStart(4, `0`)}${data}`;
     }
 
+    get summary() {
+        return `[${this.rrType}/${this.rrClass}] ${this.resourceData}`;
+    }
+
     _decode(messageBuffer, offset) {
         let rawName;
         ({ value: rawName, offset } = ReadString(messageBuffer, offset, 2, `hex`));
