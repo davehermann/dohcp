@@ -7,52 +7,37 @@ let _cache = {};
 function add(dnsResponse) {
     // Any answers within the response need to be cached
     dnsResponse.answers.forEach(answer => {
-        let cacheAnswer = answer.toCache();
-        if (cacheAnswer.maximumCacheLength > 0) {
-            Trace({ [`New cache entry`]: cacheAnswer });
+        // Calculate the remaining TTL
+        let currentTime = new Date(),
+            remainingTTL = (answer.ttlExpiration - currentTime.getTime());
 
-            let existing = lookup(cacheAnswer.label);
+        // Only cache if TTL is > 1000
+        if (remainingTTL > 1000) {
+            Debug(`Adding ${answer.label} to cache with removal in ${answer.startingTTL} seconds`);
+
+            let existing = lookup(answer.label);
             if (!!existing) {
-                Trace(`${cacheAnswer.label} found in cache`);
+                Trace(`${answer.label} found in cache. Cleaning up before re-adding.`);
 
                 // Clear the TTL removal
                 clearTimeout(existing.removal);
-
-                remove(cacheAnswer.label);
+                remove(answer.label);
             }
 
-            Debug(`Adding ${cacheAnswer.label} to cache with removal in ${cacheAnswer.maximumCacheLength} seconds`);
-            _cache[cacheAnswer.label] = {
-                removal: setTimeout(() => { remove(cacheAnswer.label); }, cacheAnswer.maximumCacheLength * 1000),
-                answer: cacheAnswer
-            };
+            answer.cacheRemoval = setTimeout(() => { remove(answer.label); }, answer.startingTTL * 1000);
+            Trace({ [`New cache entry`]: answer });
+            _cache[answer.label] = answer;
         }
     });
 }
 
-function lookup(name) {
-    let found = [],
-        inCache = null;
-
-    while (!!name) {
-        inCache = _cache[name];
-        name = null;
-
-        if (!!inCache) {
-            found.push(inCache);
-
-            // Checking here for any CNAME resolution will short-circuit additional lookups
-            if (inCache.answer.rrType == `CNAME`)
-                name = inCache.answer.resourceData;
-        }
-    }
-
-    return (found.length > 0) ? found.map(cacheEntry => { return cacheEntry.answer; }) : null;
+function lookup(label) {
+    return _cache[label];
 }
 
-function remove(nameToRemove) {
+function remove(labelToRemove) {
     // Remove the entry
-    delete _cache[nameToRemove];
+    delete _cache[labelToRemove];
 }
 
 module.exports.AddToCache = add;

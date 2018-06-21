@@ -65,6 +65,21 @@ function writeIpAddress(buf, data, offset) {
     return offset;
 }
 
+function toBinary(msg) {
+    // msg can be a buffer or hexadecimal string
+    let decodeMessage = (msg instanceof Buffer) ? msg : Buffer.from(msg, `hex`),
+        asBinaryString = [],
+        offset = 0;
+
+    while (offset < decodeMessage.length) {
+        let decimalValue;
+        ({ value: decimalValue, offset } = readUInt8(decodeMessage, offset));
+
+        asBinaryString.push(decimalValue.toString(2).padStart(8, `0`));
+    }
+    return asBinaryString;
+}
+
 module.exports.MACAddressFromHex = macAddressFromHex;
 module.exports.HexFromMACAddress = hexFromMacAddress;
 module.exports.ReadIpAddress = readIpAddress;
@@ -77,3 +92,5 @@ module.exports.WriteString = writeString;
 module.exports.WriteUInt8 = writeUInt8;
 module.exports.WriteUInt16 = writeUInt16;
 module.exports.WriteUInt32 = writeUInt32;
+
+module.exports.ToBinary = toBinary;

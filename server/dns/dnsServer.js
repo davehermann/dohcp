@@ -3,7 +3,8 @@ const dgram = require(`dgram`);
 // Application modules
 const { DNSMessage } = require(`./rfc1035/dnsMessage`),
     { ResolveDNSQuery } = require(`./resolver`),
-    { Dev, Trace, Debug, Info, Err } = require(`../logging`);
+    { Dev, Trace, Debug, Info, Err } = require(`../logging`),
+    { ToBinary } = require(`../utilities`);
 
 const DNS_SERVER_PORT = 53;
 
@@ -53,20 +54,24 @@ function newDNSSocket(ipAddress) {
             let timestamp = new Date(),
                 newDenotation = ` New Query `,
                 denotationMask = 45;
+
+            // For Debug or lower levels, add a separator line
             Debug(newDenotation.padStart(newDenotation.length + denotationMask, `-`).padEnd(newDenotation.length + (denotationMask * 2), `-`));
+
             Trace({
                 [`Remote address information`]: rinfo,
-                [`Hexadecimal query`]: msg.toString(`hex`)
+                [`Hexadecimal query`]: msg.toString(`hex`),
             });
 
-            let dnsQuery = new DNSMessage(msg);
-            Debug({ [`Decoded query as hex`]: dnsQuery.toHex(), [`Parsed Query`]: dnsQuery });
+            let dnsQuery = new DNSMessage();
+            dnsQuery.FromDNS(msg);
+            Trace({ dnsQuery });
 
             ResolveDNSQuery(dnsQuery, _configuration)
                 .then(dnsAnswer => {
-                    Info(`DNS Query (${rinfo.address}) - ${dnsQuery.header.queryId} - ${(new Date()).getTime() - timestamp.getTime()}ms - ${dnsQuery.questions.map(q => { return q.label; }).join(`, `)}: ${dnsAnswer.answers.map(a => { return a.summary; }).join(`, `)}`);
+                    Info(`DNS Query (${rinfo.address}) - ${dnsQuery.queryId} - ${(new Date()).getTime() - timestamp.getTime()}ms - ${dnsQuery.questions.map(q => { return q.label; }).join(`, `)}: ${dnsAnswer.answers.map(a => { return a.summary; }).join(`, `)}`);
                     // Send response
-                    server.send(dnsAnswer.buffer, rinfo.port, rinfo.address);
+                    server.send(dnsAnswer.dnsMessage, rinfo.port, rinfo.address);
                 })
                 .catch(err => {
                     Err(err, true);

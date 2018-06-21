@@ -7,6 +7,68 @@ const { AddToCache, FindInCache } = require(`./cache`),
     { DNSMessage } = require(`./rfc1035/dnsMessage`),
     { Dev, Trace, Debug, Warn, Err } = require(`../logging`);
 
+function resolveQuery2(dnsQuery, configuration) {
+    let hasWarning = false,
+        pLookup = Promise.resolve();
+
+    // Log anything unexpected to Warn
+    if (dnsQuery.qdcount !== 1 || (dnsQuery.questions.filter(q => { return q.typeId !== 1; }).length > 0)) {
+        Warn({ [`UNEXPECTED QUERY`]: dnsQuery });
+        hasWarning = true;
+    }
+
+    // Check cache first, but only for expected queries
+    if (!hasWarning) {
+        let label = dnsQuery.questions[0].label,
+            cacheHit = FindInCache(label);
+        Debug({ label, cacheHit });
+        if (!!cacheHit)
+            pLookup = respondFromCache(dnsQuery, cacheHit);
+    }
+
+    // If cache didn't find it, return a lookup
+    return pLookup
+        .then(answer => { return !!answer ? answer : lookupInDns(dnsQuery, configuration); })
+        .then(answer => {
+            let pAnswer = Promise.resolve(answer);
+
+            // Non-standard queries will return as-resolved
+            if (!hasWarning) {
+                // If the last answer in the answer's list is a CNAME, perform a sub-query
+                let lastAnswer = answer.answers[answer.answers.length - 1];
+                if (lastAnswer.typeId == 5) {
+                    let subQuery = new DNSMessage();
+                    subQuery.AddQuestions([lastAnswer.rdata[0]]);
+                    subQuery.Generate();
+
+                    pAnswer = resolveQuery2(subQuery, configuration)
+                        .then(subAnswer => {
+                            answer.AddAnswers(subAnswer.answers);
+
+                            return answer;
+                        });
+                }
+
+                // With the expanded answers, create a new response message
+                pAnswer = pAnswer
+                    .then(answer => {
+                        let dnsAnswer = new DNSMessage();
+                        dnsAnswer.AddQuestions(dnsQuery.questions.map(q => { return q.label; }));
+                        dnsAnswer.AddAnswers(answer.answers);
+
+                        dnsAnswer.Generate(dnsQuery.queryId, true, dnsQuery.rd);
+                        Trace({ dnsAnswer });
+                        Trace({ asHex: dnsAnswer.dnsMessage.toString(`hex`) });
+
+                        return dnsAnswer;
+                        // return answer;
+                    });
+            }
+
+            return pAnswer;
+        });
+}
+
 function resolveQuery(dnsQuery, configuration) {
     let hasWarning = false,
         pLookup = Promise.resolve();
@@ -59,15 +121,21 @@ function resolveQuery(dnsQuery, configuration) {
 
 function respondFromCache(dnsQuery, cachedAnswer) {
     Trace(`Responding from cache`);
-    Trace({ dnsQuery, cachedAnswer });
+    Dev({ dnsQuery, cachedAnswer });
 
     // Create a new message
     let dnsAnswer = new DNSMessage();
-    dnsAnswer.ReplyFromCache(dnsQuery, cachedAnswer);
-    Trace(`Reply generated`);
-    Debug({ [`Decoded cached response as Hex`]: dnsAnswer.toHex(), [`Parsed cached response`]: dnsAnswer });
+    // Add this answer
+    dnsAnswer.AddAnswers([cachedAnswer]);
 
     return Promise.resolve(dnsAnswer);
+
+    // let dnsAnswer = new DNSMessage();
+    // dnsAnswer.ReplyFromCache(dnsQuery, cachedAnswer);
+    // Trace(`Reply generated`);
+    // Debug({ [`Decoded cached response as Hex`]: dnsAnswer.toHex(), [`Parsed cached response`]: dnsAnswer });
+    //
+    // return Promise.resolve(dnsAnswer);
 }
 
 function lookupInDns(dnsQuery, configuration) {
@@ -82,7 +150,7 @@ function lookupInDns(dnsQuery, configuration) {
                     path: dohResolver.doh.path,
                     headers: {
                         [`Host`]: dohResolver.doh.hostname,
-                        [`Content-Length`]: dnsQuery.buffer.length,
+                        [`Content-Length`]: dnsQuery.dnsMessage.length,
                     },
                 };
 
@@ -118,15 +186,16 @@ function lookupInDns(dnsQuery, configuration) {
                     reject(err);
                 });
 
-                req.write(dnsQuery.buffer);
+                req.write(dnsQuery.dnsMessage);
                 req.end();
             });
         })
         .then(response => {
             Trace({ [`Complete Response`]: response.toString(`hex`) });
 
-            let dnsAnswer = new DNSMessage(response);
-            Debug({ [`Decoded response as hex`]: dnsAnswer.toHex(), [`Parsed response`]: dnsAnswer });
+            let dnsAnswer = new DNSMessage();
+            dnsAnswer.FromDNS(response);
+            Debug({ dnsAnswer });
 
             AddToCache(dnsAnswer);
 
@@ -160,4 +229,4 @@ function resolveDnsHost(configuration) {
     });
 }
 
-module.exports.ResolveDNSQuery = resolveQuery;
+module.exports.ResolveDNSQuery = resolveQuery2;
