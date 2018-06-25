@@ -1,7 +1,8 @@
 // Application modules
 const { MessageByte } = require(`./messageByte`),
+    { Answer } = require(`./answer`),
     { Question } = require(`./question`),
-    { Dev, Trace, Debug, Warn, Err } = require(`../../logging`);
+    { Dev, Trace, } = require(`../../logging`);
 
 let _master = new WeakMap(),
     _questions = new WeakMap(),
@@ -62,8 +63,7 @@ class DNSMessage {
 
     FromDNS(msg) {
         // Generate a respresentation where each array index contains decimal, hex, and binary representations
-        let messageMaster = [],
-            currentTime = new Date();
+        let messageMaster = [];
         for (let offset = 0; offset < msg.length; offset++)
             messageMaster.push(new MessageByte(msg.readUInt8(offset)));
         _master.set(this, messageMaster);
@@ -73,13 +73,7 @@ class DNSMessage {
             offset = 12;
         for (let qIdx = 0; qIdx < this.qdcount; qIdx++) {
             let q = new Question();
-            q.startingOffset = offset;
-            ({ value: q.label, offset} = decodeLabel(messageMaster, offset));
-            q.typeId = parseInt(this.hexadecimal.slice(offset, offset + 2).join(``), 16);
-            offset += 2;
-            q.classId = parseInt(this.hexadecimal.slice(offset, offset + 2).join(``), 16);
-            offset += 2;
-
+            offset = q.DecodeFromDNS(messageMaster, offset);
             questions.push(q);
         }
         _questions.set(this, questions);
@@ -91,79 +85,10 @@ class DNSMessage {
 
         let answers = [];
         for (let aIdx = 0; aIdx < this.ancount; aIdx++) {
-            let a = {
-                startingOffset: offset,
-                ttlTimestamp: currentTime,
-                rdata: [],
+            let a = new Answer();
+            offset = a.DecodeFromDNS(messageMaster, offset);
 
-                toJSON: function() {
-                    return {
-                        label: this.label,
-                        typeId: this.typeId,
-                        classId: this.classId,
-                        startingTTL: this.startingTTL,
-                        startingOffset: this.startingOffset,
-                        rdata: this.rdata,
-                    };
-                }
-            };
-            a.__defineGetter__(`summary`, function() {
-                return `[${this.typeId}/${this.classId}] ${this.label} --> ${this.rdata.join(`, `)}`;
-            });
-            a.__defineGetter__(`ttlExpiration`, function() {
-                return (this.ttlTimestamp.getTime() + (this.startingTTL * 1000));
-            });
-
-            Dev({ label: offset });
-            ({ value: a.label, offset } = decodeLabel(messageMaster, offset));
-            Dev({ typeIdOffset: offset });
-            a.typeId = parseInt(this.hexadecimal.slice(offset, offset + 2).join(``), 16);
-            offset += 2;
-            Dev({ classIdOffset: offset });
-            a.classId = parseInt(this.hexadecimal.slice(offset, offset + 2).join(``), 16);
-            offset += 2;
-            Dev({ ttlOffset: offset });
-            a.startingTTL = parseInt(this.hexadecimal.slice(offset, offset + 4).join(``), 16);
-            offset += 4;
-
-            // Get the resource data length
-            let rdLength = parseInt(this.hexadecimal.slice(offset, offset + 2).join(``), 16);
-            Dev({ rdLengthOffset: offset, rdLength });
-            offset += 2;
-
-            // Parse the resource data
-            let source = _master.get(this).slice(offset, offset + rdLength);
-
-            switch (a.typeId) {
-                // A record
-                case 1: {
-                    // Decode the IP address(es)
-                    let sourceOffset = 0;
-                    while (sourceOffset < source.length) {
-                        let ip = [];
-                        for (let idx = 0; idx < 4; idx++)
-                            ip.push(source[idx].decimal);
-                        a.rdata.push(ip.join(`.`));
-                        sourceOffset += 4;
-                    }
-                }
-                    break;
-
-                // CNAME record
-                case 5: {
-                    // Decode the label
-                    let rData;
-                    ({ value: rData } = decodeLabel(messageMaster, offset));
-                    a.rdata.push(rData);
-                }
-                    break;
-
-                default:
-                    a.rdata.push(source.map(element => { return element.hexadecimal; }).join(``));
-            }
-
-            offset += rdLength;
-            Trace(a);
+            Trace({ a });
 
             answers.push(a);
         }
@@ -197,62 +122,17 @@ class DNSMessage {
         this._writeHeader(messageMaster, queryId, isReply, recursionDesired);
 
         // Write the questions
-        this.questions.forEach(q => {
-            encodeLabel(messageMaster, q.label);
-            writeBytes(messageMaster, 2, q.typeId);
-            writeBytes(messageMaster, 2, q.classId);
-        });
+        this.questions.forEach(q => { q.EncodeToDNS(messageMaster); });
 
         // Write the answers
-        this.answers.forEach(a => {
-            encodeLabel(messageMaster, a.label);
-            writeBytes(messageMaster, 2, a.typeId);
-            writeBytes(messageMaster, 2, a.classId);
-            writeBytes(messageMaster, 4, Math.round((a.ttlExpiration - (new Date()).getTime()) / 1000));
-
-            // Get the resource data
-            let rdata;
-            switch (a.typeId) {
-                // A record
-                case 1: {
-                    let rDataBytes = [];
-
-                    a.rdata.forEach(ip => {
-                        let ipParts = ip.split(`.`);
-                        ipParts.forEach(element => {
-                            writeBytes(rDataBytes, 1, +element);
-                        });
-                    });
-
-                    writeBytes(messageMaster, 2, rDataBytes.length);
-                    rDataBytes.forEach(rdata => {
-                        messageMaster.push(rdata);
-                    });
-                }
-                    break;
-
-                // CNAME record
-                case 5: {
-                    let rDataBytes = [];
-
-                    a.rdata.forEach(label => {
-                        let length = encodeLabel(messageMaster, label);
-
-                        // Insert the length of the label prior to the label
-                        let labelAdded = messageMaster.splice(messageMaster.length - length);
-                        writeBytes(messageMaster, 2, length);
-                        labelAdded.forEach(l => { messageMaster.push(l); });
-                    });
-                }
-                    break;
-            }
-        });
+        this.answers.forEach(a => { a.EncodeToDNS(messageMaster); });
 
         _master.set(this, messageMaster);
     }
+
     _writeHeader(messageMaster, queryId, isReply, recursionDesired) {
         // Query ID is 2 bytes
-        writeBytes(messageMaster, 2, queryId);
+        Question.WriteBytes(messageMaster, 2, queryId);
 
         // Parameters section is 2 bytes, written as 16 bits
         let header = ``;
@@ -272,16 +152,16 @@ class DNSMessage {
         header += `000`;
         // RCODE is 4 bits
         header += `0000`;
-        writeBytes(messageMaster, 2, header, `binary`);
+        Question.WriteBytes(messageMaster, 2, header, `binary`);
 
         // Question count
-        writeBytes(messageMaster, 2, this.questions.length);
+        Question.WriteBytes(messageMaster, 2, this.questions.length);
         // Answer count
-        writeBytes(messageMaster, 2, this.answers.length);
+        Question.WriteBytes(messageMaster, 2, this.answers.length);
         // Authority records count
-        writeBytes(messageMaster, 2, 0);
+        Question.WriteBytes(messageMaster, 2, 0);
         // Additional records count
-        writeBytes(messageMaster, 2, 0);
+        Question.WriteBytes(messageMaster, 2, 0);
     }
 
     toJSON() {
@@ -313,158 +193,5 @@ class DNSMessage {
     }
 }
 
-function writeBytes(messageArray, numberOfBytes, value, format = `decimal`) {
-    // Convert value to binary
-    let binaryValue;
-    switch (format) {
-        case `decimal`:
-            binaryValue = value.toString(2).padStart(numberOfBytes * 8, `0`);
-            break;
-
-        case `hexadecimal`:
-            binaryValue = parseInt(value, 16).toString(2).padStart(numberOfBytes * 8, `0`);
-            break;
-
-        case `binary`:
-            binaryValue = value.padStart(numberOfBytes * 8, `0`);
-            break;
-
-        case `string`: {
-            let binArray = [];
-            for (let idx = 0; idx < value.length; idx++)
-                binArray.push(value.charCodeAt(idx).toString(2).padStart(8, `0`));
-
-            binaryValue = binArray.join(``);
-        }
-            break;
-    }
-
-    // Separate into each 8-bit byte
-    let binaryArray = binaryValue.match(/......../g);
-
-    // Add each byte to the array
-    binaryArray.forEach(value => {
-        messageArray.push(new MessageByte(value, `binary`));
-    });
-}
-
-function decodeLabel(messageArray, offset) {
-    let labelLength,
-        labelData = [];
-
-    do {
-        // Check the first two bits for a value of "11"
-        if (messageArray[offset].binary.substr(0, 2) == `11`) {
-            let label, labelOffset = parseInt(messageArray.slice(offset, offset + 2).map(m => { return m.binary; }).join(``).substr(2), 2);
-            ({ value: label } = decodeLabel(messageArray, labelOffset));
-            label.split(`.`).forEach(l => { labelData.push(l); });
-
-            // Advance the offset 2 bytes
-            offset += 2;
-            // And set the label length to 0
-            labelLength = 0;
-        } else {
-            // Read a length for the label part
-            labelLength = messageArray[offset].decimal;
-            // Advance the offset
-            offset++;
-
-            if (labelLength > 0) {
-                // Read the label
-                let label = ``;
-
-                label = String.fromCharCode.apply(this, messageArray.slice(offset, offset + labelLength).map(d => { return d.decimal; }));
-                labelData.push(label);
-
-                offset += labelLength;
-            }
-        }
-    } while (labelLength != 0);
-
-    return { value: labelData.join(`.`), offset };
-}
-
-function encodeLabel(messageArray, label) {
-    // Split the label
-    let labelParts = label.split(`.`),
-        encodedParts = [],
-        writeCounter = 0;
-
-    // Add a byte of 0 to the end
-    labelParts.push(null);
-
-    // Convert each part to a byte array
-    labelParts.forEach(l => {
-        let byteArray = [];
-
-        if (l === null)
-            writeBytes(byteArray, 1, 0);
-        else
-            writeBytes(byteArray, l.length, l, `string`);
-
-        encodedParts.push(byteArray);
-    });
-
-    Trace({ labelParts, encodedParts });
-
-    // For compression purposes, compare to the existing array
-    // Each encoded part will be preceded by a length value of 1 byte
-    // Compare the entire label, and then compare each subseqent string dropping the inital part until there is a match
-    let hasMatch = false,
-        startIndex = 0,
-        messageHex = messageArray.map(element => { return element.hexadecimal; }).join(``);
-    Dev(`Current message: `, messageHex);
-
-    do {
-        // Ignore the ending null byte when checking for prior matches
-        if (encodedParts.length > 1) {
-            let labelHex = ``;
-            encodedParts.forEach((l, idx) => {
-                // For the end null value, simply write the value
-                if (idx == (encodedParts.length - 1))
-                    labelHex += l[0].hexadecimal;
-                else {
-                    let partHex = ``;
-                    partHex += l.length.toString(16).padStart(2, `0`);
-
-                    l.forEach(letter => {
-                        partHex += letter.hexadecimal;
-                    });
-
-                    labelHex += partHex;
-                }
-            });
-
-            // Check the message for a match
-            Trace({ [`Checking ${encodedParts.length - 1} parts`]: labelHex });
-            let findMatch = messageHex.search(new RegExp(labelHex));
-            Dev({ findMatch });
-
-            hasMatch = (findMatch >= 0);
-            // If the section matches, write 16 bits: "11" followed by the location in the string
-            if (hasMatch) {
-                let matchBinary = `11${(findMatch / 2).toString(2).padStart(14, `0`)}`;
-                writeBytes(messageArray, 2, matchBinary, `binary`);
-                writeCounter += 2;
-
-                // Remove the rest of the encodedParts
-                encodedParts = [];
-            }
-            // If no match is found, write the first encoded part, and try again
-            else {
-                let writeLabelPart = encodedParts.shift();
-                writeBytes(messageArray, 1, writeLabelPart.length);
-                writeCounter += (1 + writeLabelPart.length);
-                writeLabelPart.forEach(l => { messageArray.push(l); });
-            }
-        }
-        // Write the ending byte
-        else {
-            encodedParts.shift().forEach(l => { messageArray.push(l); writeCounter++; });
-        }
-    } while (!hasMatch && (encodedParts.length > 0));
-
-    return writeCounter;
-}
 
 module.exports.DNSMessage = DNSMessage;

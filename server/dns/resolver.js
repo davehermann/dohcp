@@ -7,7 +7,7 @@ const { AddToCache, FindInCache } = require(`./cache`),
     { DNSMessage } = require(`./rfc1035/dnsMessage`),
     { Dev, Trace, Debug, Warn, Err } = require(`../logging`);
 
-function resolveQuery2(dnsQuery, configuration) {
+function resolveQuery(dnsQuery, configuration) {
     let hasWarning = false,
         pLookup = Promise.resolve();
 
@@ -36,12 +36,15 @@ function resolveQuery2(dnsQuery, configuration) {
             if (!hasWarning) {
                 // If the last answer in the answer's list is a CNAME, perform a sub-query
                 let lastAnswer = answer.answers[answer.answers.length - 1];
-                if (lastAnswer.typeId == 5) {
+                if (!lastAnswer) {
+                    Warn({ [`NO lastAnswer`]: dnsQuery.questions });
+                }
+                if (!!lastAnswer && (lastAnswer.typeId == 5)) {
                     let subQuery = new DNSMessage();
                     subQuery.AddQuestions([lastAnswer.rdata[0]]);
                     subQuery.Generate();
 
-                    pAnswer = resolveQuery2(subQuery, configuration)
+                    pAnswer = resolveQuery(subQuery, configuration)
                         .then(subAnswer => {
                             answer.AddAnswers(subAnswer.answers);
 
@@ -52,66 +55,20 @@ function resolveQuery2(dnsQuery, configuration) {
                 // With the expanded answers, create a new response message
                 pAnswer = pAnswer
                     .then(answer => {
-                        let dnsAnswer = new DNSMessage();
-                        dnsAnswer.AddQuestions(dnsQuery.questions.map(q => { return q.label; }));
-                        dnsAnswer.AddAnswers(answer.answers);
+                        // Anything not expected should return unmanipulated
+                        if (!lastAnswer || (answer.nscount > 0))
+                            return answer;
+                        else {
+                            let dnsAnswer = new DNSMessage();
+                            dnsAnswer.AddQuestions(dnsQuery.questions.map(q => { return q.label; }));
+                            dnsAnswer.AddAnswers(answer.answers);
 
-                        dnsAnswer.Generate(dnsQuery.queryId, true, dnsQuery.rd);
-                        Trace({ dnsAnswer });
-                        Trace({ asHex: dnsAnswer.dnsMessage.toString(`hex`) });
+                            dnsAnswer.Generate(dnsQuery.queryId, true, dnsQuery.rd);
+                            Trace({ dnsAnswer });
+                            Trace({ asHex: dnsAnswer.dnsMessage.toString(`hex`) });
 
-                        return dnsAnswer;
-                        // return answer;
-                    });
-            }
-
-            return pAnswer;
-        });
-}
-
-function resolveQuery(dnsQuery, configuration) {
-    let hasWarning = false,
-        pLookup = Promise.resolve();
-
-    // Log anything unexpected to Warn
-    if (dnsQuery.header.numberOfQuestions !== 1 || (dnsQuery.questions.filter(q => { return q.rrType !== `A`; }).length > 0)) {
-        Warn({ [`Unexpected Query`]: dnsQuery });
-        hasWarning = true;
-    }
-
-    // Check cache first
-    if (!hasWarning) {
-        let label = dnsQuery.questions[0].label,
-            cacheHit = FindInCache(label);
-        Debug({ label, cacheHit });
-        if (!!cacheHit)
-            pLookup = pLookup
-                .then(() => { return respondFromCache(dnsQuery, cacheHit); });
-    }
-
-    // If cache didn't find it, return a lookup
-    return pLookup
-        .then(answer => { return !!answer ? answer : lookupInDns(dnsQuery, configuration); })
-        .then(dnsAnswer => {
-            let pAnswer = Promise.resolve(dnsAnswer);
-
-            // If the bottom record is a CNAME, then we need to resolve the CNAME and add to the answers here
-            if (dnsAnswer.answers[dnsAnswer.answers.length - 1].rrType == `CNAME`) {
-                // Perform the lookup with a new query object
-                let subQuery = new DNSMessage();
-                subQuery.Query(dnsAnswer.answers[dnsAnswer.answers.length - 1].resourceData);
-
-                Trace({ [`Sub-query Hex`]: subQuery.toHex(), subQuery });
-
-                pAnswer = resolveQuery(subQuery, configuration)
-                    .then(subAnswer => {
-                        // Integrate all answers with the answers list in this answer
-                        subAnswer.answers.forEach(a => { dnsAnswer.answers.push(a); });
-                        // Update the header
-                        dnsAnswer.header.GenerateHeader(dnsAnswer, dnsQuery);
-                        dnsAnswer.GenerateBuffer();
-
-                        return dnsAnswer;
+                            return dnsAnswer;
+                        }
                     });
             }
 
@@ -197,7 +154,9 @@ function lookupInDns(dnsQuery, configuration) {
             dnsAnswer.FromDNS(response);
             Debug({ dnsAnswer });
 
-            AddToCache(dnsAnswer);
+            // Do not cache Authoritative responses
+            if (dnsAnswer.nscount == 0)
+                AddToCache(dnsAnswer);
 
             return Promise.resolve(dnsAnswer);
         });
@@ -229,4 +188,4 @@ function resolveDnsHost(configuration) {
     });
 }
 
-module.exports.ResolveDNSQuery = resolveQuery2;
+module.exports.ResolveDNSQuery = resolveQuery;

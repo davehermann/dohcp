@@ -3,8 +3,7 @@ const dgram = require(`dgram`);
 // Application modules
 const { DNSMessage } = require(`./rfc1035/dnsMessage`),
     { ResolveDNSQuery } = require(`./resolver`),
-    { Dev, Trace, Debug, Info, Err } = require(`../logging`),
-    { ToBinary } = require(`../utilities`);
+    { Dev, Trace, Debug, Info, Err } = require(`../logging`);
 
 const DNS_SERVER_PORT = 53;
 
