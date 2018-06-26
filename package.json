@@ -10,5 +10,8 @@
   "engine": { "node": ">=8.10" },
   "scripts": {
     "server": "node ./server/server.js"
+  },
+  "bin": {
+    "dohcp": "./utility/index.js"
   }
 }
