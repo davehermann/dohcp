@@ -12,17 +12,34 @@ const definedActions = {
         method: PrintHelp,
     },
     install: {
-        description: `Install as a Linux-systemd service`,
+        description: `Install as a Linux-systemd service (run via 'sudo')`,
         method: InstallService,
     },
     remove: {
-        description: `Remove as an installed service`,
+        description: `Remove as an installed service (run via 'sudo')`,
         method: RemoveService,
+    },
+    dns: {
+        description: `[Work-in-progress] Report on current status of DNS server`,
+    },
+    dhcp: {
+        description: `[Work-in-progress] Report on current status of DHCP server`,
     },
 };
 
 const actionsToPerform = ParseArguments(definedActions);
+runActions()
+    .catch(err => {
+        // eslint-disable-next-line no-console
+        console.log(err);
+    });
 
-actionsToPerform.forEach(action => {
-    definedActions[action.name].method(action, definedActions);
-});
+function runActions() {
+    if (actionsToPerform.length > 0) {
+        let action = actionsToPerform.shift();
+
+        return definedActions[action.name].method(action, definedActions)
+            .then(() => runActions());
+    } else
+        return Promise.resolve();
+}

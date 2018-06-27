@@ -1,0 +1,12 @@
+[Unit]
+Description=DoHCP service
+After=network.target
+
+[Service]
+User={username}
+WorkingDirectory={workingDirectory}
+ExecStart=/usr/bin/node ./server/server.js
+SyslogIdentifier=dohcp
+
+[Install]
+WantedBy=multi-user.target

@@ -29,6 +29,8 @@ function printHelp(actionName, definedActions) {
 
     // eslint-disable-next-line no-console
     console.log(`${helpText}\n`);
+
+    return Promise.resolve();
 }
 
 module.exports.PrintHelp = printHelp;
