@@ -17,6 +17,7 @@ let config = {
         disabled: false,
         servers: [`primaryIP`],
         domain: null,
+        records: [],
     }
 };
 

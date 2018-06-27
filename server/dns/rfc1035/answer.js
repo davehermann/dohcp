@@ -4,6 +4,7 @@ const { ResourceRecord } = require(`./resourceRecord`),
 
 let _ttlTimestamp = new WeakMap(),
     _startingTTL = new WeakMap(),
+    _noExpiration = new WeakMap(),
     _rdata = new WeakMap();
 
 class Answer extends ResourceRecord {
@@ -16,7 +17,15 @@ class Answer extends ResourceRecord {
 
     get startingTTL() { return _startingTTL.get(this); }
     set startingTTL(val) { _startingTTL.set(this, val); }
-    get ttlExpiration() { return (_ttlTimestamp.get(this).getTime() + (this.startingTTL * 1000)); }
+    // noExpiration is used by records defined in configuration
+    set noExpiration(val) { _noExpiration.set(this, val); }
+    get ttlExpiration() {
+        // For configuration-defined records, the expiration should always be in 10 seconds
+        if (_noExpiration.get(this))
+            return (new Date()).getTime() + 10000;
+        else
+            return (_ttlTimestamp.get(this).getTime() + (this.startingTTL * 1000));
+    }
 
     get rdata() { return _rdata.get(this); }
     set rdata(val) { _rdata.set(this, val); }

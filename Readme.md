@@ -14,3 +14,14 @@ At the present time, NodeJS does *NOT* support the ability to localize traffic t
 The only viable use-case at present is on a system that exists fully within a physical intranet.
 
 *NOTE: Since DNS is exclusively handled over HTTP, your firewall will not have to forward any DNS packets*
+
+# DNS
+## Local domain
+Specifying a `domain` string will force DHCP records to append the domain.
+
+## Adding Local A and CNAME records
+A `records` array holds objects with 2 properties
++ `{ name, ip }` - A record
++ `{ name, alias }` - CNAME
+
+For both objects, if a `domain` has been specified and the `name` field does not end with it, both the `name` field value, and the value with the `domain` appended

@@ -1,7 +1,8 @@
 // Node/NPM modules
 const dgram = require(`dgram`);
 // Application modules
-const { DNSMessage } = require(`./rfc1035/dnsMessage`),
+const { LoadPreconfiguredRecords } = require(`./cache`),
+    { DNSMessage } = require(`./rfc1035/dnsMessage`),
     { ResolveDNSQuery } = require(`./resolver`),
     { Dev, Trace, Debug, Info, Err } = require(`../logging`);
 
@@ -13,6 +14,8 @@ function startServer(config) {
     Info(`Starting DNS Server`);
 
     _configuration = config;
+
+    LoadPreconfiguredRecords(config);
 
     return dns();
 }
