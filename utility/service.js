@@ -1,3 +1,4 @@
+// Node/NPM modules
 const fs = require(`fs`),
     readline = require(`readline`),
     path = require(`path`),
@@ -9,13 +10,11 @@ const SERVICE_UNIT = `dohcp.service`,
     UNIT_TEMPLATE = path.join(process.cwd(), `utility`, `systemd-service-template`);
 
 function installService() {
-    let pInstall = Promise.resolve();
-
     // eslint-disable-next-line no-console
     console.log(`Installing as a systemd unit`);
 
     // Check for Linux as the OS
-    pInstall = checkLinuxOs()
+    return checkLinuxOs()
         // Check for systemd
         .then(() => checkSystemd())
         // // Check for running as root/sudo
@@ -30,8 +29,6 @@ function installService() {
         .then(() => linkUnit())
         // Start/Enable the unit
         .then(() => startUnit());
-
-    return pInstall;
 }
 
 function checkLinuxOs() {

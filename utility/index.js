@@ -2,6 +2,7 @@
 
 // Application modules
 const { ParseArguments } = require(`./arguments`),
+    { GenerateConfiguration } = require(`./configuration`),
     { PrintHelp } = require(`./help`),
     { InstallService, RemoveService } = require(`./service`);
 
@@ -10,6 +11,10 @@ const definedActions = {
         aliases: [`--help`, `-h`, `-?`],
         description: `Print this information`,
         method: PrintHelp,
+    },
+    init: {
+        description: `Generate a basic configuration file`,
+        method: GenerateConfiguration,
     },
     install: {
         description: `Install as a Linux-systemd service (run via 'sudo')`,
