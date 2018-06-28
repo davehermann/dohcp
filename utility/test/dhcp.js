@@ -2,7 +2,7 @@
 const dgram = require(`dgram`);
 
 // Application modules
-const { SelectInterface } = require(`../shared`),
+const { TABS, SelectInterface } = require(`../shared`),
     { FilterIPs } = require(`../../server/addressing`);
 
 const DHCP_SERVER_PORT = 67,
@@ -10,11 +10,25 @@ const DHCP_SERVER_PORT = 67,
     BROADCAST_IP = `255.255.255.255`;
 
 function testBinding() {
+    console.log(`\nTesting binding for DHCP.\n`)
     // Load the network interfaces
     return SelectInterface()
         .then(interfaceDetails => {
             // eslint-disable-next-line no-console
-            console.log(`\nIf the bind is successful, use [CTRL-C] to exit testing\nNOTE: As this is binding to DHCP, make sure all other DHCP services are stopped, and know that any DHCP request will be ignored.\n`);
+            console.log(`\nIf the bind is successful, use [CTRL-C] to exit testing`);
+            // eslint-disable-next-line no-console
+            console.log(`\nNOTE: As this is binding to DHCP, make sure all other DHCP services on this server are stopped`);
+            // eslint-disable-next-line no-console
+            console.log(`Any DHCP request on the subnet will echo here, but be ignored.`);
+
+            // eslint-disable-next-line no-console
+            console.log(`\n------ Possible bind errors ------`);
+            // eslint-disable-next-line no-console
+            console.log(`${TABS}EACCES: You may need escalated privileges. Try running with 'sudo'.`);
+            // eslint-disable-next-line no-console
+            console.log(`${TABS}EADDRINUSE: Is there another DHCP service operating on this server?`);
+            // eslint-disable-next-line no-console
+            console.log(`${TABS}EINVAL: Listening on ${BROADCAST_IP} is blocked by the system.`);
 
             // Perform the same filter as the server initialization
             return FilterIPs(interfaceDetails.addresses);
@@ -33,7 +47,7 @@ function ipv4DHCP(remainingAddresses) {
 
 function newV4DhcpSocket(ipAddress) {
     // eslint-disable-next-line no-console
-    console.log(`Attempting bind to ${ipAddress}:${DHCP_SERVER_PORT}...`);
+    console.log(`\nAttempting bind to ${ipAddress}:${DHCP_SERVER_PORT}...`);
 
     return new Promise((resolve, reject) => {
         let server = dgram.createSocket({ type: `udp4` }),
@@ -46,7 +60,7 @@ function newV4DhcpSocket(ipAddress) {
             console.log({ [`Successful bind`]: address });
 
             // eslint-disable-next-line no-console
-            console.log(`Attempting to listen to broadcast on ${BROADCAST_IP}...`);
+            console.log(`Attempting to also listen to ${BROADCAST_IP} broadcast on the interface...`);
 
             // server.setBroadcast(true);
             server.addMembership(BROADCAST_IP);
@@ -67,15 +81,15 @@ function newV4DhcpSocket(ipAddress) {
         // On any error, log the error, but do not close the socket
         server.on(`error`, (err) => {
             // eslint-disable-next-line no-console
-            console.error(new Error(`An error has occurred`));
-            // eslint-disable-next-line no-console
-            console.error(new Error(err));
+            console.error(`\n------ An error has occurred ------`);
+
+            if (bindingSucceeded)
+                // eslint-disable-next-line no-console
+                console.error(new Error(err));
 
             // If the error was on binding, reject the Promise
-            if (!bindingSucceeded)
+            else
                 reject(err);
-
-            // server.close();
         });
 
         // Bind to all interfaces until Node has a way to filter by source interface
