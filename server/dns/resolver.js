@@ -86,13 +86,6 @@ function respondFromCache(dnsQuery, cachedAnswer) {
     dnsAnswer.AddAnswers([cachedAnswer]);
 
     return Promise.resolve(dnsAnswer);
-
-    // let dnsAnswer = new DNSMessage();
-    // dnsAnswer.ReplyFromCache(dnsQuery, cachedAnswer);
-    // Trace(`Reply generated`);
-    // Debug({ [`Decoded cached response as Hex`]: dnsAnswer.toHex(), [`Parsed cached response`]: dnsAnswer });
-    //
-    // return Promise.resolve(dnsAnswer);
 }
 
 function lookupInDns(dnsQuery, configuration) {

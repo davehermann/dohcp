@@ -2,7 +2,7 @@
 const os = require(`os`);
 // Application modules
 const { LogLevels, Dev, Trace, Debug } = require(`./logging`),
-    { DHCPServer } = require(`./dhcp/dhcp`),
+    { DHCPServer } = require(`./dhcp/dhcpServer`),
     { DNSServer } = require(`./dns/dnsServer`);
 // JSON data
 const configuration = require(`../configuration.json`),
