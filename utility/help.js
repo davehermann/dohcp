@@ -16,7 +16,14 @@ function printHelp(actionName, definedActions) {
             if (!!action.aliases)
                 aliases = aliases.concat(action.aliases);
 
-            actionList.push({ trigger: aliases.join(`, `), description: action.description });
+            let actionDescription = { trigger: aliases.join(`, `), description: action.description };
+
+            if (!!action.additionalArguments) {
+                actionDescription.trigger += ` [options]`;
+                actionDescription.options = action.argumentsDescription;
+            }
+
+            actionList.push(actionDescription);
         }
     }
 
@@ -26,7 +33,15 @@ function printHelp(actionName, definedActions) {
         let maxIdLength = Math.max(...actionList.map(action => { return action.trigger.length; })),
             idSpaces = (Math.ceil(maxIdLength / TABS.length) + 1) * TABS.length;
 
-        helpText += actionList.map(action => { return `${TABS}${action.trigger.padEnd(idSpaces, ` `)}${action.description}\n`; }).join(``);
+        helpText += actionList.map(action => {
+            let actionDescription = `${TABS}${action.trigger.padEnd(idSpaces, ` `)}${action.description}\n`;
+            if (action.options)
+                action.options.forEach(opt => {
+                    actionDescription += `${TABS}${TABS}${opt.arg}${TABS}${opt.detail}`;
+                });
+
+            return actionDescription;
+        }).join(``);
     }
 
     // eslint-disable-next-line no-console

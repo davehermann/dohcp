@@ -25,8 +25,23 @@ function parseArguments(definedActions) {
                 argument = null;
         } while (!!action && (typeof action == `string`));
 
-        if (!!argument)
-            actionsToTake.push({ name: argument });
+        if (!!argument) {
+            let addArgument = { name: argument, additionalArguments: [] };
+
+            // Check for additional arguments
+            let argumentCounter = definedActions[argument].additionalArguments;
+            while ((args.length > 0) && !!argumentCounter) {
+                argumentCounter--;
+
+                let nextArgument = args[0];
+
+                // Confirm it doesn't match another action
+                if (!definedActions[nextArgument])
+                    addArgument.additionalArguments.push(args.shift());
+            }
+
+            actionsToTake.push(addArgument);
+        }
     }
 
     if (actionsToTake.length == 0)

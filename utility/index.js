@@ -32,7 +32,11 @@ const definedActions = {
         description: `[Work-in-progress] Report on current status of DHCP server`,
     },
     testDHCP: {
-        description: `Test functionality for DHCP`,
+        description: `Test functionality for DHCP. SEE README FOR INCOMPATIBILITY WITH ROUTERS IN NODEJS.`,
+        additionalArguments: 1,
+        argumentsDescription: [
+            { arg: `--any`, detail: `Tests for binding to all interfaces and all IPs instead of just one.`}
+        ],
         method: TestDHCP,
     },
 };

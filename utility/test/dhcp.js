@@ -9,10 +9,17 @@ const DHCP_SERVER_PORT = 67,
     CLIENT_PORT = 68,
     BROADCAST_IP = `255.255.255.255`;
 
-function testBinding() {
-    console.log(`\nTesting binding for DHCP.\n`)
+function testBinding(action) {
+    // eslint-disable-next-line no-console
+    console.log(`\nTesting binding for DHCP.\n`);
+
+    let pInterface = Promise.resolve({ interfaceName: `Any`, addresses: [ { family: `IPv4`, address: `0.0.0.0` } ] });
+
+    if (action.additionalArguments.indexOf(`--any`) < 0)
+        pInterface = SelectInterface();
+
     // Load the network interfaces
-    return SelectInterface()
+    return pInterface
         .then(interfaceDetails => {
             // eslint-disable-next-line no-console
             console.log(`\nIf the bind is successful, use [CTRL-C] to exit testing`);
@@ -33,19 +40,19 @@ function testBinding() {
             // Perform the same filter as the server initialization
             return FilterIPs(interfaceDetails.addresses);
         })
-        .then(ipv4Addresses => ipv4DHCP(ipv4Addresses));
+        .then(ipv4Addresses => ipv4DHCP(ipv4Addresses, action.additionalArguments));
 }
 
 // Bind to the UDP port for a DHCP server, and exclusively to the addresses specified
-function ipv4DHCP(remainingAddresses) {
+function ipv4DHCP(remainingAddresses, options) {
     if (remainingAddresses.length > 0)
-        return newV4DhcpSocket(remainingAddresses.shift().address)
+        return newV4DhcpSocket(remainingAddresses.shift().address, options)
             .then(() => ipv4DHCP(remainingAddresses));
     else
         return Promise.resolve();
 }
 
-function newV4DhcpSocket(ipAddress) {
+function newV4DhcpSocket(ipAddress, options) {
     // eslint-disable-next-line no-console
     console.log(`\nAttempting bind to ${ipAddress}:${DHCP_SERVER_PORT}...`);
 
@@ -59,11 +66,13 @@ function newV4DhcpSocket(ipAddress) {
             // eslint-disable-next-line no-console
             console.log({ [`Successful bind`]: address });
 
-            // eslint-disable-next-line no-console
-            console.log(`Attempting to also listen to ${BROADCAST_IP} broadcast on the interface...`);
+            if (address.address != `0.0.0.0`) {
+                // eslint-disable-next-line no-console
+                console.log(`\nAttempting to also listen to ${BROADCAST_IP} broadcast on the interface...`);
 
-            // server.setBroadcast(true);
-            server.addMembership(BROADCAST_IP);
+                // server.setBroadcast(true);
+                server.addMembership(BROADCAST_IP);
+            }
 
             bindingSucceeded = true;
             resolve();
@@ -93,7 +102,10 @@ function newV4DhcpSocket(ipAddress) {
         });
 
         // Bind to all interfaces until Node has a way to filter by source interface
-        server.bind({ port: DHCP_SERVER_PORT, address: ipAddress });
+        if (options.indexOf(`--any`) >= 0)
+            server.bind(DHCP_SERVER_PORT);
+        else
+            server.bind({ port: DHCP_SERVER_PORT, address: ipAddress });
     });
 }
 
