@@ -1,7 +1,8 @@
 // Node/NPM modules
 const os = require(`os`);
 // Application modules
-const { LogLevels, Dev, Trace, Debug } = require(`./logging`),
+const { FilterIPs } = require(`./addressing`),
+    { LogLevels, Dev, Trace, Debug } = require(`./logging`),
     { DHCPServer } = require(`./dhcp/dhcpServer`),
     { DNSServer } = require(`./dns/dnsServer`);
 // JSON data
@@ -50,9 +51,7 @@ function buildConfiguration() {
         let interfaceAddresses = interfaces[configuration.interface];
 
         if (!!interfaceAddresses) {
-            interfaceAddresses
-                .filter(i => { return i.family == `IPv4`; })
-                .forEach(i => { computedConfig.ipv4Addresses.push(i); });
+            computedConfig.ipv4Addresses = FilterIPs(interfaceAddresses);
 
             // Repeat the primary IP setting to use the defined interface
             if (computedConfig.ipv4Addresses.length > 0)

@@ -1,6 +1,8 @@
+// Application modules
+const { TABS } = require(`./shared`);
+
 function printHelp(actionName, definedActions) {
     let helpText = ``,
-        tabs = `    `,
         actionList = [];
 
     helpText += `\nUsage: dohcp [options] action [action-options]\n\n`;
@@ -22,9 +24,9 @@ function printHelp(actionName, definedActions) {
         helpText += `Actions:\n\n`;
 
         let maxIdLength = Math.max(...actionList.map(action => { return action.trigger.length; })),
-            idSpaces = (Math.ceil(maxIdLength / tabs.length) + 1) * tabs.length;
+            idSpaces = (Math.ceil(maxIdLength / TABS.length) + 1) * TABS.length;
 
-        helpText += actionList.map(action => { return `${tabs}${action.trigger.padEnd(idSpaces, ` `)}${action.description}\n`; }).join(``);
+        helpText += actionList.map(action => { return `${TABS}${action.trigger.padEnd(idSpaces, ` `)}${action.description}\n`; }).join(``);
     }
 
     // eslint-disable-next-line no-console

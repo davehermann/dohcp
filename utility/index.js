@@ -4,7 +4,8 @@
 const { ParseArguments } = require(`./arguments`),
     { GenerateConfiguration } = require(`./configuration`),
     { PrintHelp } = require(`./help`),
-    { InstallService, RemoveService } = require(`./service`);
+    { InstallService, RemoveService } = require(`./service`),
+    { TestDHCP } = require(`./test/dhcp`);
 
 const definedActions = {
     help: {
@@ -29,6 +30,10 @@ const definedActions = {
     },
     dhcp: {
         description: `[Work-in-progress] Report on current status of DHCP server`,
+    },
+    testDHCP: {
+        description: `Test functionality for DHCP`,
+        method: TestDHCP,
     },
 };
 
