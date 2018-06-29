@@ -33,7 +33,7 @@ function addFromConfiguration(configuration) {
             answer.noExpiration = true;
             answer.rdata.push(record.alias || record.ip);
 
-            _cache[answer.label] = answer;
+            _cache[answer.label.toLowerCase()] = answer;
         });
     }
 }
@@ -60,18 +60,29 @@ function add(dnsResponse) {
 
             answer.cacheRemoval = setTimeout(() => { remove(answer.label); }, answer.startingTTL * 1000);
             Trace({ [`New cache entry`]: answer });
-            _cache[answer.label] = answer;
+            _cache[answer.label.toLowerCase()] = answer;
         }
     });
 }
 
 function lookup(label) {
-    return _cache[label];
+    let cacheHit = _cache[label.toLowerCase()],
+        cacheReturn = undefined;
+
+    if (!!cacheHit) {
+        // Use a copy of the cached object
+        cacheReturn = cacheHit.Clone();
+
+        // And set the cache label to match the query's casing
+        cacheReturn.label = label;
+    }
+
+    return cacheReturn;
 }
 
 function remove(labelToRemove) {
     // Remove the entry
-    delete _cache[labelToRemove];
+    delete _cache[labelToRemove.toLowerCase()];
 }
 
 module.exports.LoadPreconfiguredRecords = addFromConfiguration;

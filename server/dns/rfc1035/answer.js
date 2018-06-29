@@ -19,6 +19,8 @@ class Answer extends ResourceRecord {
     set startingTTL(val) { _startingTTL.set(this, val); }
     // noExpiration is used by records defined in configuration
     set noExpiration(val) { _noExpiration.set(this, val); }
+    // Used ONLY for cloning answer
+    set _ttlTimestamp(val) { _ttlTimestamp.set(this, val); }
     get ttlExpiration() {
         // For configuration-defined records, the expiration should always be in 10 seconds
         if (_noExpiration.get(this))
@@ -140,6 +142,23 @@ class Answer extends ResourceRecord {
             }
                 break;
         }
+    }
+
+    Clone() {
+        let newAnswer = new Answer();
+
+        newAnswer.label = this.label;
+        newAnswer.typeId = this.typeId;
+        newAnswer.classId = this.classId;
+        newAnswer.startingTTL = this.startingTTL;
+        newAnswer._ttlTimestamp = _ttlTimestamp.get(this);
+        newAnswer.noExpiration = _noExpiration.get(this);
+
+        this.rdata.forEach(data => {
+            newAnswer.rdata.push(data);
+        });
+
+        return newAnswer;
     }
 
     toJSON() {
