@@ -3,7 +3,8 @@ const fs = require(`fs`),
     path = require(`path`);
 // Application modules
 const { AllocatedAddress } = require(`./allocatedAddress`),
-    { Dev, Trace } = require(`../logging`);
+    { Dev, Trace, Info } = require(`../logging`),
+    { AddDHCPToDNS } = require(`../dns/cache`);
 
 let _configuration = new WeakMap(),
     _allocations = new WeakMap();
@@ -85,8 +86,11 @@ class Allocations {
     }
 
     _LoadFromDisk() {
-        // NOT IMPLEMENTED YET
-        return null;
+        let dataFile = path.join(process.cwd(), `status`, `dhcp.json`);
+
+        let contents = fs.readFileSync(dataFile, { encoding: `utf8` });
+
+        return JSON.parse(contents);
     }
 
     _writeToDisk() {
@@ -214,9 +218,13 @@ class Allocations {
             // Confirm the address
             assignedAddress.ConfirmAddress();
             // Add to the known addresses
-            this.allocatedAddresses.byClientId[clientId] = assignedAddress.ipAddress;
+            this.allocatedAddresses.byClientId[clientId.uniqueId] = assignedAddress.ipAddress;
+
             // Write the updated status
             pConfirm = this._writeToDisk()
+                // Add to DNS Cache
+                .then(() => AddDHCPToDNS(assignedAddress, dhcpMessage, _configuration.get(this)))
+                .then(hostname => { Info(`DHCP: Assigning ${assignedAddress.ipAddress} to ${dhcpMessage.chaddr}, and in DNS as ${hostname}`); })
                 // Return the address
                 .then(() => Promise.resolve(assignedAddress));
         }

@@ -270,7 +270,7 @@ class Message {
                     value = configuration.dns.domain;
                     break;
                 case `domainNameServerOption`:
-                    value = configuration.dns.servers;
+                    value = configuration.dns.servers.map(ip => { return (ip == `primaryIP`) ? configuration.serverIpAddress : ip; });
                     break;
                 case `ipAddressLeaseTime`:
                     value = configuration.dhcp.leases.pool.leaseSeconds;

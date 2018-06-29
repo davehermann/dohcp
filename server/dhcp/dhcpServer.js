@@ -13,7 +13,7 @@ let _configuration = null,
     _allocations = null;
 
 function startServer(config) {
-    Debug(`Starting DHCP Server`);
+    Info(`Starting DHCP Server`);
 
     _configuration = config;
     _allocations = new Allocations(_configuration);

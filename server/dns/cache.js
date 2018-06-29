@@ -1,6 +1,5 @@
 // Application modules
 const { Answer } = require(`./rfc1035/answer`),
-    { DNSMessage } = require(`./rfc1035/dnsMessage`),
     { Trace, Debug } = require(`../logging`);
 
 // The cache is simply an object with properties that self-delete
@@ -36,6 +35,27 @@ function addFromConfiguration(configuration) {
             _cache[answer.label.toLowerCase()] = answer;
         });
     }
+}
+
+function addFromDHCP(assignedAddress, dhcpMessage, configuration) {
+    // Select the hostname
+    let randomizedAddress = dhcpMessage.options.vendorClassIdentifier;
+    if (!!randomizedAddress && (randomizedAddress.length > 0)) {
+        // Append a letter to the identifier
+        let useChar = 65;
+        while (!!_cache[`${randomizedAddress}-${String.fromCharCode(useChar)}`])
+            useChar++;
+
+        randomizedAddress = `${randomizedAddress}-${String.fromCharCode(useChar)}`;
+    } else
+        randomizedAddress = dhcpMessage.options.clientIdentifier.uniqueId;
+
+    let hostname = assignedAddress.staticHost || assignedAddress.providedHost || randomizedAddress;
+
+    // Pass to the addFromConfiguration to add to cache
+    addFromConfiguration({ dns: { domain: configuration.domain, records: [{ name: hostname, ip: assignedAddress.ipAddress }] } });
+
+    return Promise.resolve(hostname);
 }
 
 function add(dnsResponse) {
@@ -88,3 +108,4 @@ function remove(labelToRemove) {
 module.exports.LoadPreconfiguredRecords = addFromConfiguration;
 module.exports.AddToCache = add;
 module.exports.FindInCache = lookup;
+module.exports.AddDHCPToDNS = addFromDHCP;
