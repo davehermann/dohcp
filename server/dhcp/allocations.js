@@ -179,11 +179,16 @@ class Allocations {
         }
         // No match means offer an address from the pool (Dynamic allocation)
         else {
+            let ip;
             // Address assignment steps
             // 1) If the client has a previously assigned address, use that
+            if (!!this.allocatedAddresses.byClientId[clientId.uniqueId])
+                ip = this.allocatedAddresses.byClientId[clientId.uniqueId];
             // 2) If the client requests a specific address, use that if it's free
             // 3) Use any open address
-            let ip = this._offerOpenAddress(currentTime);
+            else
+                ip = this._offerOpenAddress(currentTime);
+
             if (!!ip)
                 assignedAddress.ipAddress = ip;
         }

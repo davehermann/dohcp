@@ -53,7 +53,7 @@ function addFromDHCP(assignedAddress, dhcpMessage, configuration) {
     let hostname = assignedAddress.staticHost || assignedAddress.providedHost || randomizedAddress;
 
     // Pass to the addFromConfiguration to add to cache
-    addFromConfiguration({ dns: { domain: configuration.domain, records: [{ name: hostname, ip: assignedAddress.ipAddress }] } });
+    addFromConfiguration({ dns: { domain: configuration.dns.domain, records: [{ name: hostname, ip: assignedAddress.ipAddress }] } });
 
     return Promise.resolve(hostname);
 }
