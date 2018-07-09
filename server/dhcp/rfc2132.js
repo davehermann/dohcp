@@ -199,19 +199,8 @@ function optionDecoder(option, rawValue) {
     let value = null;
 
     switch (option.propertyName) {
-        case `clientIdentifier`: {
-            let id = { uniqueId: rawValue };
-
-            // An ethernet address should be parsed
-            let type = parseInt(rawValue.substr(0, 2), 16);
-            // Type 1 is ethernet
-            if ((type == 1) && (rawValue.length == 14)) {
-                id.type = `Ethernet MAC`;
-                id.address = MACAddressFromHex(rawValue.substr(2));
-            }
-
-            value = id;
-        }
+        case `clientIdentifier`:
+            value = decodeClientIdentifier(rawValue);
             break;
 
         case `dhcpMessageType`:
@@ -244,6 +233,21 @@ function optionDecoder(option, rawValue) {
     }
 
     return value;
+}
+
+// rawValue is the hexadecimal type plus the ID
+function decodeClientIdentifier(rawValue) {
+    let id = { uniqueId: rawValue };
+
+    // An ethernet address should be parsed
+    let type = parseInt(rawValue.substr(0, 2), 16);
+    // Type 1 is ethernet
+    if ((type == 1) && (rawValue.length == 14)) {
+        id.type = `Ethernet MAC`;
+        id.address = MACAddressFromHex(rawValue.substr(2));
+    }
+
+    return id;
 }
 
 function optionEncoder(option, decodedValue) {
@@ -297,6 +301,15 @@ function encodingParser(option, args, optionLength) {
     return method;
 }
 
+function ensureClientIdentifierExists(dhcpMessage) {
+    if (!dhcpMessage.options.clientIdentifier) {
+        let rawValue = dhcpMessage.htype.toString(16).padStart(2, `0`) + dhcpMessage.chaddr.replace(/:/g, ``);
+
+        dhcpMessage.options.clientIdentifier = decodeClientIdentifier(rawValue);
+    }
+}
+
 module.exports.DHCPOptions = optionDefinition;
 module.exports.ParseOptions = parseOptions;
 module.exports.EncodeOptions = encodeOptions;
+module.exports.EnsureClientIdentifier = ensureClientIdentifierExists;

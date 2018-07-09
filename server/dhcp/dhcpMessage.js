@@ -1,5 +1,5 @@
 // Application modules
-const { DHCPOptions, ParseOptions, EncodeOptions } = require(`./rfc2132`),
+const { DHCPOptions, ParseOptions, EncodeOptions, EnsureClientIdentifier } = require(`./rfc2132`),
     { MACAddressFromHex, HexFromMACAddress,
         ReadIpAddress, ReadString, ReadUInt8, ReadUInt16, ReadUInt32,
         WriteIpAddress, WriteString, WriteUInt8, WriteUInt16, WriteUInt32 } = require(`../utilities`),
@@ -174,6 +174,9 @@ class Message {
 
         // As options are the last component of a message, we don't need the offset back
         this.options = ParseOptions(messageBuffer, offset);
+
+        // If the client did not include a clientIdentifier field in the options, generate one
+        EnsureClientIdentifier(this);
     }
 
     Encode() {
