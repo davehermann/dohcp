@@ -25,14 +25,18 @@ function addFromConfiguration(configuration) {
             });
 
         records.forEach(record => {
-            let answer = new Answer();
+            let answer = new Answer(),
+                ttl = null;
             answer.label = record.name;
             answer.typeId = (!!record.alias ? 5 : 1);
             answer.classId = 1;
-            answer.noExpiration = true;
             answer.rdata.push(record.alias || record.ip);
 
-            _cache[answer.label.toLowerCase()] = answer;
+            // Add an expiration for DHCP-configured leases
+            if (!!configuration.dhcp && !!configuration.dhcp.leases && !!configuration.dhcp.leases.pool && !!configuration.dhcp.leases.pool.leaseSeconds)
+                ttl = configuration.dhcp.leases.pool.leaseSeconds;
+
+            storeInCache(answer, ttl);
         });
     }
 }
@@ -53,7 +57,21 @@ function addFromDHCP(assignedAddress, dhcpMessage, configuration) {
     let hostname = assignedAddress.hostname || randomizedAddress;
 
     // Pass to the addFromConfiguration to add to cache
-    addFromConfiguration({ dns: { domain: configuration.dns.domain, records: [{ name: hostname, ip: assignedAddress.ipAddress }] } });
+    addFromConfiguration({
+        dhcp: {
+            leases: {
+                pool: {
+                    leaseSeconds: configuration.dhcp.leases.pool.leaseSeconds
+                }
+            }
+        },
+        dns: {
+            domain: configuration.dns.domain,
+            records: [
+                { name: hostname, ip: assignedAddress.ipAddress }
+            ]
+        },
+    });
 
     return Promise.resolve(hostname);
 }
@@ -69,18 +87,7 @@ function add(dnsResponse) {
         if (remainingTTL > 1000) {
             Debug(`Adding ${answer.label} to cache with removal in ${answer.startingTTL} seconds`);
 
-            let existing = lookup(answer.label);
-            if (!!existing) {
-                Trace(`${answer.label} found in cache. Cleaning up before re-adding.`);
-
-                // Clear the TTL removal
-                clearTimeout(existing.cacheRemoval);
-                remove(answer.label);
-            }
-
-            answer.cacheRemoval = setTimeout(() => { remove(answer.label); }, answer.startingTTL * 1000);
-            Trace({ [`New cache entry`]: answer });
-            _cache[answer.label.toLowerCase()] = answer;
+            storeInCache(answer, answer.startingTTL);
         }
     });
 }
@@ -98,6 +105,28 @@ function lookup(label) {
     }
 
     return cacheReturn;
+}
+
+function storeInCache(answer, ttl) {
+    let existing = lookup(answer.label);
+    if (!!existing) {
+        Trace(`${answer.label} found in cache. Cleaning up before re-adding.`);
+
+        // Clear the TTL removal
+        if (!!existing.cacheRemoval)
+            clearTimeout(existing.cacheRemoval);
+
+        remove(answer.label);
+    }
+
+    // Add an expiration for DHCP-configured leases
+    if (!!ttl)
+        answer.cacheRemoval = setTimeout(() => { remove(answer.label); }, ttl * 1000);
+    else
+        answer.noExpiration = true;
+
+    Trace({ [`New cache entry`]: answer });
+    _cache[answer.label.toLowerCase()] = answer;
 }
 
 function remove(labelToRemove) {
