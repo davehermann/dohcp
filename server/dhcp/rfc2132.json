@@ -45,6 +45,8 @@
         "description": "This option specifies the broadcast address in use on the client's subnet.  Legal values for broadcast addresses are specified in section 3.2.1.3 of RFC 1122",
         "encoding": "IpAddress"
     },
+    { "code": 33, "length": -1, "name": "Static Route Option", "description": "This option specifies a list of static routes that the client should install in its routing cache.  If multiple routes to the same destination are specified, they are listed in descending order of priority. The routes consist of a list of IP address pairs.  The first address is the destination address, and the second address is the router for the destination. The default route (0.0.0.0) is an illegal destination for a static route.  See section 3.5 for information about the router option." },
+    { "code": 42, "length": -1, "name": "Network Time Protocol Server Option", "description": "This option specifies a list of IP addresses indicating NTP servers available to the client.  Servers SHOULD be listed in order of preference." },
     { "code": 43, "length": -1, "name": "Vendor Specific Information", "description": "This option is used by clients and servers to exchange vendor- specific information.  The information is an opaque object of n octets, presumably interpreted by vendor-specific code on the clients and servers.  The definition of this information is vendor specific. The vendor is indicated in the vendor class identifier option." },
     {
         "code": 50,
@@ -127,5 +129,8 @@
         "name": "Client Identifier",
         "description": "This option is used by DHCP clients to specify their unique identifier.  DHCP servers use this value to index their database of address bindings.  This value is expected to be unique for all clients in an administrative domain.\n\nIdentifiers SHOULD be treated as opaque objects by DHCP servers.",
         "encoding": { "method": "String", "args": ["optionLength", "hex"] }
-    }
+    },
+    { "code": 119, "length": -1, "name": "Domain Search List", "description": "Specifies the list of domains to be used by the client when searching bare hostnames." },
+    { "code": 121, "length": -1, "name": "Classless Static Route", "description": "?" },
+    { "code": 145, "length": -1, "name": "Forcerenew Nonce Authentication", "description": "?" }
 ]
