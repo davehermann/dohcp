@@ -121,7 +121,7 @@ class Allocations {
                 data = this.allocatedAddresses.byIp[ip];
 
             // Only add expired leases
-            if (data.leaseExpirationTimestamp < currentTime.getTime())
+            if (!data || (data.leaseExpirationTimestamp < currentTime.getTime()))
                 knownAllocations.push(ip);
         }
 
