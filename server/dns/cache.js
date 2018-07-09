@@ -50,7 +50,7 @@ function addFromDHCP(assignedAddress, dhcpMessage, configuration) {
     } else
         randomizedAddress = dhcpMessage.options.clientIdentifier.uniqueId;
 
-    let hostname = assignedAddress.staticHost || assignedAddress.providedHost || randomizedAddress;
+    let hostname = assignedAddress.hostname || randomizedAddress;
 
     // Pass to the addFromConfiguration to add to cache
     addFromConfiguration({ dns: { domain: configuration.dns.domain, records: [{ name: hostname, ip: assignedAddress.ipAddress }] } });
@@ -74,7 +74,7 @@ function add(dnsResponse) {
                 Trace(`${answer.label} found in cache. Cleaning up before re-adding.`);
 
                 // Clear the TTL removal
-                clearTimeout(existing.removal);
+                clearTimeout(existing.cacheRemoval);
                 remove(answer.label);
             }
 
