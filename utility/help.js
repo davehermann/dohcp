@@ -37,7 +37,7 @@ function printHelp(actionName, definedActions) {
             let actionDescription = `${TABS}${action.trigger.padEnd(idSpaces, ` `)}${action.description}\n`;
             if (action.options)
                 action.options.forEach(opt => {
-                    actionDescription += `${TABS}${TABS}${opt.arg}${TABS}${opt.detail}`;
+                    actionDescription += `${TABS}${TABS}${opt.arg}${TABS}${opt.detail}\n`;
                 });
 
             return actionDescription;

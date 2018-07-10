@@ -5,7 +5,8 @@ const { ParseArguments } = require(`./arguments`),
     { GenerateConfiguration } = require(`./configuration`),
     { PrintHelp } = require(`./help`),
     { InstallService, RemoveService } = require(`./service`),
-    { TestDHCP } = require(`./test/dhcp`);
+    { ResetDHCP } = require(`./dhcp/reset`),
+    { TestDHCP } = require(`./dhcp/test`);
 
 const definedActions = {
     help: {
@@ -31,7 +32,15 @@ const definedActions = {
     dhcp: {
         description: `[Work-in-progress] Report on current status of DHCP server`,
     },
-    testDHCP: {
+    [`dhcp-reset`]: {
+        description: `Reset assigned address history.  BY DEFAULT: Clears used address history but not prior assigned-by-id (i.e. MAC address) history`,
+        additionalArguments: 1,
+        argumentsDescription: [
+            { arg: `--all`, detail: `Reset assigned MAC addresses as well` },
+        ],
+        method: ResetDHCP,
+    },
+    [`dhcp-test`]: {
         description: `Test functionality for DHCP. SEE README FOR INCOMPATIBILITY WITH ROUTERS IN NODEJS.`,
         additionalArguments: 1,
         argumentsDescription: [
