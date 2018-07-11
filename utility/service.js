@@ -1,8 +1,10 @@
 // Node/NPM modules
 const fs = require(`fs`),
     readline = require(`readline`),
-    path = require(`path`),
-    { spawn } = require(`child_process`);
+    path = require(`path`);
+
+// Application modules
+const { EnsurePathFor, RunCommand } = require(`./utilities`);
 
 const SERVICE_UNIT = `dohcp.service`,
     GENERATED_UNIT = path.join(process.cwd(), `service`, SERVICE_UNIT),
@@ -120,34 +122,7 @@ function loadTemplate(userAccountName) {
 }
 
 function writeTemplateToLocalPath(serviceUnit) {
-    // Add a path for ./service if it doesn't exist
-    return new Promise((resolve, reject) => {
-        // Check for the directory
-        fs.stat(path.dirname(GENERATED_UNIT), (err) => {
-            if (!!err) {
-                if (err.code == `ENOENT`)
-                    resolve(false);
-                else
-                    reject(err);
-            } else
-                resolve(true);
-        });
-    })
-        .then(directoryExists => {
-            let pCreateDirectory = Promise.resolve();
-
-            if (!directoryExists)
-                pCreateDirectory = new Promise((resolve, reject) => {
-                    fs.mkdir(path.dirname(GENERATED_UNIT), (err) => {
-                        if (!!err)
-                            reject(err);
-                        else
-                            resolve();
-                    });
-                });
-
-            return pCreateDirectory;
-        })
+    return EnsurePathFor(GENERATED_UNIT)
         .then(() => {
             // Write the file
             return new Promise((resolve, reject) => {
@@ -178,48 +153,22 @@ function linkUnit() {
             let pRemove = Promise.resolve();
 
             if (linkExists)
-                pRemove = runCommand(`sudo`, `rm`, UNIT_LINK);
+                pRemove = RunCommand(`sudo`, `rm`, UNIT_LINK);
 
             return pRemove;
         })
         .then(() => {
-            return runCommand(`sudo`, `ln`, `-s`, GENERATED_UNIT, UNIT_LINK);
+            return RunCommand(`sudo`, `ln`, `-s`, GENERATED_UNIT, UNIT_LINK);
         });
 }
 
 function startUnit() {
-    return runCommand(`sudo`, `systemctl`, `enable`, SERVICE_UNIT)
-        .then(() => runCommand(`sudo`, `systemctl`, `start`, SERVICE_UNIT))
+    return RunCommand(`sudo`, `systemctl`, `enable`, SERVICE_UNIT)
+        .then(() => RunCommand(`sudo`, `systemctl`, `start`, SERVICE_UNIT))
         .then(() => {
             // eslint-disable-next-line no-console
             console.log(`\ndohcp service has been started, and configured to launch at boot.`);
         });
-}
-
-function runCommand() {
-    // Create an arguments array for manipulation
-    let args = [];
-    for (let idx = 0, total = arguments.length; idx < total; idx++)
-        args.push(arguments[idx]);
-
-    return new Promise((resolve, reject) => {
-        if (args.length < 2)
-            args.push(``);
-
-        let command = spawn(args[0], args.slice(1)),
-            err = ``;
-
-        command.stderr.on(`data`, (data) => {
-            err += data;
-        });
-
-        command.on(`close`, (exitCode) => {
-            if (err.length > 0)
-                reject(err);
-            else
-                resolve(exitCode);
-        });
-    });
 }
 
 function removeService() {
@@ -239,12 +188,12 @@ function removeService() {
 }
 
 function stopUnit() {
-    return runCommand(`sudo`, `systemctl`, `stop`, SERVICE_UNIT)
-        .then(() => runCommand(`sudo`, `systemctl`, `disable`, SERVICE_UNIT));
+    return RunCommand(`sudo`, `systemctl`, `stop`, SERVICE_UNIT)
+        .then(() => RunCommand(`sudo`, `systemctl`, `disable`, SERVICE_UNIT));
 }
 
 function unlinkUnit() {
-    return runCommand(`sudo`, `rm`, UNIT_LINK);
+    return RunCommand(`sudo`, `rm`, UNIT_LINK);
 }
 
 module.exports.InstallService = installService;
