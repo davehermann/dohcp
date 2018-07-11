@@ -5,7 +5,7 @@ const { Answer } = require(`./rfc1035/answer`),
 // The cache is simply an object with properties that self-delete
 let _cache = {};
 
-function addFromConfiguration(configuration) {
+function addFromConfiguration(configuration, fromDHCP) {
     // Add A and CNAME cache records from configuration
 
     if (!!configuration.dns.records) {
@@ -33,7 +33,7 @@ function addFromConfiguration(configuration) {
             answer.rdata.push(record.alias || record.ip);
 
             // Add an expiration for DHCP-configured leases
-            if (!!configuration.dhcp && !!configuration.dhcp.leases && !!configuration.dhcp.leases.pool && !!configuration.dhcp.leases.pool.leaseSeconds)
+            if (fromDHCP && !!configuration.dhcp.leases.pool.leaseSeconds)
                 ttl = configuration.dhcp.leases.pool.leaseSeconds;
 
             storeInCache(answer, ttl);
@@ -57,21 +57,24 @@ function addFromDHCP(assignedAddress, dhcpMessage, configuration) {
     let hostname = assignedAddress.hostname || randomizedAddress;
 
     // Pass to the addFromConfiguration to add to cache
-    addFromConfiguration({
-        dhcp: {
-            leases: {
-                pool: {
-                    leaseSeconds: configuration.dhcp.leases.pool.leaseSeconds
+    addFromConfiguration(
+        {
+            dhcp: {
+                leases: {
+                    pool: {
+                        leaseSeconds: configuration.dhcp.leases.pool.leaseSeconds
+                    }
                 }
-            }
+            },
+            dns: {
+                domain: configuration.dns.domain,
+                records: [
+                    { name: hostname, ip: assignedAddress.ipAddress }
+                ]
+            },
         },
-        dns: {
-            domain: configuration.dns.domain,
-            records: [
-                { name: hostname, ip: assignedAddress.ipAddress }
-            ]
-        },
-    });
+        true
+    );
 
     return Promise.resolve(hostname);
 }
@@ -81,13 +84,13 @@ function add(dnsResponse) {
     dnsResponse.answers.forEach(answer => {
         // Calculate the remaining TTL
         let currentTime = new Date(),
-            remainingTTL = (answer.ttlExpiration - currentTime.getTime());
+            remainingTTL = Math.round((answer.ttlExpiration - currentTime.getTime()) / 1000);
 
         // Only cache if TTL is > 1000
-        if (remainingTTL > 1000) {
-            Debug(`Adding ${answer.label} to cache with removal in ${answer.startingTTL} seconds`);
+        if (remainingTTL > 1) {
+            Debug(`Adding ${answer.label} to cache with removal in ${remainingTTL} seconds`);
 
-            storeInCache(answer, answer.startingTTL);
+            storeInCache(answer, remainingTTL);
         }
     });
 }
