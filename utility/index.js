@@ -2,9 +2,12 @@
 
 // Application modules
 const { ParseArguments } = require(`./arguments`),
+    { BuildConfiguration } = require(`../server/configuration`),
     { GenerateConfiguration } = require(`./configuration`),
     { PrintHelp } = require(`./help`),
     { InstallService, RemoveService } = require(`./service`),
+    { LoadFile } = require(`./utilities`),
+    { DNSCache } = require(`./dns/cache-query`),
     { ResetDHCP } = require(`./dhcp/reset`),
     { TestDHCP } = require(`./dhcp/test`);
 
@@ -29,6 +32,11 @@ const definedActions = {
     dns: {
         description: `[Work-in-progress] Report on current status of DNS server`,
     },
+    [`dns-cache`]: {
+        description: `Show all DNS cache results`,
+        method: DNSCache,
+        usesConfiguration: true,
+    },
     dhcp: {
         description: `[Work-in-progress] Report on current status of DHCP server`,
     },
@@ -51,6 +59,7 @@ const definedActions = {
 };
 
 const actionsToPerform = ParseArguments(definedActions);
+let configuration = null;
 runActions()
     .catch(err => {
         // eslint-disable-next-line no-console
@@ -59,10 +68,25 @@ runActions()
 
 function runActions() {
     if (actionsToPerform.length > 0) {
-        let action = actionsToPerform.shift();
+        let action = actionsToPerform.shift(),
+            pAction = Promise.resolve();
 
-        return definedActions[action.name].method(action, definedActions)
+        if (definedActions[action.name].usesConfiguration)
+            pAction = loadConfiguration();
+
+        return pAction
+            .then(() => definedActions[action.name].method(action, definedActions, configuration))
             .then(() => runActions());
     } else
         return Promise.resolve();
+}
+
+function loadConfiguration() {
+    if (!!configuration)
+        return Promise.resolve();
+
+    return LoadFile(`./configuration.json`)
+        .then(contents => { return JSON.parse(contents); })
+        .then(config => BuildConfiguration(config))
+        .then(config => { configuration = config; });
 }

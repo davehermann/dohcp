@@ -6,6 +6,7 @@ const { BuildConfiguration } = require(`./configuration`),
     { DataServer } = require(`./control/server`),
     { DHCPServer } = require(`./dhcp/dhcpServer`),
     { DNSServer } = require(`./dns/dnsServer`);
+
 // JSON data
 const configuration = require(`../configuration.json`),
     dnsResolvers = require(`../dns-resolvers.json`);

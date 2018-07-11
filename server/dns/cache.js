@@ -134,7 +134,12 @@ function remove(labelToRemove) {
     delete _cache[labelToRemove.toLowerCase()];
 }
 
+function listCache() {
+    return _cache;
+}
+
 module.exports.LoadPreconfiguredRecords = addFromConfiguration;
 module.exports.AddToCache = add;
 module.exports.FindInCache = lookup;
 module.exports.AddDHCPToDNS = addFromDHCP;
+module.exports.ListCache = listCache;

@@ -80,5 +80,17 @@ function createMissingDirectories(pathParts, confirmedRoot) {
         return Promise.resolve();
 }
 
+function loadFile(relativePathToFile, options = { encoding: `utf8` }) {
+    return new Promise((resolve, reject) => {
+        fs.readFile(path.join(process.cwd(), relativePathToFile), options, (err, contents) => {
+            if (!!err)
+                reject(err);
+            else
+                resolve(contents);
+        });
+    });
+}
+
 module.exports.RunCommand = runCommand;
 module.exports.EnsurePathFor = ensurePath;
+module.exports.LoadFile = loadFile;
