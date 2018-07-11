@@ -3,6 +3,7 @@ const os = require(`os`);
 // Application modules
 const { FilterIPs } = require(`./addressing`),
     { LogLevels, Dev, Trace, Debug } = require(`./logging`),
+    { DataServer } = require(`./control/server`),
     { DHCPServer } = require(`./dhcp/dhcpServer`),
     { DNSServer } = require(`./dns/dnsServer`);
 // JSON data
@@ -30,6 +31,9 @@ Promise.resolve()
     .then(() => {
         if (!!configInUse.dns && !configInUse.dns.disabled)
             return DNSServer(configInUse);
+    })
+    .then(() => {
+        return DataServer(configInUse);
     });
 
 function buildConfiguration() {
