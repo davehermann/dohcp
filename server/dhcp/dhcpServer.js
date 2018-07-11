@@ -180,4 +180,9 @@ function offerAddress(dhcpDiscoverMessage) {
         });
 }
 
+function getAllocations() {
+    return _allocations.allocatedAddresses;
+}
+
 module.exports.DHCPServer = startServer;
+module.exports.ActiveAllocations = getAllocations;

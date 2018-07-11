@@ -7,6 +7,7 @@ const { ParseArguments } = require(`./arguments`),
     { PrintHelp } = require(`./help`),
     { InstallService, RemoveService } = require(`./service`),
     { LoadFile } = require(`./utilities`),
+    { DHCPLeases } = require(`./dhcp/lease-query`),
     { DNSCache } = require(`./dns/cache-query`),
     { ResetDHCP } = require(`./dhcp/reset`),
     { TestDHCP } = require(`./dhcp/test`);
@@ -29,9 +30,6 @@ const definedActions = {
         description: `Remove as an installed service (run via 'sudo')`,
         method: RemoveService,
     },
-    dns: {
-        description: `[Work-in-progress] Report on current status of DNS server`,
-    },
     [`dns-cache`]: {
         description: `Show local DNS cache results`,
         additionalArguments: 1,
@@ -41,8 +39,10 @@ const definedActions = {
         method: DNSCache,
         usesConfiguration: true,
     },
-    dhcp: {
-        description: `[Work-in-progress] Report on current status of DHCP server`,
+    [`dhcp-leases`]: {
+        description: `List all active DHCP leases`,
+        method: DHCPLeases,
+        usesConfiguration: true,
     },
     [`dhcp-reset`]: {
         description: `Reset assigned address history.  BY DEFAULT: Clears used address history but not prior assigned-by-id (i.e. MAC address) history`,

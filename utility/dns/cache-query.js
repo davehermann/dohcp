@@ -17,6 +17,7 @@ function queryCache(action, allActions, configuration) {
             res.on(`data`, (chunk) => {
                 data += chunk;
             });
+
             res.on(`end`, () => {
                 let cacheList = JSON.parse(data),
                     currentTime = (new Date()).getTime(),

@@ -3,6 +3,7 @@ const http = require(`http`);
 
 // Application modules
 const { Info } = require(`../logging`),
+    { ActiveAllocations } = require(`../dhcp/dhcpServer`),
     { ListCache } = require(`../dns/cache`);
 
 function dataServer(configuration) {
@@ -11,6 +12,9 @@ function dataServer(configuration) {
             pResponse = Promise.resolve();
 
         switch (requestAction) {
+            case `GET:/dhcp/leases`:
+                pResponse = dhcpListLeases();
+                break;
             case `GET:/dns/cache-list`:
                 pResponse = dnsListCache();
                 break;
@@ -47,6 +51,12 @@ function dnsListCache(includeAll) {
     }
 
     return Promise.resolve(JSON.stringify(filterList));
+}
+
+function dhcpListLeases() {
+    let leases = ActiveAllocations();
+
+    return Promise.resolve(JSON.stringify(leases));
 }
 
 module.exports.DataServer = dataServer;
