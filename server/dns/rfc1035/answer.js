@@ -168,6 +168,7 @@ class Answer extends ResourceRecord {
             typeId: this.typeId,
             classId: this.classId,
             startingTTL: this.startingTTL,
+            ttlExpiration: this.ttlExpiration,
             rdata: this.rdata,
         };
     }

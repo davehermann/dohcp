@@ -14,6 +14,9 @@ function dataServer(configuration) {
             case `GET:/dns/cache-list`:
                 pResponse = dnsListCache();
                 break;
+            case `GET:/dns/cache-list/all`:
+                pResponse = dnsListCache(true);
+                break;
         }
 
         pResponse
@@ -32,10 +35,18 @@ function dataServer(configuration) {
     server.listen({ host: configuration.serverIpAddress, port: 45332 });
 }
 
-function dnsListCache() {
+function dnsListCache(includeAll) {
     let fullCache = ListCache();
 
-    return Promise.resolve(JSON.stringify(fullCache));
+    let filterList = [];
+    for (let hostname in fullCache) {
+        let cacheEntry = fullCache[hostname];
+
+        if (includeAll || !cacheEntry.startingTTL)
+            filterList.push(cacheEntry);
+    }
+
+    return Promise.resolve(JSON.stringify(filterList));
 }
 
 module.exports.DataServer = dataServer;

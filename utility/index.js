@@ -33,7 +33,11 @@ const definedActions = {
         description: `[Work-in-progress] Report on current status of DNS server`,
     },
     [`dns-cache`]: {
-        description: `Show all DNS cache results`,
+        description: `Show local DNS cache results`,
+        additionalArguments: 1,
+        argumentsDescription: [
+            { arg: `--all`, detail: `Include all forwarded DNS cache entries`}
+        ],
         method: DNSCache,
         usesConfiguration: true,
     },
