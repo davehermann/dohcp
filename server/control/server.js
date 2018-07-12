@@ -13,7 +13,16 @@ function dataServer(configuration) {
 
         switch (requestAction) {
             case `GET:/dhcp/leases`:
-                pResponse = dhcpListLeases();
+                pResponse = dhcpListLeases(configuration);
+                break;
+            case `GET:/dhcp/leases/active`:
+                pResponse = dhcpListLeases(configuration, true);
+                break;
+            case `GET:/dhcp/leases/previous`:
+                pResponse = dhcpListLeases(configuration, false, true);
+                break;
+            case `GET:/dhcp/leases/all`:
+                pResponse = dhcpListLeases(configuration, false, false, true);
                 break;
             case `GET:/dns/cache-list`:
                 pResponse = dnsListCache();
@@ -53,10 +62,43 @@ function dnsListCache(includeAll) {
     return Promise.resolve(JSON.stringify(filterList));
 }
 
-function dhcpListLeases() {
-    let leases = ActiveAllocations();
+function dhcpListLeases(configuration, allActive, allPrevious, allData) {
+    let leases = ActiveAllocations(),
+        leaseData = [],
+        otherData = undefined,
+        currentTime = (new Date()).getTime();
 
-    return Promise.resolve(JSON.stringify(leases));
+    for (let ipAddress in leases.byIp) {
+        let allocatedAddress = leases.byIp[ipAddress];
+
+        // By-default, only send known leases - i.e. leases that have not expired, and have been given out since the server was last started
+        if (!allActive && !allPrevious && !allData) {
+            if (!!allocatedAddress && allocatedAddress.setInSession && (allocatedAddress.leaseExpirationTimestamp > currentTime))
+                leaseData.push(allocatedAddress);
+        } else if (allActive) {
+            // Active leases include unexpired leases that may predate the last restart
+            if (!!allocatedAddress && (allocatedAddress.leaseStart + (configuration.dhcp.leases.pool.leaseSeconds * 1000) > currentTime))
+                leaseData.push(allocatedAddress);
+        } else if (allPrevious || allData) {
+            // Previous leases includes any IP that the service has ever assigned in the pool
+            if (!!allocatedAddress)
+                leaseData.push(allocatedAddress);
+        }
+    }
+
+    // All data adds known client assignments that may not have been assigned by the service
+    if (allData) {
+        otherData = [];
+
+        for (let clientId in leases.byClientId) {
+            let allocatedAddress = leases.byIp[leases.byClientId[clientId]];
+
+            if (!allocatedAddress)
+                otherData.push({ clientId, ip: leases.byClientId[clientId] });
+        }
+    }
+
+    return Promise.resolve(JSON.stringify({ configuration, leaseData, otherData }));
 }
 
 module.exports.DataServer = dataServer;

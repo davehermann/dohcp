@@ -1,7 +1,9 @@
 let _clientIdentification = new WeakMap(),
     _expirationTime = new WeakMap(),
+    _inSession = new WeakMap(),
     _ipAddress = new WeakMap(),
     _isConfirmed = new WeakMap(),
+    _leaseStart = new WeakMap(),
     _messageId = new WeakMap(),
     _providedHostname = new WeakMap(),
     _staticHostname = new WeakMap();
@@ -12,6 +14,7 @@ class AllocatedAddress {
 
         // By default, the address is offered, but not assigned
         _isConfirmed.set(this, confirmAddress || false);
+        _inSession.set(this, false);
         this.ipAddress = null;
         this.providedHost = null;
         this.staticHost = null;
@@ -25,10 +28,14 @@ class AllocatedAddress {
     get lastMessageId() { return _messageId.get(this); }
     set lastMessageId(val) { _messageId.set(this, val); }
 
+    get leaseStart() { return _leaseStart.get(this); }
     get leaseExpirationTimestamp() { return _expirationTime.get(this); }
 
     set providedHost(val) { _providedHostname.set(this, val); }
     set staticHost(val) { _staticHostname.set(this, val); }
+
+    // Only leases set within the session have this data
+    get setInSession() { return _inSession.get(this); }
 
     get hostname() {
         if (!!_staticHostname.get(this))
@@ -39,9 +46,12 @@ class AllocatedAddress {
 
     get isConfirmed() { return _isConfirmed.get(this); }
 
-    ConfirmAddress() {
+    ConfirmAddress(configuration) {
         _isConfirmed.set(this, true);
         _messageId.set(this, null);
+        _leaseStart.set(this, (new Date()).getTime());
+        _inSession.set(this, true);
+        _expirationTime.set(this, _leaseStart.get(this) + (configuration.dhcp.leases.pool.leaseSeconds * 1000));
     }
 
     SetExpiration(currentTime, leaseSeconds) {
@@ -53,6 +63,7 @@ class AllocatedAddress {
             clientId: this.clientId,
             ipAddress: this.ipAddress,
             isConfirmed: this.isConfirmed,
+            leaseStart: _leaseStart.get(this),
             providedHost: _providedHostname.get(this),
             staticHost: _staticHostname.get(this),
         };

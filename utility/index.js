@@ -40,7 +40,13 @@ const definedActions = {
         usesConfiguration: true,
     },
     [`dhcp-leases`]: {
-        description: `List all active DHCP leases`,
+        description: `List active (unexpired) DHCP leases assigned since last service start`,
+        additionalArguments: 1,
+        argumentsDescription: [
+            { arg: `--active`, detail: `Include any active (unexpired) leases assigned prior to last restart` },
+            { arg: `--previously-seen`, detail: `Include expired leases that have previously been assigned` },
+            { arg: `--all-known`, detail: `Include any configured leases that have not ever been assigned by the service` },
+        ],
         method: DHCPLeases,
         usesConfiguration: true,
     },

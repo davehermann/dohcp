@@ -221,7 +221,7 @@ class Allocations {
 
         if (assignedAddress.clientId == clientId.uniqueId) {
             // Confirm the address
-            assignedAddress.ConfirmAddress();
+            assignedAddress.ConfirmAddress(_configuration.get(this));
             // Add to the known addresses
             this.allocatedAddresses.byClientId[clientId.uniqueId] = assignedAddress.ipAddress;
 
