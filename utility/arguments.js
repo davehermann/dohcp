@@ -1,7 +1,8 @@
 function parseArguments(definedActions) {
     // Copy the arguments to a new array
     let args = process.argv.filter(() => { return true; }),
-        actionsToTake = [];
+        actionsToTake = [],
+        dataServiceHost = null;
 
     // Add any aliases to the actions as pointers to the original action
     for (let key in definedActions)
@@ -15,32 +16,37 @@ function parseArguments(definedActions) {
         let argument = args.shift(),
             action;
 
-        do {
-            action = definedActions[argument];
+        // For data service actions, a server name/IP can be specified if it's not the localhost
+        if (!!argument && (argument.substr(0, 1) == `@`))
+            dataServiceHost = argument.substr(1);
+        else {
+            do {
+                action = definedActions[argument];
 
-            if (!!action && (typeof action == `string`)) {
-                argument = action;
-                action = null;
-            } else if (!action)
-                argument = null;
-        } while (!!action && (typeof action == `string`));
+                if (!!action && (typeof action == `string`)) {
+                    argument = action;
+                    action = null;
+                } else if (!action)
+                    argument = null;
+            } while (!!action && (typeof action == `string`));
 
-        if (!!argument) {
-            let addArgument = { name: argument, additionalArguments: [] };
+            if (!!argument) {
+                let addArgument = { name: argument, additionalArguments: [] };
 
-            // Check for additional arguments
-            let argumentCounter = definedActions[argument].additionalArguments;
-            while ((args.length > 0) && !!argumentCounter) {
-                argumentCounter--;
+                // Check for additional arguments
+                let argumentCounter = definedActions[argument].additionalArguments;
+                while ((args.length > 0) && !!argumentCounter) {
+                    argumentCounter--;
 
-                let nextArgument = args[0];
+                    let nextArgument = args[0];
 
-                // Confirm it doesn't match another action
-                if (!definedActions[nextArgument])
-                    addArgument.additionalArguments.push(args.shift());
+                    // Confirm it doesn't match another action
+                    if (!definedActions[nextArgument])
+                        addArgument.additionalArguments.push(args.shift());
+                }
+
+                actionsToTake.push(addArgument);
             }
-
-            actionsToTake.push(addArgument);
         }
     }
 
@@ -53,7 +59,7 @@ function parseArguments(definedActions) {
         // eslint-disable-next-line no-console
         console.log(`Multiple actions cannot be combined.\n\nSee 'help' for more details.\n`);
     }
-    return actionsToTake;
+    return { actionsToTake, dataServiceHost };
 }
 
 module.exports.ParseArguments = parseArguments;

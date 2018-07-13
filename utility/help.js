@@ -5,8 +5,9 @@ function printHelp(actionName, definedActions) {
     let helpText = ``,
         actionList = [];
 
-    helpText += `\nUsage: dohcp [options] action [action-options]\n\n`;
-    helpText += `Options:\n\n`;
+    helpText += `\nUsage: dohcp [@host] action [action-options]\n\n`;
+    helpText += `Options:\n`;
+    helpText += `${TABS}'@' + hostname/IP Address${TABS}${TABS}When using remotely, specify the hostname (in DNS) or the IP of the remote DoHCP server\n`;
 
     for (let actionName in definedActions) {
         let action = definedActions[actionName],
@@ -28,7 +29,7 @@ function printHelp(actionName, definedActions) {
     }
 
     if (actionList.length > 0) {
-        helpText += `Actions:\n\n`;
+        helpText += `\nActions:\n\n`;
 
         let maxIdLength = Math.max(...actionList.map(action => { return action.trigger.length; })),
             idSpaces = (Math.ceil(maxIdLength / TABS.length) + 1) * TABS.length;

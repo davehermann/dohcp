@@ -31,6 +31,7 @@ const definedActions = {
         method: RemoveService,
     },
     [`dns-cache`]: {
+        aliases: [`dns`],
         description: `Show local DNS cache results`,
         additionalArguments: 1,
         argumentsDescription: [
@@ -68,7 +69,8 @@ const definedActions = {
     },
 };
 
-const actionsToPerform = ParseArguments(definedActions);
+let actionsToPerform, dataServiceHost;
+({ actionsToTake: actionsToPerform, dataServiceHost } = ParseArguments(definedActions));
 let configuration = null;
 runActions()
     .catch(err => {
@@ -98,5 +100,10 @@ function loadConfiguration() {
     return LoadFile(`./configuration.json`)
         .then(contents => { return JSON.parse(contents); })
         .then(config => BuildConfiguration(config))
-        .then(config => { configuration = config; });
+        .then(config => {
+            configuration = config;
+
+            // Add the remote host
+            configuration.dataServiceHost = dataServiceHost || configuration.serverIpAddress;
+        });
 }

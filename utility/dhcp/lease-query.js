@@ -17,7 +17,7 @@ function queryLeases(action, allActions, configuration) {
 
     http.get(
         {
-            host: configuration.serverIpAddress,
+            host: configuration.dataServiceHost,
             port: 45332,
             path: urlPath,
         },
