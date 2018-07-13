@@ -1,13 +1,13 @@
 // Node/NPM modules
 const https = require(`https`),
-    { Resolver } = require(`dns`);
+    dgram = require(`dgram`);
 
 // Application modules
 const { AddToCache, FindInCache } = require(`./cache`),
     { DNSMessage } = require(`./rfc1035/dnsMessage`),
     { Dev, Trace, Debug, Warn, Err } = require(`../logging`);
 
-function resolveQuery(dnsQuery, configuration) {
+function resolveQuery(dnsQuery, configuration, useDNSoverHTTPS = true) {
     let hasWarning = false,
         pLookup = Promise.resolve();
 
@@ -28,7 +28,7 @@ function resolveQuery(dnsQuery, configuration) {
 
     // If cache didn't find it, return a lookup
     return pLookup
-        .then(answer => { return !!answer ? answer : lookupInDns(dnsQuery, configuration); })
+        .then(answer => { return !!answer ? answer : lookupInDns(dnsQuery, configuration, useDNSoverHTTPS); })
         .then(answer => {
             let pAnswer = Promise.resolve(answer);
 
@@ -88,23 +88,47 @@ function respondFromCache(dnsQuery, cachedAnswer) {
     return Promise.resolve(dnsAnswer);
 }
 
-function lookupInDns(dnsQuery, configuration) {
+function lookupInDns(dnsQuery, configuration, useDNSoverHTTPS) {
     Trace(`Forwarding to public resolver`);
-    return resolveDnsHost(configuration)
+
+    let pResolve;
+    if (useDNSoverHTTPS)
+        pResolve = lookupViaDNSoverHTTPS(dnsQuery, configuration);
+    else
+        pResolve = lookupViaDNS(dnsQuery, configuration);
+
+    return pResolve
+        .then(response => {
+            Trace({ [`Complete Response`]: response.toString(`hex`) });
+
+            let dnsAnswer = new DNSMessage();
+            dnsAnswer.FromDNS(response);
+            Debug({ dnsAnswer });
+
+            // Do not cache Authoritative responses
+            if (dnsAnswer.nscount == 0)
+                AddToCache(dnsAnswer);
+
+            return Promise.resolve(dnsAnswer);
+        });
+}
+
+function lookupViaDNSoverHTTPS(dnsQuery, configuration) {
+    return resolveDohHost(configuration)
         .then(dohResolver => {
             Trace(`Resolving query in forward DNS`);
 
             return new Promise((resolve, reject) => {
                 let request = {
-                    hostname: dohResolver.doh.ipAddress[0],
-                    path: dohResolver.doh.path,
+                    hostname: dohResolver.ips[0],
+                    path: dohResolver.resolver.doh.path,
                     headers: {
-                        [`Host`]: dohResolver.doh.hostname,
+                        [`Host`]: dohResolver.resolver.doh.hostname,
                         [`Content-Length`]: dnsQuery.dnsMessage.length,
                     },
                 };
 
-                let useMethod = dohResolver.doh.methods.filter(method => { return method.method == dohResolver.doh.defaultMethod; })[0];
+                let useMethod = dohResolver.resolver.doh.methods.filter(method => { return method.method == dohResolver.resolver.doh.defaultMethod; })[0];
 
                 request.method = useMethod.method;
                 useMethod.headers.forEach(header => {
@@ -139,46 +163,74 @@ function lookupInDns(dnsQuery, configuration) {
                 req.write(dnsQuery.dnsMessage);
                 req.end();
             });
-        })
-        .then(response => {
-            Trace({ [`Complete Response`]: response.toString(`hex`) });
-
-            let dnsAnswer = new DNSMessage();
-            dnsAnswer.FromDNS(response);
-            Debug({ dnsAnswer });
-
-            // Do not cache Authoritative responses
-            if (dnsAnswer.nscount == 0)
-                AddToCache(dnsAnswer);
-
-            return Promise.resolve(dnsAnswer);
         });
 }
 
-function resolveDnsHost(configuration) {
-    // Query a DNS server for the DNS-over-HTTPS host
+function lookupViaDNS(dnsQuery, configuration) {
+    // Check configuration for the resolver to use
+    let resolver = configuration.dns.upstream.resolvers.filter(resolver => { return resolver.name == configuration.dns.upstream.primary; })[0];
+
+    // Resolve the hostname (may be in cache, or perform a DNS lookup)
     return new Promise((resolve, reject) => {
-        // Check configuration for the resolver to use
-        let resolver = configuration.dns.upstream.resolvers.filter(resolver => { return resolver.name == configuration.dns.upstream.primary; })[0];
+        let client = dgram.createSocket({ type: `udp4` });
 
-        Trace({ [`Loading resolver`]: resolver });
+        client.on(`listening`, () => {
+            Trace(`DNS query via UDP listening on ${JSON.stringify(client.address())}`);
+            Dev({ dnsQuery });
 
-        // Resolve the hostname (may be in cache, or perform a DNS lookup)
-        let dnsResolve = new Resolver();
-        dnsResolve.setServers(resolver.servers);
-        dnsResolve.resolve4(resolver.doh.hostname, { ttl: true }, (err, records) => {
-            if (!!err) {
-                Err(`DoH hostname resolution error`);
-                reject(err);
-            } else {
-                Trace({ [`Resolver hostname`]: resolver.doh.hostname, [`Resolver address`]: records });
-                resolver.doh.ipAddress = records.map(entry => { return entry.address; });
-                resolve(resolver);
-            }
+            client.send(dnsQuery.dnsMessage, 53, resolver.servers[0]);
         });
 
-        // Provide the IP, and resolver parameters
+        client.on(`message`, (msg, rinfo) => {
+            Dev({ [`DNS response`]: { rinfo, msg } });
+
+            client.close();
+            resolve(msg);
+        });
+
+        client.on(`error`, (err) => {
+            Warn({ [`DNS query via UDP error`]: err });
+
+            client.close();
+            reject(err);
+        });
+
+        // Assign a random port
+        let portRange = [49152, 65535],
+            randomPort = Math.round(Math.random() * (portRange[1] - portRange[0])) + portRange[0];
+
+        client.bind({ port: randomPort });
     });
+}
+
+function resolveDohHost(configuration) {
+    // Use the built-in DNS querying to resolve the DoH server name
+
+    // Check configuration for the resolver to use
+    let resolver = configuration.dns.upstream.resolvers.filter(resolver => { return resolver.name == configuration.dns.upstream.primary; })[0];
+
+    Trace({ [`Loading resolver`]: resolver });
+
+    // Create a DNS Query
+    let resolverQuery = new DNSMessage();
+    resolverQuery.AddQuestions([resolver.doh.hostname]);
+    resolverQuery.Generate();
+
+    return resolveQuery(resolverQuery, configuration, false)
+        .then(resolverAnswer => {
+            Trace({ resolverAnswer });
+
+            // Return the resolver object, plus the IP(s)
+            let resolverIPs = [];
+            resolverAnswer.answers.forEach(answer => {
+                answer.rdata.forEach(ip => {
+                    if (resolverIPs.indexOf(ip) < 0)
+                        resolverIPs.push(ip);
+                });
+            });
+
+            return { resolver, ips: resolverIPs };
+        });
 }
 
 module.exports.ResolveDNSQuery = resolveQuery;
