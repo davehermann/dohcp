@@ -2,7 +2,7 @@
 const { MessageByte } = require(`./messageByte`),
     { Answer } = require(`./answer`),
     { Question } = require(`./question`),
-    { Dev, Trace, } = require(`../../logging`);
+    { LogLevels, Dev, Trace, } = require(`../../logging`);
 
 let _master = new WeakMap(),
     _questions = new WeakMap(),
@@ -165,31 +165,36 @@ class DNSMessage {
     }
 
     toJSON() {
-        return {
-            source: _master.get(this),
-            hex: this.hexadecimal,
-            bin: this.binary,
-            header: {
-                queryId: this.queryId,
-                parameters: {
-                    asBinary: this.binary.slice(2, 4).join(``),
-                    qr: this.qr,
-                    opcode: this.opcode,
-                    aa: this.aa,
-                    tc: this.tc,
-                    rd: this.rd,
-                    ra: this.ra,
-                    z: this.z,
-                    rcode: this.rcode,
-                },
-                qdcount: this.qdcount,
-                ancount: this.ancount,
-                nscount: this.nscount,
-                arcount: this.arcount,
+        let data = {};
+        if (global.logLevel == LogLevels.dev) {
+            data.source = _master.get(this);
+            data.hex = this.hexadecimal;
+            data.bin = this.binary;
+        }
+
+        data.header = {
+            queryId: this.queryId,
+            parameters: {
+                asBinary: this.binary.slice(2, 4).join(``),
+                qr: this.qr,
+                opcode: this.opcode,
+                aa: this.aa,
+                tc: this.tc,
+                rd: this.rd,
+                ra: this.ra,
+                z: this.z,
+                rcode: this.rcode,
             },
-            questions: this.questions,
-            answers: this.answers,
+            qdcount: this.qdcount,
+            ancount: this.ancount,
+            nscount: this.nscount,
+            arcount: this.arcount,
         };
+
+        data.questions = this.questions;
+        data.answers = this.answers;
+
+        return data;
     }
 }
 
