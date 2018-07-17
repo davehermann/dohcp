@@ -64,7 +64,7 @@ function newV4DhcpSocket(ipAddress) {
             message.Decode(msg);
 
             // Encode the message, and compare, for testing
-            if (global.logLevel <= LogLevels[`trace`]) {
+            if (global.logLevel.dhcp <= LogLevels[`trace`]) {
                 message.Encode();
                 Trace({ [`Encoded hex message`]: message.toString() });
             }

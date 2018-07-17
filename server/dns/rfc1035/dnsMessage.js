@@ -166,7 +166,7 @@ class DNSMessage {
 
     toJSON() {
         let data = {};
-        if (global.logLevel == LogLevels.dev) {
+        if (global.logLevel.dns == LogLevels.dev) {
             data.source = _master.get(this);
             data.hex = this.hexadecimal;
             data.bin = this.binary;

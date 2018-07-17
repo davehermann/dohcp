@@ -2,7 +2,8 @@
 const os = require(`os`);
 
 // Application modules
-const { FilterIPs } = require(`./addressing`);
+const { FilterIPs } = require(`./addressing`),
+    { LogLevels } = require(`./logging`);
 
 function buildConfiguration(configuration, dnsResolvers) {
     // Copy the configuration
@@ -38,4 +39,15 @@ function buildConfiguration(configuration, dnsResolvers) {
     return computedConfig;
 }
 
+function logLevelsFromConfiguration(configuration) {
+    let logLevel = {};
+
+    logLevel.default = !!configuration.logLevel ? LogLevels[configuration.logLevel] : LogLevels[`warn`];
+    logLevel.dhcp = !!configuration.dhcp && !!configuration.dhcp.logLevel ? LogLevels[configuration.dhcp.logLevel] : logLevel.default;
+    logLevel.dns = !!configuration.dns && !!configuration.dns.logLevel ? LogLevels[configuration.dns.logLevel] : logLevel.default;
+
+    return logLevel;
+}
+
 module.exports.BuildConfiguration = buildConfiguration;
+module.exports.GetGlobalLogLevel = logLevelsFromConfiguration;

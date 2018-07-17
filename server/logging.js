@@ -12,31 +12,39 @@ const levels = {
 // Write the log entry
 // data - the log data to write
 // asIs - A javascript object will default to JSON output. Passing in `true` will force writing of the native object
-function writeLog(logLevelId, data, asIs) {
+function writeLog(logLevelId, data, asIs, logName) {
     let logLevel = levels[logLevelId];
 
-    if (global.logLevel <= logLevel)
+    if (typeof asIs == `string`) {
+        logName = asIs;
+        asIs = undefined;
+    }
+
+    if (!logName)
+        logName = `default`;
+
+    if (global.logLevel[logName] <= logLevel)
         // eslint-disable-next-line no-console
         console[logLevel < levels.error ? `log` : `error`]((asIs || (typeof data !== `object`) ? data : JSON.stringify(data, null, 4)));
 }
 
 // Development-only level (Not recommended)
-function dev(data, asIs) { writeLog(`dev`, data, asIs); }
+function dev(data, asIs, logName) { writeLog(`dev`, data, asIs, logName); }
 
 // Trace-level
-function trace(data, asIs) { writeLog(`trace`, data, asIs); }
+function trace(data, asIs, logName) { writeLog(`trace`, data, asIs, logName); }
 
 // Debug-level
-function debug(data, asIs) { writeLog(`debug`, data, asIs); }
+function debug(data, asIs, logName) { writeLog(`debug`, data, asIs, logName); }
 
 // Info-level
-function info(data, asIs) { writeLog(`info`, data, asIs); }
+function info(data, asIs, logName) { writeLog(`info`, data, asIs, logName); }
 
 // Warn level
-function warn(data, asIs) { writeLog(`warn`, data, asIs); }
+function warn(data, asIs, logName) { writeLog(`warn`, data, asIs, logName); }
 
 // Error-level
-function err(data, asIs) { writeLog(`error`, data, asIs); }
+function err(data, asIs, logName) { writeLog(`error`, data, asIs, logName); }
 
 module.exports.LogLevels = levels;
 module.exports.Dev = dev;

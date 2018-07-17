@@ -1,8 +1,8 @@
 // Node/NPM modules
 const os = require(`os`);
 // Application modules
-const { BuildConfiguration } = require(`./configuration`),
-    { LogLevels, Dev, Trace, Debug } = require(`./logging`),
+const { BuildConfiguration, GetGlobalLogLevel } = require(`./configuration`),
+    { Dev, Trace, Debug } = require(`./logging`),
     { DataServer } = require(`./control/server`),
     { DHCPServer } = require(`./dhcp/dhcpServer`),
     { DNSServer } = require(`./dns/dnsServer`);
@@ -12,7 +12,7 @@ const configuration = require(`../configuration.json`),
     dnsResolvers = require(`../dns-resolvers.json`);
 
 // Set the global logging level
-global.logLevel = !!configuration.logLevel ? LogLevels[configuration.logLevel] : LogLevels[`warn`];
+global.logLevel = GetGlobalLogLevel(configuration);
 
 Dev({ [`Configuration`]: configuration, [`DNS Resolution`]: dnsResolvers });
 Trace({ [`Found network interfaces`]: os.networkInterfaces() });
