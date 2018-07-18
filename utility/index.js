@@ -41,6 +41,7 @@ const definedActions = {
         usesConfiguration: true,
     },
     [`dhcp-leases`]: {
+        aliases: [`dhcp`],
         description: `List active (unexpired) DHCP leases assigned since last service start`,
         additionalArguments: 1,
         argumentsDescription: [
