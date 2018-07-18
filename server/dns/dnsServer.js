@@ -58,7 +58,7 @@ function newDNSSocket(ipAddress) {
                 denotationMask = 45;
 
             // For Debug or lower levels, add a separator line
-            Debug(newDenotation.padStart(newDenotation.length + denotationMask, `-`).padEnd(newDenotation.length + (denotationMask * 2), `-`));
+            Debug(newDenotation.padStart(newDenotation.length + denotationMask, `-`).padEnd(newDenotation.length + (denotationMask * 2), `-`), `dns`);
 
             Trace({
                 [`Remote address information`]: rinfo,
@@ -71,7 +71,7 @@ function newDNSSocket(ipAddress) {
 
             ResolveDNSQuery(dnsQuery, _configuration)
                 .then(dnsAnswer => {
-                    Info(`DNS Query (${rinfo.address}) - ${dnsQuery.queryId} - ${(new Date()).getTime() - timestamp.getTime()}ms - ${dnsQuery.questions.map(q => { return q.label; }).join(`, `)}: ${dnsAnswer.answers.map(a => { return a.summary; }).join(`, `)}`);
+                    Info(`DNS Query (${rinfo.address}) - ${dnsQuery.queryId} - ${(new Date()).getTime() - timestamp.getTime()}ms - ${dnsQuery.questions.map(q => { return q.label; }).join(`, `)}: ${dnsAnswer.answers.map(a => { return a.summary; }).join(`, `)}`, `dns`);
                     // Send response
                     server.send(dnsAnswer.dnsMessage, rinfo.port, rinfo.address);
                 })

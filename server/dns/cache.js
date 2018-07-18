@@ -88,7 +88,7 @@ function add(dnsResponse) {
 
         // Only cache if TTL is > 1000
         if (remainingTTL > 1) {
-            Debug(`Adding ${answer.label} to cache with removal in ${remainingTTL} seconds`);
+            Debug(`Adding ${answer.label} to cache with removal in ${remainingTTL} seconds`, `dns`);
 
             storeInCache(answer, remainingTTL);
         }

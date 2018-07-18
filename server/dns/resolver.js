@@ -21,7 +21,7 @@ function resolveQuery(dnsQuery, configuration, useDNSoverHTTPS = true) {
     if (!hasWarning) {
         let label = dnsQuery.questions[0].label,
             cacheHit = FindInCache(label);
-        Debug({ label, cacheHit });
+        Debug({ label, cacheHit }, `dns`);
         if (!!cacheHit)
             pLookup = respondFromCache(dnsQuery, cacheHit);
     }
@@ -103,7 +103,7 @@ function lookupInDns(dnsQuery, configuration, useDNSoverHTTPS) {
 
             let dnsAnswer = new DNSMessage();
             dnsAnswer.FromDNS(response);
-            Debug({ dnsAnswer });
+            Debug({ dnsAnswer }, `dns`);
 
             // Do not cache Authoritative responses
             if (dnsAnswer.nscount == 0)
