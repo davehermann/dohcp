@@ -23,29 +23,34 @@ function queryCache(action, allActions, configuration) {
                     currentTime = (new Date()).getTime(),
                     display = [];
 
-                cacheList.forEach(answer => {
-                    let recordType = null;
-                    switch (answer.typeId) {
-                        case 1:
-                            recordType = `A`;
-                            break;
-                        case 5:
-                            recordType = `CNAME`;
-                            break;
-                    }
+                if ((typeof cacheList == `object`) && cacheList.disabled)
+                    // eslint-disable-next-line no-console
+                    console.log(`\nThe DNS service is not enabled\n`);
+                else {
+                    cacheList.forEach(answer => {
+                        let recordType = null;
+                        switch (answer.typeId) {
+                            case 1:
+                                recordType = `A`;
+                                break;
+                            case 5:
+                                recordType = `CNAME`;
+                                break;
+                        }
 
-                    let report = `${answer.label} --> [${recordType}] ${answer.rdata}`;
-                    if (!!answer.startingTTL)
-                        report += ` (exp: ${Math.round((answer.ttlExpiration - currentTime) / 1000)} sec)`;
+                        let report = `${answer.label} --> [${recordType}] ${answer.rdata}`;
+                        if (!!answer.startingTTL)
+                            report += ` (exp: ${Math.round((answer.ttlExpiration - currentTime) / 1000)} sec)`;
 
-                    display.push(report);
-                });
+                        display.push(report);
+                    });
 
-                // Sort by hostname
-                display.sort((a, b) => { return a < b ? -1 : 1; });
+                    // Sort by hostname
+                    display.sort((a, b) => { return a < b ? -1 : 1; });
 
-                // eslint-disable-next-line no-console
-                console.log(`\n---- Entries currently in DNS ----\n${display.join(`\n`)}\n`);
+                    // eslint-disable-next-line no-console
+                    console.log(`\n---- Entries currently in DNS ----\n${display.join(`\n`)}\n`);
+                }
             });
         }
     );

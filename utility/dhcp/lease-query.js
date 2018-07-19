@@ -30,48 +30,22 @@ function queryLeases(action, allActions, configuration) {
             res.on(`end`, () => {
                 let dhcpData = JSON.parse(data);
 
-                // console.log(dhcpData.leaseData);
-
-                // eslint-disable-next-line no-console
-                console.log(`\n----- ${title} -----\n`);
-
-                if (dhcpData.leaseData.length == 0)
+                if (dhcpData.disabled)
                     // eslint-disable-next-line no-console
-                    console.log(`No leases found`);
+                    console.log(`\nThe DHCP service is not enabled\n`);
                 else {
-                    let display = [],
-                        currentTime = (new Date()).getTime();
-                    dhcpData.leaseData.forEach(lease => {
-                        let clientIdType = parseInt(lease.clientId.substr(0, 2), 16),
-                            clientId = lease.clientId.substr(2);
+                    // console.log(dhcpData.leaseData);
 
-                        switch (clientIdType) {
-                            case 1:
-                                clientId = clientId.match(/../g).join(`:`);
-                                break;
-                        }
+                    // eslint-disable-next-line no-console
+                    console.log(`\n----- ${title} -----\n`);
 
-                        let detail = `${lease.ipAddress}: ${clientId}`;
-                        let hostname = lease.staticHost || lease.providedHost;
-                        if (!!hostname)
-                            detail += ` (${hostname})`;
-
-                        if (!!lease.leaseStart) {
-                            let expirationTime = lease.leaseStart + (dhcpData.configuration.dhcp.leases.pool.leaseSeconds * 1000),
-                                timeToExpiration = Math.round((expirationTime - currentTime) / 1000);
-
-                            detail += (timeToExpiration > 0) ? ` expires in ${timeToExpiration} seconds` : ` lease expired`;
-                        }
-
-                        display.push(detail);
-                    });
-
-                    if (!!dhcpData.otherData) {
-                        display.push(`\n   -- Configured Assignments --`);
-
-                        dhcpData.otherData.sort((a, b) => { return a.ip < b.ip ? -1 : 1; });
-
-                        dhcpData.otherData.forEach(lease => {
+                    if (dhcpData.leaseData.length == 0)
+                        // eslint-disable-next-line no-console
+                        console.log(`No leases found`);
+                    else {
+                        let display = [],
+                            currentTime = (new Date()).getTime();
+                        dhcpData.leaseData.forEach(lease => {
                             let clientIdType = parseInt(lease.clientId.substr(0, 2), 16),
                                 clientId = lease.clientId.substr(2);
 
@@ -81,51 +55,82 @@ function queryLeases(action, allActions, configuration) {
                                     break;
                             }
 
-                            let detail = `${lease.ip}: ${clientId}`;
+                            let detail = `${lease.ipAddress}: ${clientId}`;
+                            let hostname = lease.staticHost || lease.providedHost;
+                            if (!!hostname)
+                                detail += ` (${hostname})`;
 
-                            // Check for static assignment
-                            let staticAssignment = dhcpData.configuration.dhcp.leases.static[clientId];
+                            if (!!lease.leaseStart) {
+                                let expirationTime = lease.leaseStart + (dhcpData.configuration.dhcp.leases.pool.leaseSeconds * 1000),
+                                    timeToExpiration = Math.round((expirationTime - currentTime) / 1000);
 
-                            if (!!staticAssignment) {
-                                detail += ` **STATIC**`;
-
-                                if (!!staticAssignment.hostname)
-                                    detail += ` (${staticAssignment.hostname})`;
+                                detail += (timeToExpiration > 0) ? ` expires in ${timeToExpiration} seconds` : ` lease expired`;
                             }
 
                             display.push(detail);
                         });
-                    }
 
-                    if (action.additionalArguments.indexOf(`--all-known`) >= 0) {
-                        // Display the static assignments
-                        display.push(`\n   -- Static Assignments --`);
+                        if (!!dhcpData.otherData) {
+                            display.push(`\n   -- Configured Assignments --`);
 
-                        let staticHosts = [];
-                        for (let mac in dhcpData.configuration.dhcp.leases.static) {
-                            let data = dhcpData.configuration.dhcp.leases.static[mac];
+                            dhcpData.otherData.sort((a, b) => { return a.ip < b.ip ? -1 : 1; });
 
-                            data.clientId = mac;
+                            dhcpData.otherData.forEach(lease => {
+                                let clientIdType = parseInt(lease.clientId.substr(0, 2), 16),
+                                    clientId = lease.clientId.substr(2);
 
-                            staticHosts.push(data);
+                                switch (clientIdType) {
+                                    case 1:
+                                        clientId = clientId.match(/../g).join(`:`);
+                                        break;
+                                }
+
+                                let detail = `${lease.ip}: ${clientId}`;
+
+                                // Check for static assignment
+                                let staticAssignment = dhcpData.configuration.dhcp.leases.static[clientId];
+
+                                if (!!staticAssignment) {
+                                    detail += ` **STATIC**`;
+
+                                    if (!!staticAssignment.hostname)
+                                        detail += ` (${staticAssignment.hostname})`;
+                                }
+
+                                display.push(detail);
+                            });
                         }
 
-                        staticHosts.sort((a, b) => { return a.ip < b.ip ? -1 : 1; });
+                        if (action.additionalArguments.indexOf(`--all-known`) >= 0) {
+                            // Display the static assignments
+                            display.push(`\n   -- Static Assignments --`);
 
-                        staticHosts.forEach(lease => {
-                            let detail = `${lease.ip}: ${lease.clientId}`;
+                            let staticHosts = [];
+                            for (let mac in dhcpData.configuration.dhcp.leases.static) {
+                                let data = dhcpData.configuration.dhcp.leases.static[mac];
 
-                            if (!!lease.hostname)
-                                detail += ` (${lease.hostname})`;
+                                data.clientId = mac;
 
-                            display.push(detail);
-                        });
+                                staticHosts.push(data);
+                            }
+
+                            staticHosts.sort((a, b) => { return a.ip < b.ip ? -1 : 1; });
+
+                            staticHosts.forEach(lease => {
+                                let detail = `${lease.ip}: ${lease.clientId}`;
+
+                                if (!!lease.hostname)
+                                    detail += ` (${lease.hostname})`;
+
+                                display.push(detail);
+                            });
+                        }
+
+                        // eslint-disable-next-line no-console
+                        console.log(display.join(`\n`));
+                        // eslint-disable-next-line no-console
+                        console.log();
                     }
-
-                    // eslint-disable-next-line no-console
-                    console.log(display.join(`\n`));
-                    // eslint-disable-next-line no-console
-                    console.log();
                 }
             });
         }

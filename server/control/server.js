@@ -25,10 +25,10 @@ function dataServer(configuration) {
                 pResponse = dhcpListLeases(configuration, false, false, true);
                 break;
             case `GET:/dns/cache-list`:
-                pResponse = dnsListCache();
+                pResponse = dnsListCache(configuration);
                 break;
             case `GET:/dns/cache-list/all`:
-                pResponse = dnsListCache(true);
+                pResponse = dnsListCache(configuration, true);
                 break;
         }
 
@@ -48,7 +48,10 @@ function dataServer(configuration) {
     server.listen({ host: configuration.serverIpAddress, port: 45332 });
 }
 
-function dnsListCache(includeAll) {
+function dnsListCache(configuration, includeAll) {
+    if (configuration.dns.disabled)
+        return Promise.resolve(JSON.stringify({ disabled: true }));
+
     let fullCache = ListCache();
 
     let filterList = [];
@@ -63,6 +66,9 @@ function dnsListCache(includeAll) {
 }
 
 function dhcpListLeases(configuration, allActive, allPrevious, allData) {
+    if (configuration.dhcp.disabled)
+        return Promise.resolve(JSON.stringify({ disabled: true }));
+
     let leases = ActiveAllocations(),
         leaseData = [],
         otherData = undefined,
