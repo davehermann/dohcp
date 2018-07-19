@@ -302,7 +302,8 @@ function encodingParser(option, args, optionLength) {
 }
 
 function ensureClientIdentifierExists(dhcpMessage) {
-    if (!dhcpMessage.options.clientIdentifier) {
+    // Default to the chaddr address
+    if (!dhcpMessage.options.clientIdentifier || !!dhcpMessage.chaddr) {
         let rawValue = dhcpMessage.htype.toString(16).padStart(2, `0`) + dhcpMessage.chaddr.replace(/:/g, ``);
 
         dhcpMessage.options.clientIdentifier = decodeClientIdentifier(rawValue);
@@ -313,3 +314,4 @@ module.exports.DHCPOptions = optionDefinition;
 module.exports.ParseOptions = parseOptions;
 module.exports.EncodeOptions = encodeOptions;
 module.exports.EnsureClientIdentifier = ensureClientIdentifierExists;
+module.exports.GenerateClientIdentifier = decodeClientIdentifier;

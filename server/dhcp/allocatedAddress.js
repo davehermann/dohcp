@@ -1,3 +1,6 @@
+// Application modules
+const { GenerateClientIdentifier } = require(`./rfc2132`);
+
 let _clientIdentification = new WeakMap(),
     _expirationTime = new WeakMap(),
     _inSession = new WeakMap(),
@@ -56,6 +59,20 @@ class AllocatedAddress {
 
     SetExpiration(currentTime, leaseSeconds) {
         _expirationTime.set(this, currentTime.getTime() + (leaseSeconds * 1000));
+    }
+
+    FromStorage(storedAddress) {
+        // Parse the _clientIdentification from the clientId
+        _clientIdentification.set(this, GenerateClientIdentifier(storedAddress.clientId));
+
+        // Set the IP Address
+        this.ipAddress = storedAddress.ipAddress;
+
+        // Set the provided host
+        this.providedHost = storedAddress.providedHost;
+
+        // Set the static host
+        this.staticHost = storedAddress.staticHost;
     }
 
     toJSON() {

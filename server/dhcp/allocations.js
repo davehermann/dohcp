@@ -98,7 +98,19 @@ class Allocations {
         return new Promise((resolve, reject) => {
             let dataFile = path.join(process.cwd(), `status`, `dhcp.json`);
             Trace({ dataFile });
-            fs.writeFile(dataFile, JSON.stringify(this.allocatedAddresses, null, 4), { encoding: `utf8` }, (err) => {
+
+            // Sort the allocations keys to make debugging easier
+            // Since we're writing JSON, use a JSON copy
+            let allocations = JSON.parse(JSON.stringify(this.allocatedAddresses)),
+                writeData = { byIp: {}, byClientId: {} };
+
+            let ipKeys = Object.keys(allocations.byIp).sort(),
+                clientKeys = Object.keys(allocations.byClientId).sort();
+
+            ipKeys.forEach(key => { writeData.byIp[key] = allocations.byIp[key]; });
+            clientKeys.forEach(key => { writeData.byClientId[key] = allocations.byClientId[key]; });
+
+            fs.writeFile(dataFile, JSON.stringify(writeData, null, 4), { encoding: `utf8` }, (err) => {
                 if (!!err)
                     reject(err);
 
@@ -211,7 +223,7 @@ class Allocations {
         let pConfirm = Promise.resolve();
 
         let clientId = dhcpMessage.options.clientIdentifier,
-            requestedIp = dhcpMessage.options.requestedIPAddress;
+            requestedIp = dhcpMessage.options.requestedIPAddress || dhcpMessage.ciaddr;
 
         // Check the requested IP against the assignment list
         let assignedAddress = this.allocatedAddresses.byIp[requestedIp];
@@ -235,6 +247,27 @@ class Allocations {
         }
 
         return pConfirm;
+    }
+
+    MatchRequest(dhcpMessage) {
+        let clientId = dhcpMessage.options.clientIdentifier,
+            requestedIp = dhcpMessage.options.requestedIPAddress || dhcpMessage.ciaddr,
+            assignedAddress = this.allocatedAddresses.byIp[requestedIp];
+
+        // The message has to be a request
+        // The message client has to be assigned to the message requested IP
+        if ((dhcpMessage.options.dhcpMessageType == `DHCPREQUEST`) && (!!assignedAddress && (assignedAddress.clientId == clientId.uniqueId))) {
+            if (!(assignedAddress instanceof AllocatedAddress)) {
+                let addressObject = new AllocatedAddress();
+                addressObject.FromStorage(assignedAddress);
+
+                this.allocatedAddresses.byIp[requestedIp] = addressObject;
+            }
+
+            return Promise.resolve(true);
+        }
+
+        return Promise.resolve(false);
     }
 }
 

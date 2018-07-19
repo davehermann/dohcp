@@ -2,6 +2,7 @@
 const dgram = require(`dgram`);
 // Application modules
 const { Allocations } = require(`./allocations`),
+    { TrackDeregistration } = require(`./clientDeregistration`),
     { DHCPMessage } = require(`./dhcpMessage`),
     { DHCPOptions } = require(`./rfc2132`),
     { LogLevels, Trace, Debug, Info, Err } = require(`../logging`);
@@ -79,8 +80,15 @@ function newV4DhcpSocket(ipAddress) {
                     break;
 
                 case `DHCPREQUEST`:
+                    // If no serverIdentifier is sent
+                    if (!message.options.serverIdentifier) {
+                        // Confirm the address requested for the client matches what is assigned here
+                        pResponse = checkRequest(message)
+                            // If it matches, confirm the address, and if not deregister
+                            .then(matchingRequest => { return matchingRequest ? confirmAddress(message) : deregisterClient(message); });
+                    }
                     // Only process is the client message identifies this server
-                    if (message.options.serverIdentifier == _configuration.serverIpAddress)
+                    else if (message.options.serverIdentifier == _configuration.serverIpAddress)
                         pResponse = confirmAddress(message);
                     else
                         Debug(`Not targeted at ${_configuration.serverIpAddress}`);
@@ -148,7 +156,8 @@ function confirmAddress(dhcpRequestMessage) {
                 return Promise.resolve({ dhcpMessage: dhcpAcknowledge, toBroadcast: true });
             } else {
                 Trace(`No assigned address`);
-                // Send an NACK
+                // Deregister address
+                return deregisterClient(dhcpRequestMessage);
             }
         });
 }
@@ -178,6 +187,34 @@ function offerAddress(dhcpDiscoverMessage) {
                 return null;
             }
         });
+}
+
+function checkRequest(dhcpRequestMessage) {
+    return _allocations.MatchRequest(dhcpRequestMessage);
+}
+
+function deregisterClient(dhcpRequestMessage) {
+    if (_configuration.dhcp.authoritative) {
+        // Send an NACK message
+        let dhcpDeregister = new DHCPMessage();
+        dhcpDeregister.GenerateReply(dhcpRequestMessage, { ipAddress: `0.0.0.0` }, _configuration);
+        dhcpDeregister.options.dhcpMessageType = DHCPOptions.byProperty.dhcpMessageType.valueMap[`6`];
+
+        // Encode the binary message
+        dhcpDeregister.Encode();
+        Debug(`Deregistering ${dhcpRequestMessage.options.clientIdentifier.uniqueId}`, `dhcp`);
+        Trace({
+            hex: dhcpDeregister.toString(),
+            data: dhcpDeregister,
+        }, `dhcp`);
+
+        // Track deregistration to warn on misbehaving clients
+        TrackDeregistration(dhcpRequestMessage);
+
+        return Promise.resolve({ dhcpMessage: dhcpDeregister, toBroadcast: true });
+    }
+
+    return Promise.resolve();
 }
 
 function getAllocations() {
