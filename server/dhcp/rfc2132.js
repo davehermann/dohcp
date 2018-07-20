@@ -237,6 +237,9 @@ function optionDecoder(option, rawValue) {
 
 // rawValue is the hexadecimal type plus the ID
 function decodeClientIdentifier(rawValue) {
+    if ((rawValue === undefined) || (rawValue === null))
+        return null;
+
     let id = { uniqueId: rawValue };
 
     // An ethernet address should be parsed
@@ -290,7 +293,7 @@ function encodingParser(option, args, optionLength) {
 
         if (!!option.encoding.args)
             option.encoding.args.forEach(arg => {
-                if (!!optionLength && (arg == `optionLength`))
+                if (((optionLength !== undefined) && (optionLength !== null)) && (arg == `optionLength`))
                     arg = optionLength;
 
                 args.push(arg);
