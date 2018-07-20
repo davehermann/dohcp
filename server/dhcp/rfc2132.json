@@ -30,6 +30,7 @@
         "description": "This option specifies the name of the client.  The name may or may not be qualified with the local domain name",
         "encoding": { "method": "String", "args": ["optionLength"] }
     },
+    { "code": 13, "length": -1, "name": "Boot File Size Option", "description": "This option specifies the length in 512-octet blocks of the default boot image for the client.  The file length is specified as an unsigned 16-bit integer." },
     {
         "code": 15,
         "length": -1,
@@ -48,6 +49,7 @@
     { "code": 33, "length": -1, "name": "Static Route Option", "description": "This option specifies a list of static routes that the client should install in its routing cache.  If multiple routes to the same destination are specified, they are listed in descending order of priority. The routes consist of a list of IP address pairs.  The first address is the destination address, and the second address is the router for the destination. The default route (0.0.0.0) is an illegal destination for a static route.  See section 3.5 for information about the router option." },
     { "code": 42, "length": -1, "name": "Network Time Protocol Server Option", "description": "This option specifies a list of IP addresses indicating NTP servers available to the client.  Servers SHOULD be listed in order of preference." },
     { "code": 43, "length": -1, "name": "Vendor Specific Information", "description": "This option is used by clients and servers to exchange vendor- specific information.  The information is an opaque object of n octets, presumably interpreted by vendor-specific code on the clients and servers.  The definition of this information is vendor specific. The vendor is indicated in the vendor class identifier option." },
+    { "code": 44, "length": -1, "name": "NetBIOS over TCP/IP Name Server Option", "description": "The NetBIOS name server (NBNS) option specifies a list of RFC 1001/1002 [19] [20] NBNS name servers listed in order of preference." },
     {
         "code": 50,
         "length": 4,
@@ -130,7 +132,11 @@
         "description": "This option is used by DHCP clients to specify their unique identifier.  DHCP servers use this value to index their database of address bindings.  This value is expected to be unique for all clients in an administrative domain.\n\nIdentifiers SHOULD be treated as opaque objects by DHCP servers.",
         "encoding": { "method": "String", "args": ["optionLength", "hex"] }
     },
+    { "code": 66, "length": -1, "name": "TFTP server name", "description": "This option is used to identify a TFTP server when the 'sname' field in the DHCP header has been used for DHCP options." },
+    { "code": 67, "length": -1, "name": "Bootfile name", "description": "This option is used to identify a bootfile when the 'file' field in the DHCP header has been used for DHCP options." },
+    { "code": 81, "length": -1, "name": "The Client FQDN Option", "description": "Clients MAY send the Client FQDN option, setting appropriate Flags values, in both their DHCPDISCOVER and DHCPREQUEST messages.  If a client sends the Client FQDN option in its DHCPDISCOVER message, it MUST send the option in subsequent DHCPREQUEST messages though the contents of the option MAY change." },
     { "code": 119, "length": -1, "name": "Domain Search List", "description": "Specifies the list of domains to be used by the client when searching bare hostnames." },
     { "code": 121, "length": -1, "name": "Classless Static Route", "description": "?" },
-    { "code": 145, "length": -1, "name": "Forcerenew Nonce Authentication", "description": "?" }
+    { "code": 145, "length": -1, "name": "Forcerenew Nonce Authentication", "description": "?" },
+    { "code": 252, "length": -1, "name": "Web Proxy Auto Discovery", "description": "?" }
 ]
