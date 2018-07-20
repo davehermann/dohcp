@@ -197,8 +197,21 @@ class Allocations {
             if (!!this.allocatedAddresses.byClientId[clientId.uniqueId])
                 ip = this.allocatedAddresses.byClientId[clientId.uniqueId];
             // 2) If the client requests a specific address, use that if it's free
+            else {
+                // Check the assigned address list to see if an offer has been made
+                let previousOffer = null;
+                for (let ipAddress in this.allocatedAddresses.byIp) {
+                    let address = this.allocatedAddresses.byIp[ipAddress];
+
+                    if (!!address && (address.clientId == clientId.uniqueId)) {
+                        ip = ipAddress;
+                        break;
+                    }
+                }
+            }
+
             // 3) Use any open address
-            else
+            if (!ip)
                 ip = this._offerOpenAddress(currentTime);
 
             if (!!ip)
