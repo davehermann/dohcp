@@ -2,7 +2,7 @@
 
 // Application modules
 const { ParseArguments } = require(`./arguments`),
-    { BuildConfiguration } = require(`../server/configuration`),
+    { BuildConfiguration, GetGlobalLogLevel } = require(`../server/configuration`),
     { GenerateConfiguration } = require(`./configuration`),
     { PrintHelp } = require(`./help`),
     { InstallService, RemoveService } = require(`./service`),
@@ -11,6 +11,8 @@ const { ParseArguments } = require(`./arguments`),
     { DNSCache } = require(`./dns/cache-query`),
     { ResetDHCP } = require(`./dhcp/reset`),
     { TestDHCP } = require(`./dhcp/test`);
+
+global.logLevel = GetGlobalLogLevel();
 
 const definedActions = {
     help: {

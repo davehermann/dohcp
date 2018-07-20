@@ -42,9 +42,9 @@ function buildConfiguration(configuration, dnsResolvers) {
 function logLevelsFromConfiguration(configuration) {
     let logLevel = {};
 
-    logLevel.default = !!configuration.logLevel ? LogLevels[configuration.logLevel] : LogLevels[`warn`];
-    logLevel.dhcp = !!configuration.dhcp && !!configuration.dhcp.logLevel ? LogLevels[configuration.dhcp.logLevel] : logLevel.default;
-    logLevel.dns = !!configuration.dns && !!configuration.dns.logLevel ? LogLevels[configuration.dns.logLevel] : logLevel.default;
+    logLevel.default = !!configuration && !!configuration.logLevel ? LogLevels[configuration.logLevel] : LogLevels[`warn`];
+    logLevel.dhcp = !!configuration && !!configuration.dhcp && !!configuration.dhcp.logLevel ? LogLevels[configuration.dhcp.logLevel] : logLevel.default;
+    logLevel.dns = !!configuration && !!configuration.dns && !!configuration.dns.logLevel ? LogLevels[configuration.dns.logLevel] : logLevel.default;
 
     return logLevel;
 }
