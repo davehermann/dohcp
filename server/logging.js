@@ -23,9 +23,25 @@ function writeLog(logLevelId, data, asIs, logName) {
     if (!logName)
         logName = `default`;
 
-    if (global.logLevel[logName] <= logLevel)
+    if (global.logLevel[logName] <= logLevel) {
+        let useRawData = asIs || (typeof data !== `object`),
+            logData = (useRawData ? data : JSON.stringify(data, null, 4));
+
+        // When running as a service, assume the service logger will supply a timestamp
+        if (!process.env.service) {
+            let timestamp = new Date(),
+                dateDisplay = `${timestamp.toLocaleString()}`;
+
+            if (useRawData)
+                logData = `${dateDisplay} - ${logData}`;
+            else
+                // eslint-disable-next-line no-console
+                console[logLevel < levels.error ? `log` : `error`](dateDisplay);
+        }
+
         // eslint-disable-next-line no-console
-        console[logLevel < levels.error ? `log` : `error`]((asIs || (typeof data !== `object`) ? data : JSON.stringify(data, null, 4)));
+        console[logLevel < levels.error ? `log` : `error`](logData);
+    }
 }
 
 // Development-only level (Not recommended)
