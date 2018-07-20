@@ -8,6 +8,7 @@ const { ParseArguments } = require(`./arguments`),
     { InstallService, RemoveService } = require(`./service`),
     { LoadFile } = require(`./utilities`),
     { DHCPLeases } = require(`./dhcp/lease-query`),
+    { DHCPDecode } = require(`./dhcp/message-decode`),
     { DNSCache } = require(`./dns/cache-query`),
     { ResetDHCP } = require(`./dhcp/reset`),
     { TestDHCP } = require(`./dhcp/test`);
@@ -53,6 +54,11 @@ const definedActions = {
         ],
         method: DHCPLeases,
         usesConfiguration: true,
+    },
+    [`dhcp-decode`]: {
+        description: `Decode a raw (hexadecimal) DHCP message`,
+        additionalArguments: 1,
+        method: DHCPDecode,
     },
     [`dhcp-reset`]: {
         description: `Reset assigned address history.  BY DEFAULT: Clears used address history but not prior assigned-by-id (i.e. MAC address) history`,
