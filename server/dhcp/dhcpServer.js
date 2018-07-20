@@ -59,7 +59,7 @@ function newV4DhcpSocket(ipAddress) {
             Trace({
                 [`Remote address information`]: rinfo,
                 [`Hexadecimal message`]: msg.toString(`hex`)
-            });
+            }, `dhcp`);
 
             let message = new DHCPMessage();
             message.Decode(msg);

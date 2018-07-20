@@ -43,18 +43,35 @@ function addFromConfiguration(configuration, fromDHCP) {
 
 function addFromDHCP(assignedAddress, dhcpMessage, configuration) {
     // Select the hostname
-    let randomizedAddress = dhcpMessage.options.vendorClassIdentifier;
-    if (!!randomizedAddress && (randomizedAddress.length > 0)) {
-        // Append a letter to the identifier
-        let useChar = 65;
-        while (!!_cache[`${randomizedAddress}-${String.fromCharCode(useChar)}`])
-            useChar++;
+    let uniqueHostname = assignedAddress.hostname;
 
-        randomizedAddress = `${randomizedAddress}-${String.fromCharCode(useChar)}`;
-    } else
-        randomizedAddress = dhcpMessage.options.clientIdentifier.uniqueId;
+    // If neither a static host or provided host exists, use the vendor identifier plus a letter
+    if (!uniqueHostname) {
+        let randomizedAddress = dhcpMessage.options.vendorClassIdentifier;
+        if (!!randomizedAddress && (randomizedAddress.length > 0)) {
+            // Append a letter to the identifier
+            let useChar = 65;
+            while (!!_cache[`${randomizedAddress}-${String.fromCharCode(useChar)}`])
+                useChar++;
 
-    let hostname = assignedAddress.hostname || randomizedAddress;
+            randomizedAddress = `${randomizedAddress}-${String.fromCharCode(useChar)}`;
+        }
+
+        if (!!randomizedAddress)
+            uniqueHostname = randomizedAddress;
+    }
+
+    // If there's still no unique hostname, use the unique ID for the client
+    if (!uniqueHostname)
+        uniqueHostname = dhcpMessage.options.clientIdentifier.uniqueId;
+    else {
+        // If there is a unique hostname, make sure it doesn't collide with another name, and if it does use the last 6 of the unique ID
+
+        while (!!_cache[uniqueHostname] && (_cache[uniqueHostname].rdata[0] !== assignedAddress.ipAddress))
+            uniqueHostname += `-${dhcpMessage.options.clientIdentifier.uniqueId.substr(dhcpMessage.options.clientIdentifier.uniqueId.length - 6)}`;
+    }
+
+    uniqueHostname = uniqueHostname.replace(/ /g, `_`);
 
     // Pass to the addFromConfiguration to add to cache
     addFromConfiguration(
@@ -69,14 +86,14 @@ function addFromDHCP(assignedAddress, dhcpMessage, configuration) {
             dns: {
                 domain: configuration.dns.domain,
                 records: [
-                    { name: hostname, ip: assignedAddress.ipAddress }
+                    { name: uniqueHostname, ip: assignedAddress.ipAddress }
                 ]
             },
         },
         true
     );
 
-    return Promise.resolve(hostname);
+    return Promise.resolve(uniqueHostname);
 }
 
 function add(dnsResponse) {
