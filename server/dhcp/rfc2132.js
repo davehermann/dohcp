@@ -96,7 +96,7 @@ function parseOptions(buf, offset) {
         // Just advance offset by length, and warn on the missing code
         else {
             // Skip the length, and report the code
-            Warn(`Option not found: ${optionCode}`);
+            Warn(`DHCP option not found: ${optionCode}`);
             offset += optionLength;
         }
     }
@@ -218,7 +218,7 @@ function optionDecoder(option, rawValue) {
                 if (!!matchingOption)
                     requestedParameters.push({ code, name: matchingOption.name });
                 else
-                    Warn(`Option not found: ${code}`);
+                    Warn(`Parameter request list option not found: ${code}`);
 
                 rawValue = rawValue.substr(2);
             }
