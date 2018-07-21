@@ -95,8 +95,11 @@ function parseOptions(buf, offset) {
         // No option means the option code didn't match a known option.
         // Just advance offset by length, and warn on the missing code
         else {
-            // Skip the length, and report the code
-            Warn(`DHCP option not found: ${optionCode}`);
+            // Report the code if no option is found
+            if (!option)
+                Warn(`DHCP option not found: ${optionCode}`);
+
+            // Skip the length
             offset += optionLength;
         }
     }
