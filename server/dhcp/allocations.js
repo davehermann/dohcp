@@ -3,11 +3,16 @@ const fs = require(`fs`),
     path = require(`path`);
 // Application modules
 const { AllocatedAddress } = require(`./allocatedAddress`),
-    { Dev, Trace, Info } = require(`../logging`),
+    { Dev, Trace, Debug, Info } = require(`../logging`),
     { AddDHCPToDNS } = require(`../dns/cache`);
 
 let _configuration = new WeakMap(),
     _allocations = new WeakMap();
+
+// Track permanent storage write requests as not all offers/confirms need to be written
+let _saveOnNextWrite = false;
+// Write a minimum of once every few minutes
+setInterval(() => { _saveOnNextWrite = true; }, 300000);
 
 class Allocations {
     constructor(configuration) {
@@ -94,29 +99,39 @@ class Allocations {
     }
 
     _writeToDisk() {
+        let pWrite = Promise.resolve();
+
+        Debug(_saveOnNextWrite ? `Writing DHCP data` : `Not writing DHCP update`);
+
         // Write the allocations to disk
-        return new Promise((resolve, reject) => {
-            let dataFile = path.join(process.cwd(), `status`, `dhcp.json`);
-            Trace({ dataFile });
+        if (_saveOnNextWrite)
+            pWrite = new Promise((resolve, reject) => {
+                let dataFile = path.join(process.cwd(), `status`, `dhcp.json`);
+                Trace({ dataFile });
 
-            // Sort the allocations keys to make debugging easier
-            // Since we're writing JSON, use a JSON copy
-            let allocations = JSON.parse(JSON.stringify(this.allocatedAddresses)),
-                writeData = { byIp: {}, byClientId: {} };
+                // Sort the allocations keys to make debugging easier
+                // Since we're writing JSON, use a JSON copy
+                let allocations = JSON.parse(JSON.stringify(this.allocatedAddresses)),
+                    writeData = { byIp: {}, byClientId: {} };
 
-            let ipKeys = Object.keys(allocations.byIp).sort(),
-                clientKeys = Object.keys(allocations.byClientId).sort();
+                let ipKeys = Object.keys(allocations.byIp).sort(),
+                    clientKeys = Object.keys(allocations.byClientId).sort();
 
-            ipKeys.forEach(key => { writeData.byIp[key] = allocations.byIp[key]; });
-            clientKeys.forEach(key => { writeData.byClientId[key] = allocations.byClientId[key]; });
+                ipKeys.forEach(key => { writeData.byIp[key] = allocations.byIp[key]; });
+                clientKeys.forEach(key => { writeData.byClientId[key] = allocations.byClientId[key]; });
 
-            fs.writeFile(dataFile, JSON.stringify(writeData, null, 4), { encoding: `utf8` }, (err) => {
-                if (!!err)
-                    reject(err);
+                fs.writeFile(dataFile, JSON.stringify(writeData, null, 4), { encoding: `utf8` }, (err) => {
+                    if (!!err)
+                        reject(err);
 
-                resolve();
+                    resolve();
+                });
             });
-        });
+
+        return pWrite
+            .then(() => {
+                _saveOnNextWrite = false;
+            });
     }
 
     _offerOpenAddress(currentTime) {
@@ -156,6 +171,11 @@ class Allocations {
     }
 
     _addAllocation(assignedAddress) {
+        let priorAssignment = this.allocatedAddresses.byIp[assignedAddress.ipAddress];
+        if (!priorAssignment || (priorAssignment.clientId !== assignedAddress.clientId) || (priorAssignment.isConfirmed != assignedAddress.isConfirmed))
+            _saveOnNextWrite = true;
+
+
         // Add the assignment to the byIp list
         this.allocatedAddresses.byIp[assignedAddress.ipAddress] = assignedAddress;
 
@@ -245,6 +265,9 @@ class Allocations {
         Trace({ clientId, requestedIp, assignedAddress });
 
         if (assignedAddress.clientId == clientId.uniqueId) {
+            if (!assignedAddress.isConfirmed)
+                _saveOnNextWrite = true;
+
             // Confirm the address
             assignedAddress.ConfirmAddress(_configuration.get(this));
             // Add to the known addresses
