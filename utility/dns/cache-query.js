@@ -28,13 +28,16 @@ function queryCache(action, allActions, configuration) {
                     console.log(`\nThe DNS service is not enabled\n`);
                 else {
                     cacheList.forEach(answer => {
-                        let recordType = null;
+                        let recordType = `*${answer.typeId}*`;
                         switch (answer.typeId) {
                             case 1:
                                 recordType = `A`;
                                 break;
                             case 5:
                                 recordType = `CNAME`;
+                                break;
+                            case 28:
+                                recordType = `AAAA`;
                                 break;
                         }
 
