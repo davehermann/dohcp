@@ -112,8 +112,9 @@ function add(dnsResponse) {
     });
 }
 
-function lookup(label) {
-    let cacheHit = _cache[label.toLowerCase()],
+function lookup(cacheId) {
+    let label = cacheId.split(`:`)[0],
+        cacheHit = _cache[cacheId.toLowerCase()],
         cacheReturn = undefined;
 
     if (!!cacheHit) {
@@ -128,25 +129,27 @@ function lookup(label) {
 }
 
 function storeInCache(answer, ttl) {
-    let existing = lookup(answer.label);
+    let cacheId = generateCacheId(answer);
+
+    let existing = lookup(cacheId);
     if (!!existing) {
-        Trace(`${answer.label} found in cache. Cleaning up before re-adding.`);
+        Trace(`${cacheId} found in cache. Cleaning up before re-adding.`);
 
         // Clear the TTL removal
         if (!!existing.cacheRemoval)
             clearTimeout(existing.cacheRemoval);
 
-        remove(answer.label);
+        remove(cacheId);
     }
 
     // Add an expiration for DHCP-configured leases
     if (!!ttl)
-        answer.cacheRemoval = setTimeout(() => { remove(answer.label); }, ttl * 1000);
+        answer.cacheRemoval = setTimeout(() => { remove(cacheId); }, ttl * 1000);
     else
         answer.noExpiration = true;
 
-    Trace({ [`New cache entry`]: answer });
-    _cache[answer.label.toLowerCase()] = answer;
+    Trace({ [`New cache entry - ${cacheId.toLowerCase()}`]: answer }, `dns`);
+    _cache[cacheId.toLowerCase()] = answer;
 }
 
 function remove(labelToRemove) {
@@ -158,8 +161,13 @@ function listCache() {
     return _cache;
 }
 
+function generateCacheId(answer) {
+    return `${answer.label}:${answer.typeId}:${answer.classId}`;
+}
+
 module.exports.LoadPreconfiguredRecords = addFromConfiguration;
 module.exports.AddToCache = add;
 module.exports.FindInCache = lookup;
 module.exports.AddDHCPToDNS = addFromDHCP;
 module.exports.ListCache = listCache;
+module.exports.GenerateCacheId = generateCacheId;

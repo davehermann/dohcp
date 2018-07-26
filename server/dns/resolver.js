@@ -3,7 +3,7 @@ const https = require(`https`),
     dgram = require(`dgram`);
 
 // Application modules
-const { AddToCache, FindInCache } = require(`./cache`),
+const { AddToCache, FindInCache, GenerateCacheId } = require(`./cache`),
     { DNSMessage } = require(`./rfc1035/dnsMessage`),
     { Dev, Trace, Debug, Warn, Err } = require(`../logging`);
 
@@ -20,7 +20,7 @@ function resolveQuery(dnsQuery, configuration, useDNSoverHTTPS = true) {
     // Check cache first, but only for expected queries
     if (!hasWarning) {
         let label = dnsQuery.questions[0].label,
-            cacheHit = FindInCache(label);
+            cacheHit = FindInCache(GenerateCacheId(dnsQuery.questions[0]));
         Debug({ label, cacheHit }, `dns`);
         if (!!cacheHit)
             pLookup = respondFromCache(dnsQuery, cacheHit);
