@@ -8,17 +8,23 @@ const { AddToCache, FindInCache, GenerateCacheId } = require(`./cache`),
     { Dev, Trace, Debug, Warn, Err } = require(`../logging`);
 
 function resolveQuery(dnsQuery, configuration, useDNSoverHTTPS = true) {
-    let hasWarning = false,
+    let skipAnswerProcessing = false,
         pLookup = Promise.resolve();
 
-    // Log anything unexpected to Warn
-    if (dnsQuery.qdcount !== 1 || (dnsQuery.questions.filter(q => { return q.typeId !== 1; }).length > 0)) {
-        Warn({ [`UNEXPECTED QUERY`]: dnsQuery });
-        hasWarning = true;
+    // Log queries with more than one question to warn, and don't cache or rewrite the answers
+    if (dnsQuery.qdcount !== 1) {
+        Warn({ [`MULTI-QUESTION QUERY (unexpected)`]: dnsQuery });
+        skipAnswerProcessing = true;
     }
 
-    // Check cache first, but only for expected queries
-    if (!hasWarning) {
+    // Log queries for not internet class to warn, and don't rewrite the answers
+    if (dnsQuery.questions.filter(q => { return q.classId !== 1; }).length > 0) {
+        Warn({ [`NOT 'IN' CLASS QUERY (unexpected)`]: dnsQuery });
+        skipAnswerProcessing = true;
+    }
+
+    // Check cache first, but only for single-question queries
+    if (dnsQuery.qdcount === 1) {
         let label = dnsQuery.questions[0].label,
             cacheHit = FindInCache(GenerateCacheId(dnsQuery.questions[0]));
         Debug({ label, cacheHit }, `dns`);
@@ -33,7 +39,7 @@ function resolveQuery(dnsQuery, configuration, useDNSoverHTTPS = true) {
             let pAnswer = Promise.resolve(answer);
 
             // Non-standard queries will return as-resolved
-            if (!hasWarning) {
+            if (!skipAnswerProcessing) {
                 // If the last answer in the answer's list is a CNAME, perform a sub-query
                 let lastAnswer = answer.answers[answer.answers.length - 1];
                 if (!lastAnswer) {

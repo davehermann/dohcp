@@ -91,6 +91,7 @@ class Answer extends ResourceRecord {
                 break;
 
             default:
+                // Use the hexadecimal version of the data
                 this.rdata.push(source.map(element => { return element.hexadecimal; }).join(``));
         }
 
@@ -111,24 +112,6 @@ class Answer extends ResourceRecord {
     _getRdata(messageArray) {
         // Get the resource data
         switch (this.typeId) {
-            // A record
-            case 1: {
-                let rDataBytes = [];
-
-                this.rdata.forEach(ip => {
-                    let ipParts = ip.split(`.`);
-                    ipParts.forEach(element => {
-                        Answer.WriteBytes(rDataBytes, 1, +element);
-                    });
-                });
-
-                Answer.WriteBytes(messageArray, 2, rDataBytes.length);
-                rDataBytes.forEach(rdata => {
-                    messageArray.push(rdata);
-                });
-            }
-                break;
-
             // CNAME record
             case 5: {
                 this.rdata.forEach(label => {
@@ -141,6 +124,31 @@ class Answer extends ResourceRecord {
                 });
             }
                 break;
+
+            // Everything else; A records (typeId == 1) are included here
+            default: {
+                let rDataBytes = [];
+
+                this.rdata.forEach(data => {
+                    // Data will be in hexadecimal format, and needs to split into an array
+                    let dataParts = (this.typeId == 1) ? data.split(`.`) : data.match(/../g);
+
+                    dataParts.forEach(element => {
+                        let elementValue = element,
+                            elementType = `hexadecimal`;
+
+                        if (this.typeId == 1) {
+                            elementValue = +element;
+                            elementType = `decimal`;
+                        }
+
+                        Answer.WriteBytes(rDataBytes, 1, elementValue, elementType);
+                    });
+                });
+
+                Answer.WriteBytes(messageArray, 2, rDataBytes.length);
+                rDataBytes.forEach(rdata => { messageArray.push(rdata); });
+            }
         }
     }
 
