@@ -1,7 +1,7 @@
 // Node/NPM modules
 const dgram = require(`dgram`);
 // Application modules
-const { Allocations } = require(`./allocations`),
+const { AllocateAddressing, ConfirmAddress, GetAllocations, MatchRequest, OfferAddress } = require(`./allocations`),
     { TrackDeregistration } = require(`./clientDeregistration`),
     { DHCPMessage } = require(`./dhcpMessage`),
     { DHCPOptions } = require(`./rfc2132`),
@@ -10,16 +10,15 @@ const { Allocations } = require(`./allocations`),
 const DHCP_SERVER_PORT = 67,
     CLIENT_PORT = 68,
     BROADCAST_IP = `255.255.255.255`;
-let _configuration = null,
-    _allocations = null;
+let _configuration = null;
 
 function startServer(config) {
     Info(`Starting DHCP Server`);
 
     _configuration = config;
-    _allocations = new Allocations(_configuration);
 
-    return ipv4DHCP();
+    return AllocateAddressing(_configuration)
+        .then(() => ipv4DHCP());
 }
 
 // Bind to the UDP port for a DHCP server, and exclusively to the addresses specified
@@ -135,7 +134,7 @@ function newV4DhcpSocket(ipAddress) {
 
 function confirmAddress(dhcpRequestMessage) {
     Trace(`Confirming address request`);
-    return _allocations.ConfirmAddress(dhcpRequestMessage)
+    return ConfirmAddress(dhcpRequestMessage)
         .then(assignment => {
             if (!!assignment) {
                 Trace(`Has assigned address`);
@@ -163,7 +162,7 @@ function confirmAddress(dhcpRequestMessage) {
 }
 
 function offerAddress(dhcpDiscoverMessage) {
-    return _allocations.OfferAddress(dhcpDiscoverMessage)
+    return OfferAddress(dhcpDiscoverMessage)
         .then(assignment => {
             if (!!assignment) {
                 // Send a DHCP Offer back to the client
@@ -190,7 +189,7 @@ function offerAddress(dhcpDiscoverMessage) {
 }
 
 function checkRequest(dhcpRequestMessage) {
-    return _allocations.MatchRequest(dhcpRequestMessage);
+    return MatchRequest(dhcpRequestMessage);
 }
 
 function deregisterClient(dhcpRequestMessage) {
@@ -217,9 +216,5 @@ function deregisterClient(dhcpRequestMessage) {
     return Promise.resolve();
 }
 
-function getAllocations() {
-    return _allocations.allocatedAddresses;
-}
-
 module.exports.DHCPServer = startServer;
-module.exports.ActiveAllocations = getAllocations;
+module.exports.ActiveAllocations = GetAllocations;
