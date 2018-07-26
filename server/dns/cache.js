@@ -66,8 +66,8 @@ function addFromDHCP(assignedAddress, dhcpMessage, configuration) {
         uniqueHostname = dhcpMessage.options.clientIdentifier.uniqueId;
     else {
         // If there is a unique hostname, make sure it doesn't collide with another name, and if it does use the last 6 of the unique ID
-
-        while (!!_cache[uniqueHostname] && (_cache[uniqueHostname].rdata[0] !== assignedAddress.ipAddress))
+        // Assume type and class are both 1
+        while (!!_cache[`${uniqueHostname}:1:1`] && (_cache[`${uniqueHostname}:1:1`].rdata[0] !== assignedAddress.ipAddress))
             uniqueHostname += `-${dhcpMessage.options.clientIdentifier.uniqueId.substr(dhcpMessage.options.clientIdentifier.uniqueId.length - 6)}`;
     }
 
