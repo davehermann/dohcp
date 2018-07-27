@@ -69,7 +69,7 @@ function newDNSSocket(ipAddress) {
             dnsQuery.FromDNS(msg);
             Trace({ dnsQuery });
 
-            ResolveDNSQuery(dnsQuery, _configuration)
+            ResolveDNSQuery(dnsQuery, _configuration, rinfo)
                 .then(dnsAnswer => {
                     Info(`DNS Query (${rinfo.address}) - ${dnsQuery.queryId} - ${(new Date()).getTime() - timestamp.getTime()}ms - ${dnsQuery.questions.map(q => { return q.label; }).join(`, `)}: ${dnsAnswer.answers.map(a => { return a.summary; }).join(`, `)}`, `dns`);
                     // Send response

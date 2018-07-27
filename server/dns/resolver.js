@@ -7,7 +7,7 @@ const { AddToCache, FindInCache, GenerateCacheId } = require(`./cache`),
     { DNSMessage } = require(`./rfc1035/dnsMessage`),
     { Dev, Trace, Debug, Warn, Err } = require(`../logging`);
 
-function resolveQuery(dnsQuery, configuration, useDNSoverHTTPS = true) {
+function resolveQuery(dnsQuery, configuration, requestSource, useDNSoverHTTPS = true) {
     let skipAnswerProcessing = false,
         pLookup = Promise.resolve();
 
@@ -42,15 +42,15 @@ function resolveQuery(dnsQuery, configuration, useDNSoverHTTPS = true) {
             if (!skipAnswerProcessing) {
                 // If the last answer in the answer's list is a CNAME, perform a sub-query
                 let lastAnswer = answer.answers[answer.answers.length - 1];
-                if (!lastAnswer) {
-                    Warn({ [`NO lastAnswer`]: dnsQuery.questions });
-                }
+                if (!lastAnswer)
+                    Warn({ [`NO lastAnswer`]: dnsQuery.questions, requestSource });
+
                 if (!!lastAnswer && (lastAnswer.typeId == 5)) {
                     let subQuery = new DNSMessage();
                     subQuery.AddQuestions([lastAnswer.rdata[0]]);
                     subQuery.Generate();
 
-                    pAnswer = resolveQuery(subQuery, configuration)
+                    pAnswer = resolveQuery(subQuery, configuration, requestSource)
                         .then(subAnswer => {
                             answer.AddAnswers(subAnswer.answers);
 
@@ -222,7 +222,7 @@ function resolveDohHost(configuration) {
     resolverQuery.AddQuestions([resolver.doh.hostname]);
     resolverQuery.Generate();
 
-    return resolveQuery(resolverQuery, configuration, false)
+    return resolveQuery(resolverQuery, configuration, null, false)
         .then(resolverAnswer => {
             Trace({ resolverAnswer });
 
