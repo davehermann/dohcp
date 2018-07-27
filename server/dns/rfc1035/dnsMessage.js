@@ -2,7 +2,7 @@
 const { MessageByte } = require(`./messageByte`),
     { Answer } = require(`./answer`),
     { Question } = require(`./question`),
-    { LogLevels, Dev, Trace, } = require(`../../logging`);
+    { LogLevels, Dev, Trace } = require(`../../logging`);
 
 let _master = new WeakMap(),
     _questions = new WeakMap(),
@@ -80,7 +80,7 @@ class DNSMessage {
 
         // Parse answers
         this.hexadecimal.forEach((element, idx) => {
-            Dev(`${idx.toString().padStart(3, `0`)}: ${element}`);
+            Dev(`${idx.toString().padStart(3, `0`)}: ${element}`, `dns`);
         });
 
         let answers = [];
@@ -88,7 +88,7 @@ class DNSMessage {
             let a = new Answer();
             offset = a.DecodeFromDNS(messageMaster, offset);
 
-            Trace({ a });
+            Trace({ a }, `dns`);
 
             answers.push(a);
         }

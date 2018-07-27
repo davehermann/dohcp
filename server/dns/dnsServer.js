@@ -11,7 +11,7 @@ const DNS_SERVER_PORT = 53;
 let _configuration = null;
 
 function startServer(config) {
-    Info(`Starting DNS Server`);
+    Info(`Starting DNS Server`, `dns`);
 
     _configuration = config;
 
@@ -30,7 +30,7 @@ function dns(remainingAddresses) {
             return (ip == `primaryIP`) ? _configuration.serverIpAddress : ip;
         });
 
-    Dev({ remainingAddresses });
+    Dev({ remainingAddresses }, `dns`);
     if (remainingAddresses.length > 0) {
         return newDNSSocket(remainingAddresses.shift())
             .then(() => dns(remainingAddresses));
@@ -45,7 +45,7 @@ function newDNSSocket(ipAddress) {
 
         server.on(`listening`, () => {
             const address = server.address();
-            Info({ [`Binding address`]: address });
+            Info({ [`Binding address`]: address }, `dns`);
 
             bindingSucceeded = true;
             resolve();
@@ -63,11 +63,11 @@ function newDNSSocket(ipAddress) {
             Trace({
                 [`Remote address information`]: rinfo,
                 [`Hexadecimal query`]: msg.toString(`hex`),
-            });
+            }, `dns`);
 
             let dnsQuery = new DNSMessage();
             dnsQuery.FromDNS(msg);
-            Trace({ dnsQuery });
+            Trace({ dnsQuery }, `dns`);
 
             ResolveDNSQuery(dnsQuery, _configuration, rinfo)
                 .then(dnsAnswer => {
@@ -76,13 +76,13 @@ function newDNSSocket(ipAddress) {
                     server.send(dnsAnswer.dnsMessage, rinfo.port, rinfo.address);
                 })
                 .catch(err => {
-                    Err(err, true);
+                    Err(err, true, `dns`);
                 });
         });
 
         server.on(`error`, (err) => {
-            Err(`An error has occurred`);
-            Err(err, true);
+            Err(`An error has occurred`, `dns`);
+            Err(err, true, `dns`);
 
             // If the error was on binding, reject the Promise
             if (!bindingSucceeded)

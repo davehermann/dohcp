@@ -1,6 +1,6 @@
 // Application modules
 const { ResourceRecord } = require(`./resourceRecord`),
-    { Dev, } = require(`../../logging`);
+    { Dev } = require(`../../logging`);
 
 let _ttlTimestamp = new WeakMap(),
     _startingTTL = new WeakMap(),
@@ -37,18 +37,18 @@ class Answer extends ResourceRecord {
     DecodeFromDNS(messageArray, offset) {
         this.startingOffset = offset;
 
-        Dev({ label: offset });
+        Dev({ label: offset }, `dns`);
         ({ value: this.label, offset } = Answer.DecodeLabel(messageArray, offset));
 
-        Dev({ typeIdOffset: offset });
+        Dev({ typeIdOffset: offset }, `dns`);
         this.typeId = parseInt(messageArray.slice(offset, offset + 2).map(element => { return element.hexadecimal; }).join(``), 16);
         offset += 2;
 
-        Dev({ classIdOffset: offset });
+        Dev({ classIdOffset: offset }, `dns`);
         this.classId = parseInt(messageArray.slice(offset, offset + 2).map(element => { return element.hexadecimal; }).join(``), 16);
         offset += 2;
 
-        Dev({ ttlOffset: offset });
+        Dev({ ttlOffset: offset }, `dns`);
         this.startingTTL = parseInt(messageArray.slice(offset, offset + 4).map(element => { return element.hexadecimal; }).join(``), 16);
         offset += 4;
 
@@ -60,7 +60,7 @@ class Answer extends ResourceRecord {
     _setRdata(messageArray, offset) {
         // Get the resource data length
         let rdLength = parseInt(messageArray.slice(offset, offset + 2).map(element => { return element.hexadecimal; }).join(``), 16);
-        Dev({ rdLengthOffset: offset, rdLength });
+        Dev({ rdLengthOffset: offset, rdLength }, `dns`);
         offset += 2;
 
         // Parse the resource data

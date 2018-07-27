@@ -1,6 +1,6 @@
 // Application modules
 const { MessageByte } = require(`./messageByte`),
-    { Dev, Trace, } = require(`../../logging`);
+    { Dev, Trace } = require(`../../logging`);
 
 let _startingOffset = new WeakMap(),
     _label = new WeakMap(),
@@ -114,14 +114,14 @@ class ResourceRecord {
             encodedParts.push(byteArray);
         });
 
-        Trace({ labelParts, encodedParts });
+        Trace({ labelParts, encodedParts }, `dns`);
 
         // For compression purposes, compare to the existing array
         // Each encoded part will be preceded by a length value of 1 byte
         // Compare the entire label, and then compare each subseqent string dropping the inital part until there is a match
         let hasMatch = false,
             messageHex = messageArray.map(element => { return element.hexadecimal; }).join(``);
-        Dev(`Current message: `, messageHex);
+        Dev(`Current message: `, messageHex, `dns`);
 
         do {
             // Ignore the ending null byte when checking for prior matches
@@ -144,9 +144,9 @@ class ResourceRecord {
                 });
 
                 // Check the message for a match
-                Trace({ [`Checking ${encodedParts.length - 1} parts`]: labelHex });
+                Trace({ [`Checking ${encodedParts.length - 1} parts`]: labelHex }, `dns`);
                 let findMatch = messageHex.search(new RegExp(labelHex));
-                Dev({ findMatch });
+                Dev({ findMatch }, `dns`);
 
                 hasMatch = (findMatch >= 0);
                 // If the section matches, write 16 bits: "11" followed by the location in the string

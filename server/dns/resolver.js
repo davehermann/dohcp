@@ -13,13 +13,13 @@ function resolveQuery(dnsQuery, configuration, requestSource, useDNSoverHTTPS = 
 
     // Log queries with more than one question to warn, and don't cache or rewrite the answers
     if (dnsQuery.qdcount !== 1) {
-        Warn({ [`MULTI-QUESTION QUERY (unexpected)`]: dnsQuery });
+        Warn({ [`MULTI-QUESTION QUERY (unexpected)`]: dnsQuery }, `dns`);
         skipAnswerProcessing = true;
     }
 
     // Log queries for not internet class to warn, and don't rewrite the answers
     if (dnsQuery.questions.filter(q => { return q.classId !== 1; }).length > 0) {
-        Warn({ [`NOT 'IN' CLASS QUERY (unexpected)`]: dnsQuery });
+        Warn({ [`NOT 'IN' CLASS QUERY (unexpected)`]: dnsQuery }, `dns`);
         skipAnswerProcessing = true;
     }
 
@@ -43,7 +43,7 @@ function resolveQuery(dnsQuery, configuration, requestSource, useDNSoverHTTPS = 
                 // If the last answer in the answer's list is a CNAME, perform a sub-query
                 let lastAnswer = answer.answers[answer.answers.length - 1];
                 if (!lastAnswer)
-                    Warn({ [`NO lastAnswer`]: dnsQuery.questions, requestSource });
+                    Warn({ [`NO lastAnswer`]: dnsQuery.questions, requestSource }, `dns`);
 
                 if (!!lastAnswer && (lastAnswer.typeId == 5)) {
                     let subQuery = new DNSMessage();
@@ -70,8 +70,8 @@ function resolveQuery(dnsQuery, configuration, requestSource, useDNSoverHTTPS = 
                             dnsAnswer.AddAnswers(answer.answers);
 
                             dnsAnswer.Generate(dnsQuery.queryId, true, dnsQuery.rd);
-                            Trace({ dnsAnswer });
-                            Trace({ asHex: dnsAnswer.dnsMessage.toString(`hex`) });
+                            Trace({ dnsAnswer }, `dns`);
+                            Trace({ asHex: dnsAnswer.dnsMessage.toString(`hex`) }, `dns`);
 
                             return dnsAnswer;
                         }
@@ -83,8 +83,8 @@ function resolveQuery(dnsQuery, configuration, requestSource, useDNSoverHTTPS = 
 }
 
 function respondFromCache(dnsQuery, cachedAnswer) {
-    Trace(`Responding from cache`);
-    Dev({ dnsQuery, cachedAnswer });
+    Trace(`Responding from cache`, `dns`);
+    Dev({ dnsQuery, cachedAnswer }, `dns`);
 
     // Create a new message
     let dnsAnswer = new DNSMessage();
@@ -95,7 +95,7 @@ function respondFromCache(dnsQuery, cachedAnswer) {
 }
 
 function lookupInDns(dnsQuery, configuration, useDNSoverHTTPS) {
-    Trace(`Forwarding to public resolver`);
+    Trace(`Forwarding to public resolver`, `dns`);
 
     let pResolve;
     if (useDNSoverHTTPS)
@@ -105,7 +105,7 @@ function lookupInDns(dnsQuery, configuration, useDNSoverHTTPS) {
 
     return pResolve
         .then(response => {
-            Trace({ [`Complete Response`]: response.toString(`hex`) });
+            Trace({ [`Complete Response`]: response.toString(`hex`) }, `dns`);
 
             let dnsAnswer = new DNSMessage();
             dnsAnswer.FromDNS(response);
@@ -122,7 +122,7 @@ function lookupInDns(dnsQuery, configuration, useDNSoverHTTPS) {
 function lookupViaDNSoverHTTPS(dnsQuery, configuration) {
     return resolveDohHost(configuration)
         .then(dohResolver => {
-            Trace(`Resolving query in forward DNS`);
+            Trace(`Resolving query in forward DNS`, `dns`);
 
             return new Promise((resolve, reject) => {
                 let request = {
@@ -142,27 +142,27 @@ function lookupViaDNSoverHTTPS(dnsQuery, configuration) {
                         request.headers[name] = header[name];
                 });
 
-                Dev({ [`DoH request`]: request });
+                Dev({ [`DoH request`]: request }, `dns`);
 
                 let req = https.request(request, (res) => {
-                    Trace({[`DoH response`]: { status: res.statusCode, headers: res.headers }});
+                    Trace({ [`DoH response`]: { status: res.statusCode, headers: res.headers } }, `dns`);
 
                     let data = [];
 
                     res.on(`data`, chunk => {
                         // chunk is a buffer
-                        Dev({ [`Data chunk`]: chunk.toString(`hex`) });
+                        Dev({ [`Data chunk`]: chunk.toString(`hex`) }, `dns`);
                         data.push(chunk.toString(`hex`));
                     });
 
                     res.on(`end`, () => {
-                        Dev({ data });
+                        Dev({ data }, `dns`);
                         resolve(Buffer.from(data.join(``), `hex`));
                     });
                 });
 
                 req.on(`error`, (err) => {
-                    Err(err);
+                    Err(err, `dns`);
                     reject(err);
                 });
 
@@ -181,21 +181,21 @@ function lookupViaDNS(dnsQuery, configuration) {
         let client = dgram.createSocket({ type: `udp4` });
 
         client.on(`listening`, () => {
-            Trace(`DNS query via UDP listening on ${JSON.stringify(client.address())}`);
-            Dev({ dnsQuery });
+            Trace(`DNS query via UDP listening on ${JSON.stringify(client.address())}`, `dns`);
+            Dev({ dnsQuery }, `dns`);
 
             client.send(dnsQuery.dnsMessage, 53, resolver.servers[0]);
         });
 
         client.on(`message`, (msg, rinfo) => {
-            Dev({ [`DNS response`]: { rinfo, msg } });
+            Dev({ [`DNS response`]: { rinfo, msg } }, `dns`);
 
             client.close();
             resolve(msg);
         });
 
         client.on(`error`, (err) => {
-            Warn({ [`DNS query via UDP error`]: err });
+            Warn({ [`DNS query via UDP error`]: err }, `dns`);
 
             client.close();
             reject(err);
@@ -215,7 +215,7 @@ function resolveDohHost(configuration) {
     // Check configuration for the resolver to use
     let resolver = configuration.dns.upstream.resolvers.filter(resolver => { return resolver.name == configuration.dns.upstream.primary; })[0];
 
-    Trace({ [`Loading resolver`]: resolver });
+    Trace({ [`Loading resolver`]: resolver }, `dns`);
 
     // Create a DNS Query
     let resolverQuery = new DNSMessage();
@@ -224,7 +224,7 @@ function resolveDohHost(configuration) {
 
     return resolveQuery(resolverQuery, configuration, null, false)
         .then(resolverAnswer => {
-            Trace({ resolverAnswer });
+            Trace({ resolverAnswer }, `dns`);
 
             // Return the resolver object, plus the IP(s)
             let resolverIPs = [];

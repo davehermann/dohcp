@@ -133,7 +133,7 @@ function storeInCache(answer, ttl) {
 
     let existing = lookup(cacheId);
     if (!!existing) {
-        Trace(`${cacheId} found in cache. Cleaning up before re-adding.`);
+        Trace(`${cacheId} found in cache. Cleaning up before re-adding.`, `dns`);
 
         // Clear the TTL removal
         if (!!existing.cacheRemoval)
