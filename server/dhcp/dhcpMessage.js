@@ -3,7 +3,7 @@ const { DHCPOptions, ParseOptions, EncodeOptions, EnsureClientIdentifier } = req
     { MACAddressFromHex, HexFromMACAddress,
         ReadIpAddress, ReadString, ReadUInt8, ReadUInt16, ReadUInt32,
         WriteIpAddress, WriteString, WriteUInt8, WriteUInt16, WriteUInt32 } = require(`../utilities`),
-    { Trace, Err } = require(`../logging`);
+    { Trace } = require(`../logging`);
 
 let _bufferMessage = new WeakMap();
 
@@ -244,7 +244,7 @@ class Message {
         ];
 
         // Convert to a list of codes
-        let parameters = serverDefinedParameters.map(propertyName => { Trace(propertyName); return DHCPOptions.byProperty[propertyName].code; });
+        let parameters = serverDefinedParameters.map(propertyName => { Trace(propertyName, `dhcp`); return DHCPOptions.byProperty[propertyName].code; });
 
         // Supply the requested parameters
         requestMessage.options.parameterRequestList.forEach(param => {

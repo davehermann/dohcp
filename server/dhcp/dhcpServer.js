@@ -13,7 +13,7 @@ const DHCP_SERVER_PORT = 67,
 let _configuration = null;
 
 function startServer(config) {
-    Info(`Starting DHCP Server`);
+    Info(`Starting DHCP Server`, `dhcp`);
 
     _configuration = config;
 
@@ -45,7 +45,7 @@ function newV4DhcpSocket(ipAddress) {
         // When the server starts listening
         server.on(`listening`, () => {
             const address = server.address();
-            Info({ address });
+            Info({ address }, `dhcp`);
 
             server.setBroadcast(true);
 
@@ -66,10 +66,10 @@ function newV4DhcpSocket(ipAddress) {
             // Encode the message, and compare, for testing
             if (global.logLevel.dhcp <= LogLevels[`trace`]) {
                 message.Encode();
-                Trace({ [`Encoded hex message`]: message.toString() });
+                Trace({ [`Encoded hex message`]: message.toString() }, `dhcp`);
             }
 
-            Debug({ [`Decoded message`]: message });
+            Debug({ [`Decoded message`]: message }, `dhcp`);
 
             let pResponse = Promise.resolve();
 
@@ -90,7 +90,7 @@ function newV4DhcpSocket(ipAddress) {
                     else if (message.options.serverIdentifier == _configuration.serverIpAddress)
                         pResponse = confirmAddress(message);
                     else
-                        Debug(`Not targeted at ${_configuration.serverIpAddress}`);
+                        Debug(`Not targeted at ${_configuration.serverIpAddress}`, `dhcp`);
                     break;
             }
 
@@ -99,7 +99,7 @@ function newV4DhcpSocket(ipAddress) {
                     if (!!sendMessage)
                         // Send the message
                         return new Promise((resolve, reject) => {
-                            Debug(`Sending message: ${sendMessage.dhcpMessage.options.dhcpMessageType}`);
+                            Debug(`Sending message: ${sendMessage.dhcpMessage.options.dhcpMessageType}`, `dhcp`);
                             server.send(sendMessage.dhcpMessage.binaryMessage, CLIENT_PORT, sendMessage.toBroadcast ? BROADCAST_IP : sendMessage.toIP, (err) => {
                                 if (!!err)
                                     reject(err);
@@ -109,15 +109,15 @@ function newV4DhcpSocket(ipAddress) {
                         });
                 })
                 .catch(err => {
-                    Err(`Error in DHCP response processing`);
-                    Err(err, true);
+                    Err(`Error in DHCP response processing`, `dhcp`);
+                    Err(err, true, `dhcp`);
                 });
         });
 
         // On any error, log the error, but do not close the socket
         server.on(`error`, (err) => {
-            Err(`An error has occurred`);
-            Err(err, true);
+            Err(`An error has occurred`, `dhcp`);
+            Err(err, true, `dhcp`);
 
             // If the error was on binding, reject the Promise
             if (!bindingSucceeded)
@@ -133,11 +133,11 @@ function newV4DhcpSocket(ipAddress) {
 }
 
 function confirmAddress(dhcpRequestMessage) {
-    Trace(`Confirming address request`);
+    Trace(`Confirming address request`, `dhcp`);
     return ConfirmAddress(dhcpRequestMessage)
         .then(assignment => {
             if (!!assignment) {
-                Trace(`Has assigned address`);
+                Trace(`Has assigned address`, `dhcp`);
 
                 // Send an ACK message
                 let dhcpAcknowledge = new DHCPMessage();
@@ -150,11 +150,11 @@ function confirmAddress(dhcpRequestMessage) {
                 Trace({
                     hex: dhcpAcknowledge.toString(),
                     data: dhcpAcknowledge
-                });
+                }, `dhcp`);
 
                 return Promise.resolve({ dhcpMessage: dhcpAcknowledge, toBroadcast: true });
             } else {
-                Trace(`No assigned address`);
+                Trace(`No assigned address`, `dhcp`);
                 // Deregister address
                 return deregisterClient(dhcpRequestMessage);
             }
@@ -176,7 +176,7 @@ function offerAddress(dhcpDiscoverMessage) {
                 Trace({
                     hex: dhcpOfferMessage.toString(),
                     data: dhcpOfferMessage
-                });
+                }, `dhcp`);
 
                 // Send back to the client
                 return Promise.resolve({ dhcpMessage: dhcpOfferMessage, toBroadcast: true });

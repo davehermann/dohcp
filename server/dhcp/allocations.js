@@ -35,7 +35,7 @@ function allocateAddressing(configuration) {
                 let startAddress = getIpOctets(range.start),
                     endAddress = getIpOctets(range.end);
 
-                Debug({ startAddress, endAddress });
+                Debug({ startAddress, endAddress }, `dhcp`);
 
                 for (let idx = 0, ipLength = startAddress.length; idx < ipLength; idx++) {
                     // Add each IP in the range to the list
@@ -54,7 +54,7 @@ function allocateAddressing(configuration) {
                 }
             });
 
-            Dev({ poolIps, staticIps });
+            Dev({ poolIps, staticIps }, `dhcp`);
 
             // Clean up prior allocations by stepping through existing IPs, and remove any that are not in the pool
             for (let ip in allocations.byIp)
@@ -68,7 +68,7 @@ function allocateAddressing(configuration) {
                     allocations.byIp[ip] = null;
             });
 
-            Dev({ allocations });
+            Dev({ allocations }, `dhcp`);
             _addressAllocations = allocations;
 
             return Promise.resolve();
@@ -103,7 +103,7 @@ function confirmAddress (dhcpMessage) {
     let assignedAddress = _addressAllocations.byIp[requestedIp];
 
     // If the client identifier matches for the assigned IP
-    Trace({ clientId, requestedIp, assignedAddress });
+    Trace({ clientId, requestedIp, assignedAddress }, `dhcp`);
 
     if (assignedAddress.clientId == clientId.uniqueId) {
         if (!assignedAddress.isConfirmed)
@@ -118,7 +118,7 @@ function confirmAddress (dhcpMessage) {
         pConfirm = writeToDisk()
             // Add to DNS Cache
             .then(() => AddDHCPToDNS(assignedAddress, dhcpMessage, _configuration))
-            .then(hostname => { Info(`DHCP: Assigning ${assignedAddress.ipAddress} to ${dhcpMessage.chaddr}, and in DNS as ${hostname}`); })
+            .then(hostname => { Info(`DHCP: Assigning ${assignedAddress.ipAddress} to ${dhcpMessage.chaddr}, and in DNS as ${hostname}`, `dhcp`); })
             // Return the address
             .then(() => Promise.resolve(assignedAddress));
     }
@@ -131,11 +131,11 @@ function writeToDisk() {
 
     // Write the allocations to disk
     if (_saveOnNextWrite) {
-        Debug(`Writing DHCP data`);
+        Debug(`Writing DHCP data`, `dhcp`);
 
         pWrite = new Promise((resolve, reject) => {
             let dataFile = path.join(process.cwd(), `status`, `dhcp.json`);
-            Trace({ dataFile });
+            Trace({ dataFile }, `dhcp`);
 
             // Sort the allocations keys to make debugging easier
             // Since we're writing JSON, use a JSON copy
@@ -156,7 +156,7 @@ function writeToDisk() {
             });
         });
     } else
-        Debug(`Not writing DHCP update`);
+        Debug(`Not writing DHCP update`, `dhcp`);
 
     return pWrite
         .then(() => {

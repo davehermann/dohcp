@@ -21,7 +21,7 @@ rawOptionDefinition.forEach(opt => {
 });
 
 function parseOptions(buf, offset) {
-    Dev({ [`Options Hexadecimal`]: buf.toString(`hex`, offset) });
+    Dev({ [`Options Hexadecimal`]: buf.toString(`hex`, offset) }, `dhcp`);
 
     let options = {},
         // For debugging
@@ -60,7 +60,7 @@ function parseOptions(buf, offset) {
                     method = encodingParser(option, args, optionLength);
 
                 // Any arguments that need to be sent to the decode method must be explicitly passed
-                Dev({ name: option.name, method, args: args.slice(1) });
+                Dev({ name: option.name, method, args: args.slice(1) }, `dhcp`);
                 let rawValue, action;
                 switch (method) {
                     case `UInt8`:
@@ -80,7 +80,7 @@ function parseOptions(buf, offset) {
                         break;
                 }
                 ({ value: rawValue, offset} = action.apply(action, args));
-                Dev({ rawValue });
+                Dev({ rawValue }, `dhcp`);
 
                 // As a number of options require additional parsing, the value goes through the extra parser
                 value = optionDecoder(option, rawValue);
@@ -97,14 +97,14 @@ function parseOptions(buf, offset) {
         else {
             // Report the code if no option is found
             if (!option)
-                Warn(`DHCP option not found: ${optionCode}`);
+                Warn(`DHCP option not found: ${optionCode}`, `dhcp`);
 
             // Skip the length
             offset += optionLength;
         }
     }
 
-    Dev({ optionLengths });
+    Dev({ optionLengths }, `dhcp`);
 
     return options;
 }
@@ -145,16 +145,16 @@ function encodeOptions(buf, options, offset) {
             args = args.map(arg => { return (arg == `optionLength`) ? optionLength : arg; });
         }
 
-        Dev({ propertyName, optionDef, method, optionLength, offset, args: args.slice(1) });
+        Dev({ propertyName, optionDef, method, optionLength, offset, args: args.slice(1) }, `dhcp`);
 
         // Add the code
         offset = WriteUInt8(buf, optionDef.code, offset);
-        Dev({ offset });
+        Dev({ offset }, `dhcp`);
 
         // Add the length, if one is required
         if (optionLength !== undefined)
             offset = WriteUInt8(buf, optionLength, offset);
-        Dev({ offset });
+        Dev({ offset }, `dhcp`);
 
         // Add a decoded value
         let action;
@@ -191,7 +191,7 @@ function encodeOptions(buf, options, offset) {
             });
             offset = action.apply(action, argList);
         });
-        Dev({ offset });
+        Dev({ offset }, `dhcp`);
     }
 
     // Write an end option
@@ -221,7 +221,7 @@ function optionDecoder(option, rawValue) {
                 if (!!matchingOption)
                     requestedParameters.push({ code, name: matchingOption.name });
                 else
-                    Warn(`Parameter request list option not found: ${code}`);
+                    Warn(`Parameter request list option not found: ${code}`, `dhcp`);
 
                 rawValue = rawValue.substr(2);
             }
