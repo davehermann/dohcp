@@ -46,6 +46,9 @@ function logLevelsFromConfiguration(configuration) {
     logLevel.dhcp = !!configuration && !!configuration.dhcp && !!configuration.dhcp.logLevel ? LogLevels[configuration.dhcp.logLevel] : logLevel.default;
     logLevel.dns = !!configuration && !!configuration.dns && !!configuration.dns.logLevel ? LogLevels[configuration.dns.logLevel] : logLevel.default;
 
+    // When running as a service, assume the service logger will supply a timestamp
+    logLevel.includeTimestamp = (!process.env.IS_SERVICE || (process.env.IS_SERVICE.toLowerCase() !== `true`));
+
     return logLevel;
 }
 

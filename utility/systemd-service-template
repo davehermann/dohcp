@@ -7,6 +7,7 @@ User={username}
 WorkingDirectory={workingDirectory}
 ExecStart=/usr/bin/node ./server/server.js
 SyslogIdentifier=dohcp
+Environment="IS_SERVICE=true"
 
 [Install]
 WantedBy=multi-user.target

@@ -27,8 +27,7 @@ function writeLog(logLevelId, data, asIs, logName) {
         let useRawData = asIs || (typeof data !== `object`),
             logData = (useRawData ? data : JSON.stringify(data, null, 4));
 
-        // When running as a service, assume the service logger will supply a timestamp
-        if (!process.env.service) {
+        if (global.logLevel.includeTimestamp) {
             let timestamp = new Date(),
                 dateDisplay = `${timestamp.toLocaleString()}`;
 
