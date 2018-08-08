@@ -282,7 +282,7 @@ class Message {
                     value = Math.round(configuration.dhcp.leases.pool.leaseSeconds * 0.875);
                     break;
                 case `renewalTimeValue`:
-                    value = Math.round(configuration.dhcp.leases.pool.leaseSeconds * 0.5);
+                    value = Math.round(configuration.dhcp.leases.pool.leaseSeconds * 0.75);
                     break;
                 case `routerOption`:
                     value = configuration.dhcp.routers;

@@ -9,7 +9,7 @@ const { SelectInterface } = require(`./shared`);
 const CONFIGURATION_FILE = path.join(process.cwd(), `configuration.json`);
 
 let config = {
-    logLevel: `info`,
+    logLevel: `warn`,
     interface: null,
     dhcp: {
         disabled: true,
