@@ -1,12 +1,11 @@
 {
   "name": "d-o-hcp",
-  "version": "0.1.0",
+  "version": "0.9.0",
   "description": "DHCP and DNS-over-HTTPS server",
   "private": true,
   "main": "server/server.js",
   "author": "Dave Hermann <6787333+davehermann@users.noreply.github.com>",
   "license": "(MIT or GPL-3)",
-  "os": ["linux"],
   "engine": { "node": ">=8.10" },
   "scripts": {
     "server": "node ./server/server.js"
