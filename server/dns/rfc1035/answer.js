@@ -5,6 +5,7 @@ const { ResourceRecord } = require(`./resourceRecord`),
 let _ttlTimestamp = new WeakMap(),
     _startingTTL = new WeakMap(),
     _noExpiration = new WeakMap(),
+    _cacheRemoval = new WeakMap(),
     _rdata = new WeakMap();
 
 class Answer extends ResourceRecord {
@@ -19,6 +20,9 @@ class Answer extends ResourceRecord {
     set startingTTL(val) { _startingTTL.set(this, val); }
     // noExpiration is used by records defined in configuration
     set noExpiration(val) { _noExpiration.set(this, val); }
+    // cacheRemoval tracks the removal timeout
+    get cacheRemoval() { return _cacheRemoval.get(this); }
+    set cacheRemoval(val) { _cacheRemoval.set(this, val); }
     // Used ONLY for cloning answer
     set _ttlTimestamp(val) { _ttlTimestamp.set(this, val); }
     get ttlExpiration() {
@@ -161,6 +165,7 @@ class Answer extends ResourceRecord {
         newAnswer.startingTTL = this.startingTTL;
         newAnswer._ttlTimestamp = _ttlTimestamp.get(this);
         newAnswer.noExpiration = _noExpiration.get(this);
+        newAnswer.cacheRemoval = this.cacheRemoval;
 
         this.rdata.forEach(data => {
             newAnswer.rdata.push(data);
@@ -177,6 +182,7 @@ class Answer extends ResourceRecord {
             classId: this.classId,
             startingTTL: this.startingTTL,
             ttlExpiration: this.ttlExpiration,
+            hasCacheRemoval: !!this.cacheRemoval,
             rdata: this.rdata,
         };
     }

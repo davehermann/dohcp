@@ -133,7 +133,7 @@ function storeInCache(answer, ttl) {
 
     let existing = lookup(cacheId);
     if (!!existing) {
-        Trace(`${cacheId} found in cache. Cleaning up before re-adding.`, `dns`);
+        Trace(`${cacheId} found in cache. Cleaning up before re-adding${!!existing.cacheRemoval ? `, including resetting cache timeout` : ` - no cache timeout found`}.`, `dns`);
 
         // Clear the TTL removal
         if (!!existing.cacheRemoval)
@@ -148,12 +148,13 @@ function storeInCache(answer, ttl) {
     else
         answer.noExpiration = true;
 
-    Trace({ [`New cache entry - ${cacheId.toLowerCase()}`]: answer }, `dns`);
+    Trace({ [`New cache entry - ${cacheId.toLowerCase()}`]: answer, ttl }, `dns`);
     _cache[cacheId.toLowerCase()] = answer;
 }
 
 function remove(labelToRemove) {
     // Remove the entry
+    Trace(`${labelToRemove.toLowerCase()} removed from cache`, `dns`);
     delete _cache[labelToRemove.toLowerCase()];
 }
 
