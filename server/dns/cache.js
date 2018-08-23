@@ -113,9 +113,15 @@ function add(dnsResponse) {
 }
 
 function lookup(cacheId) {
-    let label = cacheId.split(`:`)[0],
+    let idParts = cacheId.split(`:`),
+        label = idParts[0],
+        typeId = +idParts[1],
         cacheHit = _cache[cacheId.toLowerCase()],
         cacheReturn = undefined;
+
+    // Also check CNAME for type A or AAAA
+    if (!cacheHit && ((typeId == 1) || (typeId == 28)))
+        cacheHit = _cache[[idParts[0], 5, idParts[2]].join(`:`).toLowerCase()];
 
     if (!!cacheHit) {
         // Use a copy of the cached object
@@ -148,7 +154,7 @@ function storeInCache(answer, ttl) {
     else
         answer.noExpiration = true;
 
-    Trace({ [`New cache entry - ${cacheId.toLowerCase()}`]: answer, ttl }, `dns`);
+    Debug({ [`New cache entry - ${cacheId.toLowerCase()}`]: answer, ttl }, `dns`);
     _cache[cacheId.toLowerCase()] = answer;
 }
 

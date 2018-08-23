@@ -26,8 +26,9 @@ function resolveQuery(dnsQuery, configuration, requestSource, useDNSoverHTTPS = 
     // Check cache first, but only for single-question queries
     if (dnsQuery.qdcount === 1) {
         let label = dnsQuery.questions[0].label,
-            cacheHit = FindInCache(GenerateCacheId(dnsQuery.questions[0]));
-        Debug({ label, cacheHit }, `dns`);
+            cacheId = GenerateCacheId(dnsQuery.questions[0]),
+            cacheHit = FindInCache(cacheId);
+        Debug({ label, cacheId, cacheHit }, `dns`);
         if (!!cacheHit)
             pLookup = respondFromCache(dnsQuery, cacheHit);
     }
