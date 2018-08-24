@@ -5,18 +5,19 @@ DHCP-assigned hosts are automatically added to the internal DNS resolution.
 All DNS queries that are forwarded out for resolution go via HTTPS.
 At present, DoHCP only supports Cloudflare's public HTTPS resolution via POST (more below).
 
-**Major features**
+##### Major Features
 + 100% pure Javascript
 + Does not use <u>any</u> dependencies
 + Command line utility for configuration, launch (Linux-only at present), and service queries
 
-**Caveats**
+##### Caveats
 + IPv4-only at the current time
-    + Yes, IPv6 will be critical eventually, but we all still live in an IPv4-driven world. Even in 2H 2018, many ISPs only support IPv4.
+    + Yes, IPv6 is slowly becoming more critical, but we, unfortunately, all still live in an IPv4-driven world.
+    Even in 2H 2018, many ISPs - including mine - only support IPv4.
     + DHCPv6 work has been started, but it's not included in the repository at this time
         + *No DHCPv6 patches will be accepted until that work is released*
 
-**Significant Issue - NodeJS <u>does *NOT*</u> support the ability to localize DHCP traffic to a single interface**  
+##### Significant Issue - NodeJS <u>does *NOT*</u> support the ability to localize DHCP traffic to a single interface
 *DoHCP <u>**cannot** be used on a device with a public interface</u>*
 
 + The NodeJS dgram `.addMembership()` method is blocked for the DHCP broadcast address (255.255.255.255) on many (maybe all?) OSes as it's outside of the [multicast address space](https://www.iana.org/assignments/multicast-addresses/multicast-addresses.xhtml)
@@ -24,7 +25,7 @@ At present, DoHCP only supports Cloudflare's public HTTPS resolution via POST (m
     + [This exact DHCP scenario](https://github.com/nodejs/node-v0.x-archive/issues/8788#issuecomment-74446986) has been discussed for years in prior iterations of NodeJS development, and [discussion continues](https://github.com/nodejs/node/issues/1649) as part of active NodeJS development.
     + Until NodeJS begins supporting interface source, this cannot be resolved
 
-**Isn't this basically [Dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html)?**
+##### Isn't this basically [Dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html)?
 
 In terms of serving both DNS and DHCP internally, yes; however:
 + As of this writing, Dnsmasq does not support DNS-over-HTTPS
@@ -48,8 +49,12 @@ Your firewall will need to forward DNS packets as a result.
 
 ### Additional Linux Requirement
 By default, Linux kernels don't allow non-root users to bind to ports below 1024.
-This can be easily overcome by allowing Node to bind to lower ports.
+You will receive an EACCES error for the IP:PORT at service startup.
+
++ This can be easily overcome by allowing Node to bind to lower ports.  
 `setcap cap_net_bind_service=+ep /usr/bin/node` will allow Node access to port binding.
+    + After NodeJS upgrades, this may need to be re-run
++ *NOT RECOMMENDED:* You can run the service as the root user or via sudo
 
 ## Launch
 
@@ -90,10 +95,10 @@ As of initial release, DHCP and DNS have been dogfooded for weeks within a compl
 
 ## Future Plans
 + DoHCP-to-DoHCP communication
-    + Geared toward multiple DNS providers with shared internal DNS data
+    + Geared toward multiple DNS servers on the network with shared internal DNS data
     + Failover DHCP
 + More extensive, and detailed, information available via the utility querying
-    + Going beyond simple logging by looking at device data - both DHCP and DNS - over time
+    + Going beyond simple logging by looking at local device data - both DHCP and DNS - over time
 + DHCPv6 support has been started
     + This code may not be released for quite some time.
     + IPv6-related patches won't be accepted in the interim.
