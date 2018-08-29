@@ -2,8 +2,10 @@
 const http = require(`http`);
 
 // Application modules
-const { Info } = require(`../logging`),
+const { MatchPath } = require(`./pathMatch`),
+    { Info } = require(`../logging`),
     { ActiveAllocations } = require(`../dhcp/dhcpServer`),
+    { DhcpClientHistory } = require(`../dhcp/history`),
     { ListCache } = require(`../dns/cache`);
 
 function dataServer(configuration) {
@@ -11,26 +13,13 @@ function dataServer(configuration) {
         let requestAction = `${req.method}:${req.url}`,
             pResponse = Promise.resolve();
 
-        switch (requestAction) {
-            case `GET:/dhcp/leases`:
-                pResponse = dhcpListLeases(configuration);
-                break;
-            case `GET:/dhcp/leases/active`:
-                pResponse = dhcpListLeases(configuration, true);
-                break;
-            case `GET:/dhcp/leases/previous`:
-                pResponse = dhcpListLeases(configuration, false, true);
-                break;
-            case `GET:/dhcp/leases/all`:
-                pResponse = dhcpListLeases(configuration, false, false, true);
-                break;
-            case `GET:/dns/cache-list`:
-                pResponse = dnsListCache(configuration);
-                break;
-            case `GET:/dns/cache-list/all`:
-                pResponse = dnsListCache(configuration, true);
-                break;
-        }
+        MatchPath(req, `GET:/dhcp/leases`, () => { pResponse = dhcpListLeases(configuration); });
+        MatchPath(req, `GET:/dhcp/leases/active`, () => { pResponse = dhcpListLeases(configuration, true); });
+        MatchPath(req, `GET:/dhcp/leases/previous`, () => { pResponse = dhcpListLeases(configuration, false, true); });
+        MatchPath(req, `GET:/dhcp/leases/all`, () => { pResponse = dhcpListLeases(configuration, false, false, true); });
+        MatchPath(req, `GET:/dns/cache-list`, () => { pResponse = dnsListCache(configuration); });
+        MatchPath(req, `GET:/dns/cache-list/all`, () => { pResponse = dnsListCache(configuration, true); });
+        MatchPath(req, `GET:/dhcp/history/:clientId`, (params) => { pResponse = dhcpHistory(configuration, params); });
 
         pResponse
             .then(data => {
@@ -105,6 +94,14 @@ function dhcpListLeases(configuration, allActive, allPrevious, allData) {
     }
 
     return Promise.resolve(JSON.stringify({ configuration, leaseData, otherData }));
+}
+
+function dhcpHistory(configuration, params) {
+    if (configuration.dhcp.disabled)
+        return Promise.resolve(JSON.stringify({ disabled: true }));
+
+    let history = DhcpClientHistory(params.clientId);
+    return Promise.resolve(JSON.stringify({ history }));
 }
 
 module.exports.DataServer = dataServer;

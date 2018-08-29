@@ -4,6 +4,7 @@ const dgram = require(`dgram`);
 const { AllocateAddressing, ConfirmAddress, GetAllocations, MatchRequest, OfferAddress } = require(`./allocations`),
     { TrackDeregistration } = require(`./clientDeregistration`),
     { DHCPMessage } = require(`./dhcpMessage`),
+    { HistoryMessage } = require(`./history`),
     { DHCPOptions } = require(`./rfc2132`),
     { LogLevels, Trace, Debug, Info, Err } = require(`../logging`);
 
@@ -72,6 +73,8 @@ function newV4DhcpSocket(ipAddress) {
             Debug({ [`Decoded message`]: message }, `dhcp`);
 
             let pResponse = Promise.resolve();
+
+            HistoryMessage(message);
 
             switch (message.options.dhcpMessageType) {
                 case `DHCPDISCOVER`:

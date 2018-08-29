@@ -3,6 +3,7 @@ const fs = require(`fs`),
     path = require(`path`);
 // Application modules
 const { AllocatedAddress } = require(`./allocatedAddress`),
+    { HistoryAssignment } = require(`./history`),
     { Dev, Trace, Debug, Info } = require(`../logging`),
     { AddDHCPToDNS } = require(`../dns/cache`);
 
@@ -118,6 +119,10 @@ function confirmAddress (dhcpMessage) {
         pConfirm = writeToDisk()
             // Add to DNS Cache
             .then(() => AddDHCPToDNS(assignedAddress, dhcpMessage, _configuration))
+            .then(hostname => {
+                HistoryAssignment(dhcpMessage, assignedAddress, hostname);
+                return hostname;
+            })
             .then(hostname => { Info(`DHCP: Assigning ${assignedAddress.ipAddress} to ${dhcpMessage.chaddr}, and in DNS as ${hostname}`, `dhcp`); })
             // Return the address
             .then(() => Promise.resolve(assignedAddress));

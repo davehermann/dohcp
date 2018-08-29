@@ -7,6 +7,7 @@ const { ParseArguments } = require(`./arguments`),
     { PrintHelp } = require(`./help`),
     { InstallService, RemoveService } = require(`./service`),
     { LoadFile } = require(`./utilities`),
+    { DHCPHistory } = require(`./dhcp/history`),
     { DHCPLeases } = require(`./dhcp/lease-query`),
     { DHCPDecode } = require(`./dhcp/message-decode`),
     { DNSCache } = require(`./dns/cache-query`),
@@ -75,6 +76,16 @@ const definedActions = {
             { arg: `--any`, detail: `Tests for binding to all interfaces and all IPs instead of just one.`}
         ],
         method: TestDHCP,
+    },
+    [`dhcp-history`]: {
+        description: `Get history of DHCP actions for a client ID`,
+        additionalArguments: 3,
+        argumentsDescription: [
+            { arg: `--id`, detail: `Followed by the client ID (e.g. MAC Address). Gets the DHCP history for the client.` },
+            { arg: `--all`, detail: `Use this to show all data.  By default, only 100 maximum entries are displayed.`}
+        ],
+        method: DHCPHistory,
+        usesConfiguration: true,
     },
 };
 
