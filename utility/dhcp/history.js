@@ -51,10 +51,15 @@ function queryHistory(action, allActions, configuration) {
                         history.reverse();
                     }
 
+                    let lastTimestamp = null;
                     history.forEach(entry => {
                         let display = ``;
                         // Display the timestamp
-                        display += `${(new Date(entry.ts)).toLocaleString()} - `;
+                        let ts = (new Date(entry.ts)).toLocaleString();
+                        if (ts == lastTimestamp)
+                            ts = `-------`.padStart(ts.length, ` `);
+                        lastTimestamp = ts;
+                        display += `${ts} - `;
 
                         if (!!entry.dhcpMessage)
                             display += entry.dhcpMessage.type;
