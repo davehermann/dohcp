@@ -5,7 +5,7 @@ const { Answer } = require(`./rfc1035/answer`),
 // The cache is simply an object with properties that self-delete
 let _cache = {};
 
-function addFromConfiguration(configuration, fromDHCP) {
+function addFromConfiguration(configuration) {
     // Add A and CNAME cache records from configuration
 
     if (!!configuration.dns.records) {
@@ -31,10 +31,6 @@ function addFromConfiguration(configuration, fromDHCP) {
             answer.typeId = (!!record.alias ? 5 : 1);
             answer.classId = 1;
             answer.rdata.push(record.alias || record.ip);
-
-            // Add an expiration for DHCP-configured leases
-            if (fromDHCP && !!configuration.dhcp.leases.pool.leaseSeconds)
-                ttl = configuration.dhcp.leases.pool.leaseSeconds;
 
             storeInCache(answer, ttl);
         });
