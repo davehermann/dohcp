@@ -11,9 +11,18 @@ function addFromConfiguration(configuration) {
     if (!!configuration.dns.records) {
         let records = configuration.dns.records.filter(() => { return true; });
 
+        // Also add any hosts from statically-assigned DHCP addresses
+        if (!!configuration.dhcp && !configuration.dhcp.disabled && !!configuration.dhcp.leases && !!configuration.dhcp.leases.static)
+            for (let clientId in configuration.dhcp.leases.static) {
+                let assignment = configuration.dhcp.leases.static[clientId];
+
+                if (!!assignment.hostname)
+                    records.push({ name: assignment.hostname, ip: assignment.ip });
+            }
+
         // Add the defined domain
         if (!!configuration.dns.domain && (configuration.dns.domain.length > 0))
-            configuration.dns.records.forEach(record => {
+            records.forEach(record => {
                 // To the label if it isn't included
                 if (record.name.search(new RegExp(`${configuration.dns.domain.replace(/\./g, `\\.`)}$`)) < 0) {
                     let copy = JSON.parse(JSON.stringify(record));
