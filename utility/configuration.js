@@ -6,7 +6,7 @@ const fs = require(`fs`),
 // Application modules
 const { SelectInterface } = require(`./shared`);
 
-const CONFIGURATION_FILE = path.join(process.cwd(), `configuration.json`);
+const CONFIGURATION_FILE = path.join(__dirname, `..`, `configuration.json`);
 
 let config = {
     logLevel: `warn`,

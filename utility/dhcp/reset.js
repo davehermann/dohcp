@@ -2,7 +2,7 @@
 const fs = require(`fs`),
     path = require(`path`);
 
-const statusFile = path.join(process.cwd(), `status`, `dhcp.json`);
+const statusFile = path.join(__dirname, `..`, `status`, `dhcp.json`);
 
 function resetData(action) {
     // See if ~/status/dhcp.json exists
