@@ -26,6 +26,7 @@ function runCommand() {
         });
 
         command.on(`close`, (exitCode) => {
+            // eslint-disable-next-line no-console
             console.log(`Closing`);
             if (err.length > 0)
                 reject(err);
