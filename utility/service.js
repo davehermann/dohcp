@@ -7,9 +7,9 @@ const fs = require(`fs`),
 const { EnsurePathFor, RunCommand } = require(`./utilities`);
 
 const SERVICE_UNIT = `dohcp.service`,
-    GENERATED_UNIT = path.join(process.cwd(), `service`, SERVICE_UNIT),
+    GENERATED_UNIT = path.join(__dirname, `..`, `service`, SERVICE_UNIT),
     UNIT_LINK = `/${path.join(`etc`, `systemd`, `system`, SERVICE_UNIT)}`,
-    UNIT_TEMPLATE = path.join(process.cwd(), `utility`, `systemd-service-template`);
+    UNIT_TEMPLATE = path.join(__dirname, `systemd-service-template`);
 
 function installService() {
     // eslint-disable-next-line no-console
@@ -116,7 +116,7 @@ function loadTemplate(userAccountName) {
         });
     })
         .then(template => {
-            template = template.replace(/\{username\}/g, userAccountName).replace(/\{workingDirectory\}/g, process.cwd());
+            template = template.replace(/\{username\}/g, userAccountName).replace(/\{workingDirectory\}/g, path.join(__dirname, `..`));
             return Promise.resolve(template);
         });
 }

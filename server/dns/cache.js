@@ -5,15 +5,24 @@ const { Answer } = require(`./rfc1035/answer`),
 // The cache is simply an object with properties that self-delete
 let _cache = {};
 
-function addFromConfiguration(configuration, fromDHCP) {
+function addFromConfiguration(configuration) {
     // Add A and CNAME cache records from configuration
 
     if (!!configuration.dns.records) {
         let records = configuration.dns.records.filter(() => { return true; });
 
+        // Also add any hosts from statically-assigned DHCP addresses
+        if (!!configuration.dhcp && !configuration.dhcp.disabled && !!configuration.dhcp.leases && !!configuration.dhcp.leases.static)
+            for (let clientId in configuration.dhcp.leases.static) {
+                let assignment = configuration.dhcp.leases.static[clientId];
+
+                if (!!assignment.hostname)
+                    records.push({ name: assignment.hostname, ip: assignment.ip });
+            }
+
         // Add the defined domain
         if (!!configuration.dns.domain && (configuration.dns.domain.length > 0))
-            configuration.dns.records.forEach(record => {
+            records.forEach(record => {
                 // To the label if it isn't included
                 if (record.name.search(new RegExp(`${configuration.dns.domain.replace(/\./g, `\\.`)}$`)) < 0) {
                     let copy = JSON.parse(JSON.stringify(record));
@@ -31,10 +40,6 @@ function addFromConfiguration(configuration, fromDHCP) {
             answer.typeId = (!!record.alias ? 5 : 1);
             answer.classId = 1;
             answer.rdata.push(record.alias || record.ip);
-
-            // Add an expiration for DHCP-configured leases
-            if (fromDHCP && !!configuration.dhcp.leases.pool.leaseSeconds)
-                ttl = configuration.dhcp.leases.pool.leaseSeconds;
 
             storeInCache(answer, ttl);
         });
