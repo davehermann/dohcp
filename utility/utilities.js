@@ -27,7 +27,7 @@ function runCommand() {
 
         command.on(`close`, (exitCode) => {
             // eslint-disable-next-line no-console
-            console.log(`Closing`);
+            console.log(`Closing child process`);
             if (err.length > 0)
                 reject(err);
             else

@@ -11,7 +11,9 @@ const SERVICE_UNIT = `dohcp.service`,
     UNIT_LINK = `/${path.join(`etc`, `systemd`, `system`, SERVICE_UNIT)}`,
     UNIT_TEMPLATE = path.join(__dirname, `systemd-service-template`);
 
-function installService() {
+function installService(action) {
+    let doNotStartEnable = (action.additionalArguments.indexOf(`--no-start`) >= 0);
+
     // eslint-disable-next-line no-console
     console.log(`Installing as a systemd unit`);
 
@@ -30,7 +32,7 @@ function installService() {
         // Link to /etc/systemd/system
         .then(() => linkUnit())
         // Start/Enable the unit
-        .then(() => startUnit());
+        .then(() => startUnit(doNotStartEnable));
 }
 
 function checkLinuxOs() {
@@ -133,7 +135,9 @@ function writeTemplateToLocalPath(serviceUnit) {
                         resolve();
                 });
             });
-        });
+        })
+        // eslint-disable-next-line no-console
+        .then(() => { console.log(`\nA unit file has been generated at '${GENERATED_UNIT}'`); });
 }
 
 function linkUnit() {
@@ -159,10 +163,19 @@ function linkUnit() {
         })
         .then(() => {
             return RunCommand(`sudo`, `ln`, `-s`, GENERATED_UNIT, UNIT_LINK);
-        });
+        })
+        // eslint-disable-next-line no-console
+        .then(() => { console.log(`\nThe unit file has been symlinked to '${UNIT_LINK}'\n`); });
 }
 
-function startUnit() {
+function startUnit(doNotStartEnable) {
+    if (doNotStartEnable) {
+        // eslint-disable-next-line no-console
+        console.log(`\ndohcp has been configured as a service; however, the systemd unit has not had start or enable run.\n\nPlease start/enable when you are ready to use.`);
+
+        return Promise.resolve();
+    }
+
     return RunCommand(`sudo`, `systemctl`, `enable`, SERVICE_UNIT)
         .then(() => RunCommand(`sudo`, `systemctl`, `start`, SERVICE_UNIT))
         .then(() => {
