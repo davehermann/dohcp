@@ -5,7 +5,7 @@ const https = require(`https`),
 // Application modules
 const { AddToCache, FindInCache, GenerateCacheId } = require(`./cache`),
     { DNSMessage } = require(`./rfc1035/dnsMessage`),
-    { Dev, Trace, Debug, Warn, Err } = require(`../logging`);
+    { Dev, Trace, Debug, Info, Warn, Err } = require(`../logging`);
 
 function resolveQuery(dnsQuery, configuration, requestSource, useDNSoverHTTPS = true) {
     let skipAnswerProcessing = false,
@@ -44,7 +44,7 @@ function resolveQuery(dnsQuery, configuration, requestSource, useDNSoverHTTPS = 
                 // If the last answer in the answer's list is a CNAME, perform a sub-query
                 let lastAnswer = answer.answers[answer.answers.length - 1];
                 if (!lastAnswer)
-                    Warn({ [`NO lastAnswer`]: dnsQuery.questions, requestSource }, `dns`);
+                    Info({ [`NO lastAnswer`]: dnsQuery.questions, requestSource }, `dns`);
 
                 if (!!lastAnswer && (lastAnswer.typeId == 5)) {
                     let subQuery = new DNSMessage();
@@ -196,7 +196,7 @@ function lookupViaDNS(dnsQuery, configuration) {
         });
 
         client.on(`error`, (err) => {
-            Warn({ [`DNS query via UDP error`]: err }, `dns`);
+            Warn({ [`DNS query via UDP error`]: err, dnsQuery }, `dns`);
 
             client.close();
             reject(err);
