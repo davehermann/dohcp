@@ -16,15 +16,22 @@ function addEvent(clientId, data) {
     if (!_history[clientId])
         _history[clientId] = [];
 
+    // Only store a maximum of 200 events
+    if (_history[clientId].length > 200)
+        _history[clientId].shift();
+
     data.ts = new Date();
 
     _history[clientId].push(data);
 }
 
-function addDhcpMessage(dhcpMessage) {
-    let clientId = getClientId(dhcpMessage);
+function addDhcpMessage(dhcpRequest, dhcpResponse) {
+    let clientId = getClientId(dhcpRequest);
 
+    addEvent(clientId, { dhcpRequest, dhcpResponse });
+    /*
     addEvent(clientId, { dhcpMessage: { type: dhcpMessage.options.dhcpMessageType } });
+    */
 }
 
 function addDhcpAssignment(dhcpMessage, assignedAddress, hostnameFromDns) {

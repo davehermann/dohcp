@@ -74,8 +74,6 @@ function newV4DhcpSocket(ipAddress) {
 
             let pResponse = Promise.resolve();
 
-            HistoryMessage(message);
-
             switch (message.options.dhcpMessageType) {
                 case `DHCPDISCOVER`:
                     pResponse = offerAddress(message);
@@ -99,6 +97,8 @@ function newV4DhcpSocket(ipAddress) {
 
             pResponse
                 .then(sendMessage => {
+                    HistoryMessage(message, sendMessage);
+
                     if (!!sendMessage)
                         // Send the message
                         return new Promise((resolve, reject) => {
