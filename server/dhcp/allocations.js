@@ -5,7 +5,8 @@ const fs = require(`fs`),
 const { AllocatedAddress } = require(`./allocatedAddress`),
     { HistoryAssignment } = require(`./history`),
     { Dev, Trace, Debug, Info } = require(`../logging`),
-    { AddDHCPToDNS } = require(`../dns/cache`);
+    { AddDHCPToDNS } = require(`../dns/cache`),
+    { EnsurePathFor } = require(`../../utility/utilities`);
 
 let _configuration, _addressAllocations;
 
@@ -138,28 +139,31 @@ function writeToDisk() {
     if (_saveOnNextWrite) {
         Debug(`Writing DHCP data`, `dhcp`);
 
-        pWrite = new Promise((resolve, reject) => {
-            let dataFile = path.join(process.cwd(), `status`, `dhcp.json`);
-            Trace({ dataFile }, `dhcp`);
+        let dataFile = path.join(process.cwd(), `status`, `dhcp.json`);
+        pWrite = EnsurePathFor(dataFile)
+            .then(() => {
+                return new Promise((resolve, reject) => {
+                    Trace({ dataFile }, `dhcp`);
 
-            // Sort the allocations keys to make debugging easier
-            // Since we're writing JSON, use a JSON copy
-            let allocations = JSON.parse(JSON.stringify(_addressAllocations)),
-                writeData = { byIp: {}, byClientId: {} };
+                    // Sort the allocations keys to make debugging easier
+                    // Since we're writing JSON, use a JSON copy
+                    let allocations = JSON.parse(JSON.stringify(_addressAllocations)),
+                        writeData = { byIp: {}, byClientId: {} };
 
-            let ipKeys = Object.keys(allocations.byIp).sort(),
-                clientKeys = Object.keys(allocations.byClientId).sort();
+                    let ipKeys = Object.keys(allocations.byIp).sort(),
+                        clientKeys = Object.keys(allocations.byClientId).sort();
 
-            ipKeys.forEach(key => { writeData.byIp[key] = allocations.byIp[key]; });
-            clientKeys.forEach(key => { writeData.byClientId[key] = allocations.byClientId[key]; });
+                    ipKeys.forEach(key => { writeData.byIp[key] = allocations.byIp[key]; });
+                    clientKeys.forEach(key => { writeData.byClientId[key] = allocations.byClientId[key]; });
 
-            fs.writeFile(dataFile, JSON.stringify(writeData, null, 4), { encoding: `utf8` }, (err) => {
-                if (!!err)
-                    reject(err);
+                    fs.writeFile(dataFile, JSON.stringify(writeData, null, 4), { encoding: `utf8` }, (err) => {
+                        if (!!err)
+                            reject(err);
 
-                resolve();
+                        resolve();
+                    });
+                });
             });
-        });
     } else
         Debug(`Not writing DHCP update`, `dhcp`);
 

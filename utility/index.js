@@ -28,6 +28,10 @@ const definedActions = {
     },
     install: {
         description: `Install as a Linux-systemd service (run via 'sudo')`,
+        additionalArguments: 1,
+        argumentsDescription: [
+            { arg: `--no-start`, detail: `Only generate the .service file and symlink. Do not start/enable the service.` },
+        ],
         method: InstallService,
     },
     remove: {

@@ -8,17 +8,17 @@ At present, DoHCP only supports Cloudflare's public HTTPS resolution via POST (m
 ##### Major Features
 + 100% pure Javascript
 + Does not use <u>any</u> dependencies
-+ Command line utility for configuration, launch (Linux-only at present), and service queries
++ Command line utility `dohcp` for configuration, launch (Linux-only at present), and service queries
 
 ##### Caveats
 + IPv4-only at the current time
     + Yes, IPv6 is slowly becoming more critical, but we, unfortunately, all still live in an IPv4-driven world.
     Even in 2H 2018, many ISPs - including mine - only support IPv4.
     + DHCPv6 work has been started, but it's not included in the repository at this time
-        + *No DHCPv6 patches will be accepted until that work is released*
+        + *DHCPv6 patches will likely not be accepted until that initial work is released*
 
 ##### Significant Issue - NodeJS <u>does *NOT*</u> support the ability to localize DHCP traffic to a single interface
-*DoHCP <u>**cannot** be used on a device with a public interface</u>*
+*As a result, DoHCP <u>**cannot** be used on a device with a public interface</u>*
 
 + The NodeJS dgram `.addMembership()` method is blocked for the DHCP broadcast address (255.255.255.255) on many (maybe all?) OSes as it's outside of the [multicast address space](https://www.iana.org/assignments/multicast-addresses/multicast-addresses.xhtml)
 + NodeJS does not have a way to provide the local interface a UDP message is received on
@@ -56,6 +56,31 @@ You will receive an EACCES error for the IP:PORT at service startup.
     + After NodeJS upgrades, this may need to be re-run
 + *NOT RECOMMENDED:* You can run the service as the root user or via sudo
 
+### Cloning existing DHCP assignments
+It is possible to have DoHCP's DHCP assignments mirror an existing environment without statically assigning all clients to an address.
+DoHCP uses a JSON file for permanent DHCP assignment storage that lives across restarts: **./status/dhcp.json**.
+It contains an object with two properties, both objects: `{ byIp: {}, byClientId: {} }`.
+
+To mirror the old environment in DoHCP, before starting for the first time:
+1. Create the *./status/dhcp.json* with the object above in JSON form as its contents.
+1. Leave the `byIp` property as an empty object
+1. `byClientId` maps the client identifier to an IP address
+    + The property is the client identifier type (always "01" for MAC addresses) + the identifier without any special characters
+        + For a MAC of 00:14:22:01:23:45, the property will be `01001422012345`
+    + The value will be the IP address to assign
+        + Any dynamically assigned clients should have an IP within the pool of dynamic addresses
+        + Any statically assigned clients can appear here with their address, or can be left out
+
+The *dhcp.json* file with the example MAC above will look like this when assigning to *10.0.0.123*:
+```
+{
+    "byIp": {},
+    "byClientId": {
+        "01001422012345": "10.0.0.123"
+    }
+}
+```
+
 ## Launch
 
 ### In a terminal shell
@@ -63,9 +88,10 @@ You will receive an EACCES error for the IP:PORT at service startup.
 + `npm run server` at the command line
 
 ### As a service
-*DoHCP includes a systemd unit file to run as a service on Linux*
+*DoHCP includes a systemd unit file generator to run as a service on Linux*
 
 + `dohcp install` will generate a unit file, symlink to it, and start/enable the service
+    + Using `--no-start` will skip the start/enable steps
     + `dohcp remove` will reverse that entire process
 
 
@@ -90,8 +116,9 @@ With an HTTPS *POST* option, **every aspect of of a DNS query can be encrypted e
 While not strictly necessary for DoH usage, encapsulating both DNS and DHCP in a single package does have advantages for indexing local resources within local DNS.
 
 
+
 ## Current Status
-As of initial release, DHCP and DNS have been dogfooded for weeks within a complex home/home office environment consisting of several dozen devices spanning computers, phones, networking, and IoT.
+As of initial release, DHCP and DNS have been dogfooded for months within complex home/home office environments consisting of several dozen devices spanning computers, phones, networking, and IoT.
 
 ## Future Plans
 + DoHCP-to-DoHCP communication
@@ -101,4 +128,4 @@ As of initial release, DHCP and DNS have been dogfooded for weeks within a compl
     + Going beyond simple logging by looking at local device data - both DHCP and DNS - over time
 + DHCPv6 support has been started
     + This code may not be released for quite some time.
-    + IPv6-related patches won't be accepted in the interim.
+    + IPv6-related patches likely won't be accepted in the interim.
