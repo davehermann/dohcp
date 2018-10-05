@@ -8,7 +8,8 @@ function queryHistory(action, allActions, configuration) {
         title = `DHCP Client History`;
 
     let idIdx = action.additionalArguments.indexOf(`--id`),
-        showAll = (action.additionalArguments.indexOf(`--all`) >= 0);
+        showAll = (action.additionalArguments.indexOf(`--all`) >= 0),
+        idMax = action.additionalArguments.indexOf(`--max`);
 
     if ((idIdx < 0) || (action.additionalArguments.length < (idIdx + 2))) {
         // eslint-disable-next-line no-console
@@ -39,15 +40,23 @@ function queryHistory(action, allActions, configuration) {
                     console.log(`\n----- ${title} (${clientId}) -----\n`);
 
                     let history = dhcpData.history.filter(() => { return true; });
-                    // Sort by the date
+                    // Set timestamps to JS dates
                     history.forEach(entry => { entry.timestamp = new Date(entry.ts); });
                     // Sort by timestamp
                     history.sort((a, b) => { return a.timestamp.getTime() > b.timestamp.getTime() ? 1 : -1; });
 
+                    // Limit the entries
+                    let maxEntries = MAX_ENTRIES;
+                    if ((idMax >= 0)  && (action.additionalArguments.length >= idMax + 2)) {
+                        let maxOption = parseInt(action.additionalArguments[idMax + 1]);
+                        if (!!maxOption)
+                            maxEntries = maxOption;
+                    }
+
                     // Unless we're showing everything, only show the first MAX_ENTRIES lines
                     if (!showAll) {
                         history.reverse();
-                        history = history.filter((entry, idx) => { return idx < MAX_ENTRIES; });
+                        history = history.filter((entry, idx) => { return idx < maxEntries; });
                         history.reverse();
                     }
 

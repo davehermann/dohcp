@@ -83,10 +83,11 @@ const definedActions = {
     },
     [`dhcp-history`]: {
         description: `Get history of DHCP actions for a client ID`,
-        additionalArguments: 3,
+        additionalArguments: 4,
         argumentsDescription: [
             { arg: `--id`, detail: `Followed by the client ID (e.g. MAC Address). Gets the DHCP history for the client.` },
-            { arg: `--all`, detail: `Use this to show all data.  By default, only 100 maximum entries are displayed.`}
+            { arg: `--all`, detail: `Use this to show all data.  By default, only 100 maximum entries are displayed.`},
+            { arg: `--max`, detail: `Maximum entries to include` }
         ],
         method: DHCPHistory,
         usesConfiguration: true,
