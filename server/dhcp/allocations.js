@@ -102,32 +102,46 @@ function confirmAddress (dhcpMessage) {
         requestedIp = dhcpMessage.options.requestedIPAddress || dhcpMessage.ciaddr;
 
     // Check the requested IP against the assignment list
-    let assignedAddress = _addressAllocations.byIp[requestedIp];
+    pConfirm = Promise.resolve(_addressAllocations.byIp[requestedIp]);
 
-    // If the client identifier matches for the assigned IP
-    Trace({ clientId, requestedIp, assignedAddress }, `dhcp`);
+    // For instances where the _addressAllocations.byIP is empty, but the .byClientId is not
+    //      The assignedAddress may be null and will need to be regenerated
+    //      Regenerate when this is an authoritative server
+    pConfirm = pConfirm
+        .then(assignedAddress => {
+            if (!assignedAddress && _configuration.dhcp.authoritative)
+                return offerAddress(dhcpMessage);
 
-    if (assignedAddress.clientId == clientId.uniqueId) {
-        if (!assignedAddress.isConfirmed)
-            _saveOnNextWrite = true;
+            return assignedAddress;
+        });
 
-        // Confirm the address
-        assignedAddress.ConfirmAddress(_configuration);
-        // Add to the known addresses
-        _addressAllocations.byClientId[clientId.uniqueId] = assignedAddress.ipAddress;
+    pConfirm = pConfirm
+        .then(assignedAddress => {
+            // If the client identifier matches for the assigned IP
+            Trace({ clientId, requestedIp, assignedAddress }, `dhcp`);
 
-        // Write the updated status
-        pConfirm = writeToDisk()
-            // Add to DNS Cache
-            .then(() => AddDHCPToDNS(assignedAddress, dhcpMessage, _configuration))
-            .then(hostname => {
-                HistoryAssignment(dhcpMessage, assignedAddress, hostname);
-                return hostname;
-            })
-            .then(hostname => { Info(`DHCP: Assigning ${assignedAddress.ipAddress} to ${dhcpMessage.chaddr}, and in DNS as ${hostname}`, `dhcp`); })
-            // Return the address
-            .then(() => Promise.resolve(assignedAddress));
-    }
+            if (assignedAddress.clientId == clientId.uniqueId) {
+                if (!assignedAddress.isConfirmed)
+                    _saveOnNextWrite = true;
+
+                // Confirm the address
+                assignedAddress.ConfirmAddress(_configuration);
+                // Add to the known addresses
+                _addressAllocations.byClientId[clientId.uniqueId] = assignedAddress.ipAddress;
+
+                // Write the updated status
+                return writeToDisk()
+                    // Add to DNS Cache
+                    .then(() => AddDHCPToDNS(assignedAddress, dhcpMessage, _configuration))
+                    .then(hostname => {
+                        HistoryAssignment(dhcpMessage, assignedAddress, hostname);
+                        return hostname;
+                    })
+                    .then(hostname => { Info(`DHCP: Assigning ${assignedAddress.ipAddress} to ${dhcpMessage.chaddr}, and in DNS as ${hostname}`, `dhcp`); })
+                    // Return the address
+                    .then(() => Promise.resolve(assignedAddress));
+            }
+        });
 
     return pConfirm;
 }
