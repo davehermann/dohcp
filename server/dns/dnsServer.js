@@ -23,12 +23,17 @@ function startServer(config) {
 function dns(remainingAddresses) {
     // Step through servers configuration
     // Any entry that is "primaryIP", or an IP on the configured interface, will listen for DNS
-    if (remainingAddresses === undefined)
+    if (remainingAddresses === undefined) {
         remainingAddresses = _configuration.dns.servers.filter(ip => {
             return (ip == `primaryIP`) || (_configuration.ipv4Addresses.map(addr => { return addr.address; }).indexOf(ip) >= 0);
         }).map(ip => {
             return (ip == `primaryIP`) ? _configuration.serverIpAddress : ip;
         });
+
+        // Also respond on localhost if "primaryIP" is configured
+        if (_configuration.dns.servers.filter(ip => { return ip == `primaryIP`; }).length > 0)
+            remainingAddresses.push(`127.0.0.1`);
+    }
 
     Dev({ remainingAddresses }, `dns`);
     if (remainingAddresses.length > 0) {
