@@ -113,6 +113,7 @@ function newV4DhcpSocket(ipAddress) {
                 })
                 .catch(err => {
                     Err(`Error in DHCP response processing`, `dhcp`);
+                    Err({ [`Client message`]: msg.toString(`hex`) }, `dhcp`);
                     Err(err, true, `dhcp`);
                 });
         });
