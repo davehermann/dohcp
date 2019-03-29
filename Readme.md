@@ -1,5 +1,7 @@
 # DoHCP (DNS-over-HTTPS + DHCP)
 
+![Status: Experimental](https://img.shields.io/badge/Status-Experimental-critical.svg)
+
 DoHCP combines both a DNS server and an DHCP server into a single package.
 DHCP-assigned hosts are automatically added to the internal DNS resolution.
 All DNS queries that are forwarded out for resolution go via HTTPS.
