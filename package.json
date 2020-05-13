@@ -6,11 +6,16 @@
   "main": "server/server.js",
   "author": "Dave Hermann <6787333+davehermann@users.noreply.github.com>",
   "license": "(MIT or GPL-3)",
-  "engine": { "node": ">=8.10" },
+  "engine": {
+    "node": ">=8.10"
+  },
   "scripts": {
     "server": "node ./server/server.js"
   },
   "bin": {
     "dohcp": "./utility/index.js"
+  },
+  "devDependencies": {
+    "eslint": "^7.0.0"
   }
 }

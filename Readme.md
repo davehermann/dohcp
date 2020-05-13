@@ -10,6 +10,7 @@ At present, DoHCP only supports Cloudflare's public HTTPS resolution via POST (m
 ##### Major Features
 + 100% pure Javascript
 + Does not use <u>any</u> dependencies
+    + dev dependencies exist (i.e. eslint)
 + Command line utility `dohcp` for configuration, launch (Linux-only at present), and service queries
 
 ##### Caveats
@@ -53,7 +54,7 @@ Your firewall will need to forward DNS packets as a result.
 By default, Linux kernels don't allow non-root users to bind to ports below 1024.
 You will receive an EACCES error for the IP:PORT at service startup.
 
-+ This can be easily overcome by allowing Node to bind to lower ports.  
++ This can be easily overcome by allowing Node to bind to lower ports.
 `setcap cap_net_bind_service=+ep /usr/bin/node` will allow Node access to port binding.
     + After NodeJS upgrades, this may need to be re-run
 + *NOT RECOMMENDED:* You can run the service as the root user or via sudo
