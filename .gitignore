@@ -2,3 +2,4 @@ node_modules/
 configuration.json
 status/*.json
 service/
+log

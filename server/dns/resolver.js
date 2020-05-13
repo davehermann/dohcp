@@ -189,7 +189,7 @@ function lookupViaDNS(dnsQuery, configuration) {
         });
 
         client.on(`message`, (msg, rinfo) => {
-            Dev({ [`DNS response`]: { rinfo, msg } }, `dns`);
+            Debug({ [`DNS response`]: { rinfo, msg } }, `dns`);
 
             client.close();
             resolve(msg);
