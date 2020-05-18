@@ -48,7 +48,7 @@ function configureLog(configuration, defaultLogLevel, configLogName) {
     const inEV = process.env[environmentVariable],
         inConfig = !!configObject ? configObject.logLevel : null;
 
-    return !!ev ? LogLevels[ev] : (!!inConfig ? LogLevels[inConfig] : defaultLogLevel);
+    return !!inEV ? LogLevels[inEV] : (!!inConfig ? LogLevels[inConfig] : defaultLogLevel);
 }
 
 function logLevelsFromConfiguration(configuration) {
