@@ -124,6 +124,8 @@ While not strictly necessary for DoH usage, encapsulating both DNS and DHCP in a
 As of initial release, DHCP and DNS have been dogfooded for months within complex home/home office environments consisting of several dozen devices spanning computers, phones, networking, and IoT.
 
 ## Future Plans
++ Typescript conversion
+    + Given the complexity of a DNS and DHCP server, a strongly typed language is a good choice moving forward
 + DoHCP-to-DoHCP communication
     + Geared toward multiple DNS servers on the network with shared internal DNS data
     + Failover DHCP
