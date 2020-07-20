@@ -10,10 +10,12 @@
     "node": ">=8.10"
   },
   "scripts": {
+    "build": "tsc --build src/cli",
+    "dohcp": "node ./dist/cli/index.js",
     "server": "node ./server/server.js"
   },
   "bin": {
-    "dohcp": "./utility/index.js"
+    "dohcp": "./dist/index.js"
   },
   "devDependencies": {
     "@types/node": "^14.0.23",
