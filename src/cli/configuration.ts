@@ -7,6 +7,7 @@ import { SelectInterface } from "./shared";
 import { Configuration as DhcpConfiguration } from "./configuration/dhcp";
 import { Configuration as DnsConfiguration } from "./configuration/dns";
 import { IConfiguration } from "../interfaces/configuration/configurationFile";
+import { IAvailableNetworkInterfaces } from "../interfaces/configuration/networkInterface";
 
 const CONFIGURATION_FILE = path.join(__dirname, `..`, `..`, `configuration.json`);
 
@@ -35,7 +36,7 @@ async function newConfiguration() {
     await checkForExistingConfiguration();
 
     // Get the network interface to bind to
-    const { interfaceName } = await SelectInterface();
+    const { interfaceName }: IAvailableNetworkInterfaces = await SelectInterface();
     config.interface = interfaceName;
 
     // Add DHCP
