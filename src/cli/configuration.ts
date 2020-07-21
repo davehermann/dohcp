@@ -5,10 +5,10 @@ import * as path from "path";
 // Application Modules
 import { SelectInterface } from "./shared";
 import { Configuration as DhcpConfiguration } from "./configuration/dhcp";
+import { Configuration as DnsConfiguration } from "./configuration/dns";
 import { IConfiguration } from "../interfaces/configuration/configurationFile";
 
-// const CONFIGURATION_FILE = path.join(process.cwd(), `configuration.json`);
-const CONFIGURATION_FILE = path.join(process.cwd(), `configuration2.json`);
+const CONFIGURATION_FILE = path.join(process.cwd(), `configuration.json`);
 
 /** Create a blank configuration template */
 function emptyConfiguration(): IConfiguration {
@@ -41,7 +41,18 @@ async function newConfiguration() {
     // Add DHCP
     config.dhcp = await DhcpConfiguration();
 
-    console.log(JSON.stringify(config, null, 4));
+    // Add DNS
+    config.dns = await DnsConfiguration();
+
+    // Write the configuration to disk
+    await writeConfiguration(config);
+
+    // eslint-disable-next-line no-console
+    console.log(`\nReview Readme and Configuration documentation for more advanced configuration options.`);
+
+    if (process.platform == `linux`)
+        // eslint-disable-next-line no-console
+        console.log(`\n--Linux detected--\n1) Run 'dohcp install' to start/enable a systemd unit\n2) See readme for command to allow NodeJS to access lower ports without running as root user\n`);
 }
 
 /** Determain if a configuration already exists, and exit with an **exception** if one does */
@@ -59,6 +70,9 @@ async function checkForExistingConfiguration() {
     }
 }
 
+async function writeConfiguration(config: IConfiguration): Promise<void> {
+    await fs.writeFile(CONFIGURATION_FILE, JSON.stringify(config, null, 4), { encoding: `utf8` });
+}
 
 export {
     newConfiguration as GenerateConfiguration,

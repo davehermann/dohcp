@@ -1,8 +1,5 @@
 import { IConfiguration as IDhcpConfiguration } from "./dhcp";
-
-interface IDnsConfiguration {
-
-}
+import { IConfiguration as IDnsConfiguration } from "./dns";
 
 /** Configuration File Object Interface */
 interface IConfiguration {

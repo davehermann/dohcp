@@ -3,7 +3,7 @@ import { GetInputLine } from "../shared";
 import { IConfiguration as IDhcpConfiguration, IRange as IDhcpPoolRange, IStaticAssignment as IDhcpStaticAssignment } from "../../interfaces/configuration/dhcp";
 
 /** Generate a DHCP configuration section */
-async function configuration() {
+async function configuration(): Promise<IDhcpConfiguration> {
     const dhcpAnswer = await GetInputLine(`Configure DHCP? [Y/n]:`);
     const configureDhcp = !dhcpAnswer || (dhcpAnswer.toLowerCase() == `y`);
 
