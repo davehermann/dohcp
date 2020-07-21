@@ -1,26 +1,21 @@
-interface Description {
-    arg: string;
-    detail: string;
+import { IAction, IActionToTake, IFoundAction } from "../interfaces/configuration/cliArguments";
+
+function findAction(definedActions: Map<string, IAction | string>, argument: string): IFoundAction {
+    let action = definedActions.get(argument);
+
+    if (!action)
+        return { action: null, argument: null };
+
+    if (typeof action == `string`)
+        return findAction(definedActions, action);
+    else
+        return { action, argument };
 }
 
-interface Action {
-    additionalArguments?: number;
-    aliases?: Array<string>;
-    argumentsDescription?: Array<Description>;
-    description: string;
-    method: Function;
-    usesConfiguration?: boolean;
-}
-
-interface ActionToTake {
-    name: string;
-    additionalArguments?: Array<string>;
-}
-
-function parseArguments(definedActions: Map<string, Action | string>) {
+function parseArguments(definedActions: Map<string, IAction | string>) {
     // Copy the CLI arguments to a new array
     const args = process.argv.filter(() => { return true; });
-    let actionsToTake: Array<ActionToTake> = [],
+    let actionsToTake: Array<IActionToTake> = [],
         dataServiceHost: string = null;
 
     // Add any aliases to the actions as pointers to the original action
@@ -32,28 +27,22 @@ function parseArguments(definedActions: Map<string, Action | string>) {
 
     // Figure out what we're doing
     for (let idx = 0, total = args.length; idx < total; idx++) {
-        let argument = args.shift(),
-            action;
+        let checkArgument = args.shift(),
+            action: IAction;
 
         // For data service actions, a server name/IP can be specified if it's not the localhost
-        if (!!argument && (argument.substr(0, 1) == `@`))
-            dataServiceHost = argument.substr(1);
+        if (!!checkArgument && (checkArgument.substr(0, 1) == `@`))
+            dataServiceHost = checkArgument.substr(1);
         else {
-            do {
-                action = definedActions[argument];
+            const { action, argument } = findAction(definedActions, checkArgument);
 
-                if (!!action && (typeof action == `string`)) {
-                    argument = action;
-                    action = null;
-                } else if (!action)
-                    argument = null;
-            } while (!!action && (typeof action == `string`));
+            if (!!action) {
+                // action is not a string
 
-            if (!!argument) {
-                let addArgument: ActionToTake = { name: argument, additionalArguments: [] };
+                let addArgument: IActionToTake = { name: argument, additionalArguments: [] };
 
                 // Check for additional arguments
-                let argumentCounter = definedActions[argument].additionalArguments;
+                let argumentCounter = action.additionalArguments;
                 while ((args.length > 0) && !!argumentCounter) {
                     argumentCounter--;
 
@@ -82,8 +71,5 @@ function parseArguments(definedActions: Map<string, Action | string>) {
 }
 
 export {
-    Action,
-    ActionToTake,
-    Description,
     parseArguments as ParseArguments,
-}
+};

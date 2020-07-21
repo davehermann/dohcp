@@ -1,9 +1,12 @@
 {
     "extends": "../../tsconfig-base.json",
     "compilerOptions": {
-        "outDir": "../../dist/cli"
+        "outDir": "../../dist/cli",
     },
-    "files": [
-        "./index.ts"
+    "references": [
+        { "path": "../interfaces" }
+    ],
+    "include": [
+        "*.ts"
     ]
 }

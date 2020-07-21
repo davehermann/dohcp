@@ -1,14 +1,14 @@
 // Application Modules
-import { Action, Description } from "./arguments";
+import { IAction, IDescription } from "../interfaces/configuration/cliArguments";
 import { TABS } from "./shared";
 
 interface ActionDescription {
     trigger: string;
     description: string;
-    options?: Array<Description>;
+    options?: Array<IDescription>;
 }
 
-async function printHelp(actionName: string, definedActions: Map<string, Action | string>) {
+async function printHelp(actionName: string, definedActions: Map<string, IAction | string>) {
     let helpText = ``,
         actionList: Array<ActionDescription> = [];
 

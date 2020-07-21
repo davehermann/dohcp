@@ -1,0 +1,10 @@
+{
+    "extends": "../../tsconfig-base.json",
+    "compilerOptions": {
+        "outDir": "../../dist/interfaces",
+        "composite": true
+    },
+    "include": [
+        "**/*.ts"
+    ]
+}
