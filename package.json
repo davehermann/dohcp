@@ -15,7 +15,7 @@
     "server": "node ./server/server.js"
   },
   "bin": {
-    "dohcp": "./dist/index.js"
+    "dohcp": "./dist/cli/index.js"
   },
   "devDependencies": {
     "@types/node": "^14.0.23",

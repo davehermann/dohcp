@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { ParseArguments } from "./arguments";
 import { PrintHelp } from "./help";
 import { GenerateConfiguration } from "./configuration";

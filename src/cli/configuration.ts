@@ -8,7 +8,7 @@ import { Configuration as DhcpConfiguration } from "./configuration/dhcp";
 import { Configuration as DnsConfiguration } from "./configuration/dns";
 import { IConfiguration } from "../interfaces/configuration/configurationFile";
 
-const CONFIGURATION_FILE = path.join(process.cwd(), `configuration.json`);
+const CONFIGURATION_FILE = path.join(__dirname, `..`, `..`, `configuration.json`);
 
 /** Create a blank configuration template */
 function emptyConfiguration(): IConfiguration {
