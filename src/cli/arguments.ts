@@ -1,7 +1,7 @@
-import { IAction, IActionToTake, IFoundAction } from "../interfaces/configuration/cliArguments";
+import { IAction, IActionToTake, IFoundAction, IParsedArguments } from "../interfaces/configuration/cliArguments";
 
 function findAction(definedActions: Map<string, IAction | string>, argument: string): IFoundAction {
-    let action = definedActions.get(argument);
+    const action = definedActions.get(argument);
 
     if (!action)
         return { action: null, argument: null };
@@ -12,7 +12,7 @@ function findAction(definedActions: Map<string, IAction | string>, argument: str
         return { action, argument };
 }
 
-function parseArguments(definedActions: Map<string, IAction | string>) {
+function parseArguments(definedActions: Map<string, IAction | string>): IParsedArguments {
     // Copy the CLI arguments to a new array
     const args = process.argv.filter(() => { return true; });
     let actionsToTake: Array<IActionToTake> = [],
@@ -27,8 +27,7 @@ function parseArguments(definedActions: Map<string, IAction | string>) {
 
     // Figure out what we're doing
     for (let idx = 0, total = args.length; idx < total; idx++) {
-        let checkArgument = args.shift(),
-            action: IAction;
+        const checkArgument = args.shift();
 
         // For data service actions, a server name/IP can be specified if it's not the localhost
         if (!!checkArgument && (checkArgument.substr(0, 1) == `@`))
@@ -39,14 +38,14 @@ function parseArguments(definedActions: Map<string, IAction | string>) {
             if (!!action) {
                 // action is not a string
 
-                let addArgument: IActionToTake = { name: argument, additionalArguments: [] };
+                const addArgument: IActionToTake = { name: argument, additionalArguments: [] };
 
                 // Check for additional arguments
                 let argumentCounter = action.additionalArguments;
                 while ((args.length > 0) && !!argumentCounter) {
                     argumentCounter--;
 
-                    let nextArgument = args[0];
+                    const nextArgument = args[0];
 
                     // Confirm it doesn't match another action
                     if (!definedActions[nextArgument])

@@ -8,7 +8,7 @@ const TABS = `    `;
  */
 function getLineInput(questionText: string): Promise<string> {
     return new Promise(resolve => {
-        let rl = readline.createInterface({
+        const rl = readline.createInterface({
             input: process.stdin,
             output: process.stdout,
         });

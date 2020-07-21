@@ -17,6 +17,7 @@ interface IAction {
     /** Details about this action */
     description: string;
     /** Method to call when executing this parameter */
+    // eslint-disable-next-line @typescript-eslint/ban-types
     method: Function;
     /** Load service configuration and supply to the called method */
     usesConfiguration?: boolean;
@@ -38,9 +39,18 @@ interface IFoundAction {
     argument: string;
 }
 
+/** Parsed parameters and actions */
+interface IParsedArguments {
+    /** List of found actions to take */
+    actionsToTake: Array<IActionToTake>;
+    /** Name/IP of a server providing the service externally */
+    dataServiceHost: string;
+}
+
 export {
     IAction,
     IActionToTake,
     IDescription,
     IFoundAction,
+    IParsedArguments,
 };

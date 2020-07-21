@@ -22,7 +22,7 @@ async function selectInterface(): Promise<IAvailableNetworkInterfaces> {
 /** List available network interfaces on the system */
 function displayAvailableInterfaces(): NodeJS.Dict<os.NetworkInterfaceInfo[]> {
     const interfaces = os.networkInterfaces(),
-          available: Array<IAvailableNetworkInterfaces> = [];
+        available: Array<IAvailableNetworkInterfaces> = [];
 
     for (const name in interfaces)
         available.push({ interfaceName: name, addresses: interfaces[name] });

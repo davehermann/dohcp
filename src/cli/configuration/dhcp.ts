@@ -60,6 +60,7 @@ async function leaseLength(): Promise<number> {
 async function poolRange(addedRanges?: Array<IDhcpPoolRange>): Promise<Array<IDhcpPoolRange>> {
     if (!addedRanges) {
         addedRanges = [];
+        // eslint-disable-next-line no-console
         console.log(`Add one, or more, address ranges to the pool`);
     }
 

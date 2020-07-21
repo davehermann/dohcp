@@ -29,7 +29,7 @@ function emptyConfiguration(): IConfiguration {
 }
 
 /** Walk through the process of generating a new configuration file */
-async function newConfiguration() {
+async function newConfiguration(): Promise<void> {
     const config: IConfiguration = emptyConfiguration();
 
     // Check for an existing GenerateConfiguration, and do not overwrite

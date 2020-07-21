@@ -8,9 +8,9 @@ interface ActionDescription {
     options?: Array<IDescription>;
 }
 
-async function printHelp(actionName: string, definedActions: Map<string, IAction | string>) {
-    let helpText = ``,
-        actionList: Array<ActionDescription> = [];
+async function printHelp(actionName: string, definedActions: Map<string, IAction | string>): Promise<void> {
+    const actionList: Array<ActionDescription> = [];
+    let helpText = ``;
 
     helpText += `\nUsage: dohcp [@host] action [action-options]\n\n`;
     helpText += `Options:\n`;
@@ -37,7 +37,7 @@ async function printHelp(actionName: string, definedActions: Map<string, IAction
     if (actionList.length > 0) {
         helpText += `\nActions:\n\n`;
 
-        let maxIdLength = Math.max(...actionList.map(action => { return action.trigger.length; })),
+        const maxIdLength = Math.max(...actionList.map(action => { return action.trigger.length; })),
             idSpaces = (Math.ceil(maxIdLength / TABS.length) + 1) * TABS.length;
 
         helpText += actionList.map(action => {
@@ -51,9 +51,10 @@ async function printHelp(actionName: string, definedActions: Map<string, IAction
         }).join(``);
     }
 
+    // eslint-disable-next-line no-console
     console.log(`${helpText}\n`);
 }
 
 export {
     printHelp as PrintHelp,
-}
+};

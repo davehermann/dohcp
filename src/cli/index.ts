@@ -66,5 +66,6 @@ async function initialize(): Promise<void> {
 
 initialize()
     .catch(err => {
+        // eslint-disable-next-line no-console
         console.error(err);
     });
