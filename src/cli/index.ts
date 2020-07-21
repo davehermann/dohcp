@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+// NPM Modules
+import { InstallService, RemoveService } from "@davehermann/systemd-unit-installer";
+
+// Application Modules
 import { ParseArguments } from "./arguments";
 import { PrintHelp } from "./help";
 import { GenerateConfiguration } from "./configuration";
@@ -16,6 +20,18 @@ function buildActions() {
     definedActions.set(`init`, {
         description: `Generate a basic configuration file`,
         method: GenerateConfiguration,
+    });
+    definedActions.set(`install`, {
+        description: `Install as a Linux-systemd service (run via 'sudo')`,
+        additionalArguments: 1,
+        argumentsDescription: [
+            { arg: `--no-start`, detail: `Only generate the .service file and symlink. Do not start/enable the service.` },
+        ],
+        method: InstallService,
+    });
+    definedActions.set(`remove`, {
+        description: `Remove as an installed service (run via 'sudo')`,
+        method: RemoveService,
     });
 
     return definedActions;

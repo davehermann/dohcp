@@ -5,8 +5,9 @@ const TABS = `    `;
 /**
  * Read a line of input from the CLI
  * @param questionText - Prompt to display to user
+ * @param trim - Automatically trim the output *(default: **true**)*
  */
-function getLineInput(questionText: string): Promise<string> {
+function getLineInput(questionText: string, trim = true): Promise<string> {
     return new Promise(resolve => {
         const rl = readline.createInterface({
             input: process.stdin,
@@ -20,7 +21,10 @@ function getLineInput(questionText: string): Promise<string> {
         rl.question(questionText, response => {
             rl.close();
 
-            resolve(response.trim());
+            if (trim)
+                response = response.trim();
+
+            resolve(response);
         });
     });
 }

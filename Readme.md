@@ -10,7 +10,8 @@ At present, DoHCP only supports Cloudflare's public HTTPS resolution via POST (m
 ##### Major Features
 + 100% pure Javascript
 + Does not use <u>any</u> dependencies
-    + dev dependencies exist (i.e. eslint)
+    + dev dependencies exist (i.e. eslint, typescript)
+    + command line utility has had some of the functionality broken out into separate modules (i.e. Systemd unit installation), but **all** dependencies come from the same original source (this service)
 + Command line utility `dohcp` for configuration, launch (Linux-only at present), and service queries
 
 ##### Caveats
