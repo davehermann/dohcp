@@ -10,6 +10,7 @@ import { InstallService, RemoveService } from "@davehermann/systemd-unit-install
 import { ParseArguments } from "./arguments";
 import { PrintHelp } from "./help";
 import { CONFIGURATION_FILE, GenerateConfiguration } from "./configuration";
+import { QueryLeases as DhcpQueryLeases } from "./dhcp/lease-query";
 import { QueryCache as DnsQueryCache } from "./dns/cache-query";
 import { IAction, IActionToTake } from "../interfaces/configuration/cliArguments";
 import { IConfiguration } from "../interfaces/configuration/configurationFile";
@@ -48,6 +49,19 @@ function buildActions() {
             { arg: `--all`, detail: `Include all forwarded DNS cache entries`}
         ],
         method: DnsQueryCache,
+        usesConfiguration: true,
+    });
+
+    definedActions.set(`dhcp-leases`, {
+        aliases: [`dhcp`],
+        description: `List active (unexpired) DHCP leases assigned since last service start`,
+        additionalArguments: 1,
+        argumentsDescription: [
+            { arg: `--active`, detail: `Include any active (unexpired) leases assigned prior to last restart` },
+            { arg: `--previously-seen`, detail: `Include expired leases that have previously been assigned` },
+            { arg: `--all-known`, detail: `Include any configured leases that have not ever been assigned by the service` },
+        ],
+        method: DhcpQueryLeases,
         usesConfiguration: true,
     });
 

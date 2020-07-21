@@ -1,8 +1,8 @@
 // Node Modules
 import { get as HttpGet } from "http";
-import { IAction, IActionToTake } from "../../interfaces/configuration/cliArguments";
 
 // Application Modules
+import { IAction, IActionToTake } from "../../interfaces/configuration/cliArguments";
 import { IConfiguration } from "../../interfaces/configuration/configurationFile";
 
 function queryCache(action: IActionToTake, allActions: Map<string, IAction>, configuration: IConfiguration): Promise<void> {
