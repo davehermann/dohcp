@@ -1,13 +1,19 @@
 #!/usr/bin/env node
 
+// Node Modules
+import { promises as fs } from "fs";
+
 // NPM Modules
 import { InstallService, RemoveService } from "@davehermann/systemd-unit-installer";
 
 // Application Modules
 import { ParseArguments } from "./arguments";
 import { PrintHelp } from "./help";
-import { GenerateConfiguration } from "./configuration";
+import { CONFIGURATION_FILE, GenerateConfiguration } from "./configuration";
+import { QueryCache as DnsQueryCache } from "./dns/cache-query";
 import { IAction, IActionToTake } from "../interfaces/configuration/cliArguments";
+import { IConfiguration } from "../interfaces/configuration/configurationFile";
+import { BuildConfiguration } from "../server/configuration";
 
 /** Configure the list of recognized CLI arguments */
 function buildActions() {
@@ -34,6 +40,17 @@ function buildActions() {
         method: RemoveService,
     });
 
+    definedActions.set(`dns-cache`, {
+        aliases: [`dns`],
+        description: `Show local DNS cache results`,
+        additionalArguments: 1,
+        argumentsDescription: [
+            { arg: `--all`, detail: `Include all forwarded DNS cache entries`}
+        ],
+        method: DnsQueryCache,
+        usesConfiguration: true,
+    });
+
     return definedActions;
 }
 
@@ -43,32 +60,30 @@ function buildActions() {
  * @param definedActions - List of all recognized possible actions
  * @param configuration - Service configuration
  */
-async function runActions(actionsToPerform: Array<IActionToTake>, definedActions: Map<string, IAction>, configuration: any) {
+async function runActions(actionsToPerform: Array<IActionToTake>, definedActions: Map<string, IAction>, configuration: IConfiguration, dataServiceHost: string) {
     if (actionsToPerform.length > 0) {
         const action = actionsToPerform.shift();
 
-        // if (definedActions[action.name].usesConfiguration)
-        //     pAction = loadConfiguration();
+        if (definedActions.get(action.name).usesConfiguration)
+            configuration = await loadConfiguration(configuration, dataServiceHost);
 
         await definedActions.get(action.name).method(action, definedActions, configuration);
-        await runActions(actionsToPerform, definedActions, configuration);
+        await runActions(actionsToPerform, definedActions, configuration, dataServiceHost);
     }
 }
 
-// function loadConfiguration() {
-//     if (!!configuration)
-//         return Promise.resolve();
+async function loadConfiguration(configuration: IConfiguration, dataServiceHost: string) {
+    if (!configuration) {
+        const contents = await fs.readFile(CONFIGURATION_FILE, { encoding: `utf8` });
+        const config = JSON.parse(contents);
+        configuration = BuildConfiguration(config);
 
-//     return LoadFile(`./configuration.json`)
-//         .then(contents => { return JSON.parse(contents); })
-//         .then(config => BuildConfiguration(config))
-//         .then(config => {
-//             configuration = config;
+        // Add the remote host
+        configuration.dataServiceHost = dataServiceHost || configuration.serverIpAddress;
+    }
 
-//             // Add the remote host
-//             configuration.dataServiceHost = dataServiceHost || configuration.serverIpAddress;
-//         });
-// }
+    return configuration;
+}
 
 /** Initialize the CLI */
 async function initialize(): Promise<void> {
@@ -77,7 +92,7 @@ async function initialize(): Promise<void> {
 
     // let configuration = null;
 
-    await runActions(actionsToTake, definedActions, null);
+    await runActions(actionsToTake, definedActions, null, dataServiceHost);
 }
 
 initialize()

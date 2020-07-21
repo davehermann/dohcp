@@ -21,6 +21,8 @@ interface IConfiguration {
     domain?: string;
     /** Preconfigured domain name assignments */
     records?: Array<IRegisteredHost>;
+    /** List of upstream DNS resolvers */
+    upstream?: any;
 }
 
 export {

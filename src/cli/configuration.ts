@@ -76,5 +76,6 @@ async function writeConfiguration(config: IConfiguration): Promise<void> {
 }
 
 export {
+    CONFIGURATION_FILE,
     newConfiguration as GenerateConfiguration,
 };

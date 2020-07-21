@@ -1,3 +1,5 @@
+import { NetworkInterfaceInfo } from "os";
+
 import { IConfiguration as IDhcpConfiguration } from "./dhcp";
 import { IConfiguration as IDnsConfiguration } from "./dns";
 
@@ -11,6 +13,12 @@ interface IConfiguration {
     dhcp: IDhcpConfiguration;
     /** DNS configuration */
     dns: IDnsConfiguration;
+    /** Hostname or IP for the running service */
+    dataServiceHost?: string;
+    /** IP address assigned to the first interface on this system */
+    serverIpAddress?: string;
+    /** IPv4 Address information for the interface */
+    ipv4Addresses?: Array<NetworkInterfaceInfo>;
 }
 
 export {

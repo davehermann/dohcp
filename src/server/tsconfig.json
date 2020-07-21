@@ -1,13 +1,13 @@
 {
     "extends": "../../tsconfig-base.json",
     "compilerOptions": {
-        "outDir": "../../dist/cli",
+        "outDir": "../../dist/server",
+        "composite": true
     },
     "references": [
-        { "path": "../interfaces" },
-        { "path": "../server" }
+        { "path": "../interfaces" }
     ],
     "include": [
-        "*.ts"
+        "**/*.ts"
     ]
 }
