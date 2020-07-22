@@ -1,24 +1,23 @@
 #!/usr/bin/env node
 
-// Node Modules
-import { promises as fs } from "fs";
-
 // NPM Modules
 import { InstallService, RemoveService } from "@davehermann/systemd-unit-installer";
 
 // Application Modules
 import { ParseArguments } from "./arguments";
 import { PrintHelp } from "./help";
-import { CONFIGURATION_FILE, GenerateConfiguration } from "./configuration";
+import { GenerateConfiguration } from "./configuration";
 import { QueryLeases as DhcpQueryLeases } from "./dhcp/lease-query";
 import { QueryCache as DnsQueryCache } from "./dns/cache-query";
 import { IAction, IActionToTake } from "../interfaces/configuration/cliArguments";
 import { IConfiguration } from "../interfaces/configuration/configurationFile";
-import { BuildConfiguration } from "../server/configuration";
+import { LoadConfiguration } from "../server/configuration";
 
 /** Configure the list of recognized CLI arguments */
 function buildActions() {
+    /** Map of CLI parameter, and the action it will trigger */
     const definedActions: Map<string, IAction> = new Map();
+
     definedActions.set(`help`, {
         aliases: [`--help`, `-h`, `-?`],
         description: `Print this information`,
@@ -65,6 +64,14 @@ function buildActions() {
         usesConfiguration: true,
     });
 
+    /**
+     * TBD
+     * dhcp-decode
+     * dhcp-reset
+     * dhcp-test
+     * dhcp-history
+     */
+
     return definedActions;
 }
 
@@ -78,25 +85,12 @@ async function runActions(actionsToPerform: Array<IActionToTake>, definedActions
     if (actionsToPerform.length > 0) {
         const action = actionsToPerform.shift();
 
-        if (definedActions.get(action.name).usesConfiguration)
-            configuration = await loadConfiguration(configuration, dataServiceHost);
+        if (definedActions.get(action.name).usesConfiguration && !configuration)
+            configuration = await LoadConfiguration(dataServiceHost);
 
         await definedActions.get(action.name).method(action, definedActions, configuration);
         await runActions(actionsToPerform, definedActions, configuration, dataServiceHost);
     }
-}
-
-async function loadConfiguration(configuration: IConfiguration, dataServiceHost: string) {
-    if (!configuration) {
-        const contents = await fs.readFile(CONFIGURATION_FILE, { encoding: `utf8` });
-        const config = JSON.parse(contents);
-        configuration = BuildConfiguration(config);
-
-        // Add the remote host
-        configuration.dataServiceHost = dataServiceHost || configuration.serverIpAddress;
-    }
-
-    return configuration;
 }
 
 /** Initialize the CLI */

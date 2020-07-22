@@ -1,3 +1,5 @@
+import { IConfiguration as IDnsResolvers } from "./dnsResolvers";
+
 /** A host registered in the local DNS */
 interface IRegisteredHost {
     /** The domain name entry */
@@ -21,8 +23,10 @@ interface IConfiguration {
     domain?: string;
     /** Preconfigured domain name assignments */
     records?: Array<IRegisteredHost>;
-    /** List of upstream DNS resolvers */
-    upstream?: any;
+    /** Configuration for upstream DNS resolvers
+     *   - *From: ~/dns-resolvers.json*
+     */
+    upstream?: IDnsResolvers;
 }
 
 export {

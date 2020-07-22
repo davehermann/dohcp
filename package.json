@@ -10,9 +10,11 @@
     "node": ">=8.10"
   },
   "scripts": {
-    "build": "tsc --build src/cli",
+    "build": "npm run build:cli && npm run build:server",
+    "build:cli": "tsc --build src/cli",
+    "build:server": "tsc --build src/server",
     "dohcp": "node ./dist/cli/index.js",
-    "server": "node ./server/server.js"
+    "server": "node ./dist/server/dohcp-main.js"
   },
   "bin": {
     "dohcp": "./dist/cli/index.js"

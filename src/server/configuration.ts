@@ -1,11 +1,18 @@
 // Node Modules
+import { promises as fs } from "fs";
 import * as os from "os";
+import * as path from "path";
 
 // Application Modules
 import { IConfiguration } from "../interfaces/configuration/configurationFile";
+import { IConfiguration as IDnsResolver } from "../interfaces/configuration/dnsResolvers";
 import { FilterIPs } from "../server/addressing";
 
-function buildConfiguration(configuration: IConfiguration, dnsResolvers?: any): IConfiguration {
+/** Path to the application configuration JSON file */
+const CONFIGURATION_FILE = path.join(__dirname, `..`, `..`, `configuration.json`),
+    DNS_RESOLVERS_FILE = path.join(__dirname, `..`, `..`, `dns-resolvers.json`);
+
+function buildConfiguration(configuration: IConfiguration, dnsResolvers: IDnsResolver): IConfiguration {
     // Copy the configuration
     const computedConfig: IConfiguration = JSON.parse(JSON.stringify(configuration)),
         interfaces = os.networkInterfaces();
@@ -40,6 +47,25 @@ function buildConfiguration(configuration: IConfiguration, dnsResolvers?: any): 
     return computedConfig;
 }
 
+async function loadConfiguration(dataServiceHost: string): Promise<IConfiguration> {
+    // Load configuration
+    const contents = await fs.readFile(CONFIGURATION_FILE, { encoding: `utf8` });
+    const config: IConfiguration = JSON.parse(contents);
+
+    // Load upstream resolvers
+    const resolversFileContents = await fs.readFile(DNS_RESOLVERS_FILE, { encoding: `utf8` });
+    const resolvers: IDnsResolver = JSON.parse(resolversFileContents);
+
+    const configuration = buildConfiguration(config, resolvers);
+
+    // Add the remote host
+    configuration.dataServiceHost = dataServiceHost || configuration.serverIpAddress;
+
+    return configuration;
+}
+
 export {
+    CONFIGURATION_FILE,
     buildConfiguration as BuildConfiguration,
+    loadConfiguration as LoadConfiguration,
 };

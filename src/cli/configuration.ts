@@ -1,6 +1,5 @@
 // Node Modules
 import { promises as fs } from "fs";
-import * as path from "path";
 
 // Application Modules
 import { SelectInterface } from "./shared";
@@ -8,8 +7,7 @@ import { Configuration as DhcpConfiguration } from "./configuration/dhcp";
 import { Configuration as DnsConfiguration } from "./configuration/dns";
 import { IConfiguration } from "../interfaces/configuration/configurationFile";
 import { IAvailableNetworkInterfaces } from "../interfaces/configuration/networkInterface";
-
-const CONFIGURATION_FILE = path.join(__dirname, `..`, `..`, `configuration.json`);
+import { CONFIGURATION_FILE } from "../server/configuration";
 
 /** Create a blank configuration template */
 function emptyConfiguration(): IConfiguration {
@@ -76,6 +74,5 @@ async function writeConfiguration(config: IConfiguration): Promise<void> {
 }
 
 export {
-    CONFIGURATION_FILE,
     newConfiguration as GenerateConfiguration,
 };
