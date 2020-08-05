@@ -3,6 +3,7 @@ import { Debug, Err } from "multi-level-logger";
 
 // Application Modules
 import { LoadConfiguration } from "./configuration";
+import { DataServer } from "./control/server";
 import { DNSServer } from "./dns/dns-main";
 
 async function initialize() {
@@ -12,6 +13,8 @@ async function initialize() {
 
     if (!!configuration.dns && !configuration.dns.disabled)
         await DNSServer(configuration);
+
+    await DataServer(configuration);
 }
 
 initialize()

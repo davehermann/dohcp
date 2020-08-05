@@ -76,7 +76,8 @@ function storeInCache(answer: Answer, ttl: number) {
         answer.noExpiration = true;
 
     Debug({ [`New cache entry - ${cacheId.toLowerCase()}`]: answer, ttl }, { logName: `dns` });
-    _cache[cacheId.toLowerCase()] = answer;
+
+    _cache.set(cacheId.toLowerCase(), answer);
 }
 
 function lookupInCache(cacheId: string): Answer {
@@ -124,8 +125,14 @@ function parseCacheId(cacheId: string): ICacheId {
     return { label, typeId, classId };
 }
 
+function cacheContents(): Map<string, Answer> {
+    // Return the cache
+    return _cache;
+}
+
 export {
     addFromConfiguration as LoadPreconfiguredRecords,
+    cacheContents as CacheContents,
     generateCacheId as GenerateCacheId,
     lookupInCache as FindInCache,
 };
