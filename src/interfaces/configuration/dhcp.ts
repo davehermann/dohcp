@@ -3,7 +3,7 @@ interface IStaticAssignment {
     /** Static IP to use */
     ip: string;
     /** Hostname to assign in DNS */
-    hostname: string;
+    hostname?: string;
 }
 
 /** Start and end IP address ranges for the pool assignments */

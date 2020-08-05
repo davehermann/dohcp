@@ -1,13 +1,29 @@
 import { IConfiguration as IDnsResolvers } from "./dnsResolvers";
 
-/** A host registered in the local DNS */
-interface IRegisteredHost {
-    /** The domain name entry */
-    name: string;
-    /** An IP address pointing to the host */
-    ip?: string;
-    /** An alias (CNAME) pointing to another host record */
-    alias?: string;
+enum eDnsClass {
+    /** The Internet */
+    IN = 1,
+}
+enum eDnsType {
+    /** IPv4 Host address */
+    A = 1,
+    /** Canonical name for an alias */
+    CNAME = 5,
+    /** IPv6 Host address */
+    AAAA = 28,
+}
+
+enum eMessageByteComponent {
+    decimal = `decimal`,
+    hexadecimal = `hexadecimal`,
+    binary = `binary`,
+    string = `string`,
+}
+
+interface ICacheId {
+    label: string;
+    typeId: eDnsType;
+    classId: eDnsClass;
 }
 
 /** DNS Configuration */
@@ -29,6 +45,36 @@ interface IConfiguration {
     upstream?: IDnsResolvers;
 }
 
+/** Label in a DNS message */
+interface ILabel {
+    value: string;
+    offset: number;
+}
+
+/** Message data block */
+interface IMessageByte {
+    decimal: number;
+    hexadecimal: string;
+    binary: string;
+}
+
+/** A host registered in the local DNS */
+interface IRegisteredHost {
+    /** The domain name entry */
+    name: string;
+    /** An IP address pointing to the host */
+    ip?: string;
+    /** An alias (CNAME) pointing to another host record */
+    alias?: string;
+}
+
 export {
+    eDnsClass,
+    eDnsType,
+    eMessageByteComponent,
+    ICacheId,
     IConfiguration,
+    ILabel,
+    IMessageByte,
+    IRegisteredHost,
 };

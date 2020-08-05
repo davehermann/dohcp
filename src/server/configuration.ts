@@ -3,19 +3,25 @@ import { promises as fs } from "fs";
 import * as os from "os";
 import * as path from "path";
 
+// NPM Modules
+import { InitializeLogging, Dev, Trace } from "multi-level-logger";
+
 // Application Modules
 import { IConfiguration } from "../interfaces/configuration/configurationFile";
 import { IConfiguration as IDnsResolver } from "../interfaces/configuration/dnsResolvers";
+import { IStaticAssignment } from "../interfaces/configuration/dhcp";
 import { FilterIPs } from "../server/addressing";
 
 /** Path to the application configuration JSON file */
 const CONFIGURATION_FILE = path.join(__dirname, `..`, `..`, `configuration.json`),
     DNS_RESOLVERS_FILE = path.join(__dirname, `..`, `..`, `dns-resolvers.json`);
 
-function buildConfiguration(configuration: IConfiguration, dnsResolvers: IDnsResolver): IConfiguration {
+function buildConfiguration(configuration: Record<string, unknown>, dnsResolvers: IDnsResolver): IConfiguration {
     // Copy the configuration
     const computedConfig: IConfiguration = JSON.parse(JSON.stringify(configuration)),
         interfaces = os.networkInterfaces();
+
+    Trace({ [`Found network interfaces`]: os.networkInterfaces() });
 
     // Set the primary IP of this server to the first IP found
     // Maybe this should scan for the IP matching the subnet defined by the DHCP subnet mask and pool ranges?
@@ -27,8 +33,8 @@ function buildConfiguration(configuration: IConfiguration, dnsResolvers: IDnsRes
 
     // Expand the interfaces
     let ipv4Addresses: Array<os.NetworkInterfaceInfo> = [];
-    if (!!configuration.interface) {
-        const interfaceAddresses = interfaces[configuration.interface];
+    if (!!computedConfig.interface) {
+        const interfaceAddresses = interfaces[computedConfig.interface];
 
         if (!!interfaceAddresses) {
             ipv4Addresses = FilterIPs(interfaceAddresses);
@@ -44,17 +50,35 @@ function buildConfiguration(configuration: IConfiguration, dnsResolvers: IDnsRes
         // Add the upstream configuration
         computedConfig.dns.upstream = dnsResolvers;
 
+    // Convert the DHCP static leases to a Map
+    const staticLeasesAsObject = computedConfig.dhcp?.leases?.static;
+    if (!!staticLeasesAsObject) {
+        const staticMap: Map<string, IStaticAssignment> = new Map();
+
+        for (const [key, value] of Object.entries(staticLeasesAsObject))
+            staticMap.set(key, (value as IStaticAssignment));
+
+
+        computedConfig.dhcp.leases.static = staticMap;
+    }
+
     return computedConfig;
 }
 
-async function loadConfiguration(dataServiceHost: string): Promise<IConfiguration> {
+async function loadConfiguration(dataServiceHost?: string): Promise<IConfiguration> {
     // Load configuration
+    Dev(`Loading configuration from file`);
     const contents = await fs.readFile(CONFIGURATION_FILE, { encoding: `utf8` });
-    const config: IConfiguration = JSON.parse(contents);
+    const config: Record<string, unknown> = JSON.parse(contents);
+
+    // Pass the loaded config object to the logger
+    InitializeLogging(config);
 
     // Load upstream resolvers
     const resolversFileContents = await fs.readFile(DNS_RESOLVERS_FILE, { encoding: `utf8` });
     const resolvers: IDnsResolver = JSON.parse(resolversFileContents);
+
+    Dev({ [`Configuration`]: config, [`DNS Resolution`]: resolvers });
 
     const configuration = buildConfiguration(config, resolvers);
 

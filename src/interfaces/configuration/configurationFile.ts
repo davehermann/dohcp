@@ -10,9 +10,9 @@ interface IConfiguration {
     /** The network interface name used by the service */
     interface: string;
     /** DHCP configuration */
-    dhcp: IDhcpConfiguration;
+    dhcp?: IDhcpConfiguration;
     /** DNS configuration */
-    dns: IDnsConfiguration;
+    dns?: IDnsConfiguration;
     /** Hostname or IP for the running service */
     dataServiceHost?: string;
     /** IP address assigned to the first interface on this system */
