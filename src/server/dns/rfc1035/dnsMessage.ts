@@ -70,18 +70,18 @@ class DnsMessage {
     get answers(): Array<Answer> { return this._answers; }
     // End Answers --------------------------------------------------------------------
 
-    /** Get this message as a DNS binary Buffer */
-    get dnsMessage(): Buffer { return Buffer.from(this.hexadecimal.join(``), `hex`); }
+    /** Get this message in DNS wire format */
+    get dnsMessage(): Uint8Array { return new Uint8Array(this._master.map(element => element.decimal)); }
 
     /**
      * Convert message into a MessageByte array
      * @param msg - Raw DNS binary message
      */
-    private mapMessage(msg: Buffer): void {
+    private mapMessage(msg: Uint8Array): void {
         // Generate a respresentation where each array index contains decimal, hex, and binary representations
         const messageMaster: Array<MessageByte> = [];
         for (let offset = 0; offset < msg.length; offset++)
-            messageMaster.push(new MessageByte(msg.readUInt8(offset)));
+            messageMaster.push(new MessageByte(msg[offset]));
         this._master = messageMaster;
     }
 
@@ -166,7 +166,7 @@ class DnsMessage {
      * Parse a DNS message
      * @param msg - Raw DNS binary message
      */
-    FromDNS(msg: Buffer): void {
+    FromDNS(msg: Uint8Array): void {
         let offset: number;
 
         this.mapMessage(msg);

@@ -108,7 +108,7 @@ async function resolveQuery(dnsQuery: DNSMessage, configuration: IConfiguration,
             answerToReturn.Generate(dnsQuery.queryId, true, dnsQuery.rd);
 
             Trace({ answerToReturn }, { logName: `dns` });
-            Trace({ asHex: answerToReturn.dnsMessage.toString(`hex`) }, { logName: `dns` });
+            Trace({ asHex: answerToReturn.hexadecimal.join(``) }, { logName: `dns` });
 
             answerMessage = answerToReturn;
         }
@@ -144,13 +144,13 @@ function respondFromCache(dnsQuery: DNSMessage, cachedAnswer: Answer) {
 async function answerViaLookup(dnsQuery: DNSMessage, configuration: IConfiguration, useDNSOverHttps: boolean): Promise<DNSMessage> {
     Trace(`Forwarding to public resolver (via ${useDNSOverHttps ? `DNS-over-HTTPS` : `DNS`})`, { logName: `dns` });
 
-    let responseFromForwardDNS: Buffer;
+    let responseFromForwardDNS: Uint8Array;
     if (useDNSOverHttps)
         responseFromForwardDNS = await dnsOverHttpsLookup(dnsQuery, configuration);
     else
         responseFromForwardDNS = await dnsLookup(dnsQuery, configuration);
 
-    Trace({ [`Complete Response`]: responseFromForwardDNS.toString(`hex`) }, { logName: `dns` });
+    Trace({ [`Complete Response`]: responseFromForwardDNS.reduce((prev, cur) => { return prev + cur.toString(16).padStart(2, `0`); }, ``) }, { logName: `dns` });
 
     const answerMessage: DNSMessage = new DNSMessage();
     answerMessage.FromDNS(responseFromForwardDNS);
@@ -163,7 +163,7 @@ async function answerViaLookup(dnsQuery: DNSMessage, configuration: IConfigurati
     return answerMessage;
 }
 
-async function dnsOverHttpsLookup(dnsQuery: DNSMessage, configuration: IConfiguration): Promise<Buffer> {
+async function dnsOverHttpsLookup(dnsQuery: DNSMessage, configuration: IConfiguration): Promise<Uint8Array> {
     const dohResolver = await resolveHostForDnsOverHttpsRequests(configuration);
 
     Trace(`Resolving query in forward D-o-H DNS`, { logName: `dns` });
@@ -191,17 +191,28 @@ async function dnsOverHttpsLookup(dnsQuery: DNSMessage, configuration: IConfigur
         const req = WebRequest(request, res => {
             Trace({ [`DoH response`]: { status: res.statusCode, headers: res.headers } }, { logName: `dns` });
 
-            const data = [];
+            const data: Array<Uint8Array> = [];
+            let totalLength = 0;
 
             res.on(`data`, chunk => {
-                // chunk is a buffer
-                Dev({ [`Data chunk`]: chunk.toString(`hex`) }, { logName: `dns` });
-                data.push(chunk.toString(`hex`));
+                // chunk is a buffer; store as uint8array
+                const chunkData = new Uint8Array(chunk);
+                totalLength += chunkData.length;
+                Dev({ [`Data chunk`]: chunkData.toString() }, { logName: `dns` });
+                data.push(chunkData);
             });
 
             res.on(`end`, () => {
                 Dev({ data }, { logName: `dns` });
-                resolve(Buffer.from(data.join(``), `hex`));
+                const dataArray = new Uint8Array(totalLength);
+                let offset = 0;
+                while (data.length > 0) {
+                    const nextArray = data.shift();
+                    dataArray.set(nextArray, offset);
+                    offset += nextArray.length;
+                }
+
+                resolve(dataArray);
             });
         });
 
@@ -210,12 +221,13 @@ async function dnsOverHttpsLookup(dnsQuery: DNSMessage, configuration: IConfigur
             reject(err);
         });
 
-        req.write(dnsQuery.dnsMessage);
+        // ClientRequest.write() only accepts string or Buffer
+        req.write(Buffer.from(dnsQuery.dnsMessage));
         req.end();
     });
 }
 
-function dnsLookup(dnsQuery: DNSMessage, configuration: IConfiguration): Promise<Buffer> {
+function dnsLookup(dnsQuery: DNSMessage, configuration: IConfiguration): Promise<Uint8Array> {
     const resolver = getPrimaryForwardResolver(configuration);
 
     Trace(`Resolving query in forward DNS`, { logName: `dns` });
@@ -232,6 +244,7 @@ function dnsLookup(dnsQuery: DNSMessage, configuration: IConfiguration): Promise
         });
 
         client.on(`message`, (msg, rinfo) => {
+            // msg is a Buffer
             Debug({ [`DNS response`]: { rinfo, msg } }, { logName: `dns` });
 
             client.close();
