@@ -6,8 +6,8 @@ import { request as WebRequest, RequestOptions as HttpRequestOptions } from "htt
 import { Dev, Trace, Debug, Warn, Info, Err } from "multi-level-logger";
 
 // Application Modules
-import { AddForwardedAnswerToCache, FindInCache, GenerateCacheId } from "./cache";
-import { Answer } from "./rfc1035/answer";
+import { AddForwardedAnswerToCache } from "./cache";
+import { CheckForAnswerInCache } from "./resolver/cacheInteraction";
 import { DNSMessage } from "./rfc1035/dnsMessage";
 import { IConfiguration } from "../../interfaces/configuration/configurationFile";
 import { eDnsClass, eDnsType } from "../../interfaces/configuration/dns";
@@ -42,28 +42,6 @@ function nonInternetClassQuery(dnsQuery: DNSMessage): boolean {
 }
 
 /**
- * Try to answer a DNS query from cache
- * @param dnsQuery - Query to check
- */
-function checkCacheForAnswer(dnsQuery: DNSMessage): DNSMessage {
-    let answerMessage: DNSMessage = null;
-
-    // Check cache first, but only for single-question queries
-    if (dnsQuery.qdcount === 1) {
-        const label = dnsQuery.questions[0].label,
-            cacheId = GenerateCacheId(dnsQuery.questions[0]),
-            cacheHit = FindInCache(cacheId);
-
-        Debug({ label, cacheId, cacheHit }, { logName: `dns` });
-
-        if (!!cacheHit)
-            answerMessage = respondFromCache(dnsQuery, cacheHit);
-    }
-
-    return answerMessage;
-}
-
-/**
  * Get the answer to a query
  * @param dnsQuery - Incoming DNS request
  * @param configuration - Server configuration
@@ -73,7 +51,7 @@ function checkCacheForAnswer(dnsQuery: DNSMessage): DNSMessage {
 async function resolveQuery(dnsQuery: DNSMessage, configuration: IConfiguration, requestSource: dgram.RemoteInfo, useDNSOverHttps = true): Promise<DNSMessage> {
     const skipAnswerProcessing = multiQuestionQuery(dnsQuery) || nonInternetClassQuery(dnsQuery);
 
-    let answerMessage: DNSMessage = checkCacheForAnswer(dnsQuery);
+    let answerMessage: DNSMessage = CheckForAnswerInCache(dnsQuery);
 
     // If the cache doesn't hold a record for the query, forward query
     if (!answerMessage)
@@ -115,24 +93,6 @@ async function resolveQuery(dnsQuery: DNSMessage, configuration: IConfiguration,
     }
 
     return answerMessage;
-}
-
-/**
- * Use a cached DNS answer as the answer to a new query
- * @param dnsQuery - Query to check
- * @param cachedAnswer - Answer from the stored cache
- */
-function respondFromCache(dnsQuery: DNSMessage, cachedAnswer: Answer) {
-    Trace(`Found in cache - responding from cache`, { logName: `dns` });
-    Dev({ dnsQuery, cachedAnswer }, { logName: `dns` });
-
-    // Create a new message
-    const dnsAnswer = new DNSMessage();
-
-    // Add this answer
-    dnsAnswer.AddAnswers([cachedAnswer]);
-
-    return dnsAnswer;
 }
 
 /**
