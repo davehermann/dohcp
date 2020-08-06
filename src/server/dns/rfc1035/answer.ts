@@ -4,7 +4,7 @@ import { Dev } from "multi-level-logger";
 // Application Modules
 import { MessageByte, WriteBytes } from "./MessageByte";
 import { ResourceRecord } from "./resourceRecord";
-import { eDnsType, eMessageByteComponent } from "../../../interfaces/configuration/dns";
+import { eDnsType, eMessageByteComponent, eDnsClass } from "../../../interfaces/configuration/dns";
 
 // This interface is only to be used internally by the Answer class
 interface IInstantiateClone {
@@ -178,6 +178,23 @@ class Answer extends ResourceRecord {
             }
                 break;
         }
+    }
+
+    /** Used for logging */
+    public toJSON(): any {
+        const data = {
+            rdata: this.rdata,
+            ttlTimestamp: this.ttlTimestamp,
+            ttlExpiration: this.ttlExpiration,
+            startingTTL: this.startingTTL,
+            noExpiration: this.noExpiration,
+            label: this.label,
+            startingOffset: this.startingOffset,
+            typeId: eDnsType[this.typeId],
+            classId: eDnsClass[this.classId],
+        };
+
+        return data;
     }
 }
 

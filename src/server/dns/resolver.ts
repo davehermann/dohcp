@@ -1,15 +1,16 @@
 // Node Modules
 import * as dgram from "dgram";
+import { request as WebRequest, RequestOptions as HttpRequestOptions } from "https";
 
 // NPM Modules
-import { Dev, Trace, Debug, Warn } from "multi-level-logger";
+import { Dev, Trace, Debug, Warn, Info, Err } from "multi-level-logger";
 
 // Application Modules
-import { FindInCache, GenerateCacheId } from "./cache";
+import { AddForwardedAnswerToCache, FindInCache, GenerateCacheId } from "./cache";
 import { Answer } from "./rfc1035/answer";
 import { DNSMessage } from "./rfc1035/dnsMessage";
 import { IConfiguration } from "../../interfaces/configuration/configurationFile";
-import { eDnsClass } from "../../interfaces/configuration/dns";
+import { eDnsClass, eDnsType } from "../../interfaces/configuration/dns";
 
 /**
  * Log queries with more than one question to warn, and don't cache or rewrite the answers
@@ -78,7 +79,42 @@ async function resolveQuery(dnsQuery: DNSMessage, configuration: IConfiguration,
     if (!answerMessage)
         answerMessage = await answerViaLookup(dnsQuery, configuration, useDNSOverHttps);
 
-    return Promise.resolve(null);
+    // Non-standard queries will return as-resolved
+    if (!skipAnswerProcessing) {
+        // If the last answer in the answer's list is a CNAME, perform a sub-query
+        const lastAnswer = answerMessage.answers[answerMessage.answers.length - 1];
+
+        if (!lastAnswer)
+            Info({ [`NO lastAnswer`]: dnsQuery.questions, requestSource }, { logName: `dns` });
+
+        if (!!lastAnswer && (lastAnswer.typeId == eDnsType.CNAME)) {
+            const subQuery = new DNSMessage();
+            subQuery.AddQuestions([lastAnswer.rdata[0]]);
+            subQuery.Generate();
+
+            const subAnswer = await resolveQuery(subQuery, configuration, requestSource);
+
+            answerMessage.AddAnswers(subAnswer.answers);
+        }
+
+
+        // With the expanded answers, create a new response message
+
+        // Anything not expected should return unmanipulated
+        if (!!lastAnswer && (answerMessage.nscount == 0)) {
+            const answerToReturn = new DNSMessage();
+            answerToReturn.AddQuestions(dnsQuery.questions.map(question => question.label));
+            answerToReturn.AddAnswers(answerMessage.answers);
+            answerToReturn.Generate(dnsQuery.queryId, true, dnsQuery.rd);
+
+            Trace({ answerToReturn }, { logName: `dns` });
+            Trace({ asHex: answerToReturn.dnsMessage.toString(`hex`) }, { logName: `dns` });
+
+            answerMessage = answerToReturn;
+        }
+    }
+
+    return answerMessage;
 }
 
 /**
@@ -87,7 +123,7 @@ async function resolveQuery(dnsQuery: DNSMessage, configuration: IConfiguration,
  * @param cachedAnswer - Answer from the stored cache
  */
 function respondFromCache(dnsQuery: DNSMessage, cachedAnswer: Answer) {
-    Trace(`Responding from cache`, { logName: `dns` });
+    Trace(`Found in cache - responding from cache`, { logName: `dns` });
     Dev({ dnsQuery, cachedAnswer }, { logName: `dns` });
 
     // Create a new message
@@ -106,25 +142,83 @@ function respondFromCache(dnsQuery: DNSMessage, cachedAnswer: Answer) {
  * @param useDNSOverHttps - Pass a non-cached request through the DNS-over-HTTPS resolver instead of using standard DNS protocol
  */
 async function answerViaLookup(dnsQuery: DNSMessage, configuration: IConfiguration, useDNSOverHttps: boolean): Promise<DNSMessage> {
-    Trace(`Forwarding to public resolver`, { logName: `dns` });
+    Trace(`Forwarding to public resolver (via ${useDNSOverHttps ? `DNS-over-HTTPS` : `DNS`})`, { logName: `dns` });
 
-    const responseFromForwardDNS: Buffer = useDNSOverHttps ? await dnsOverHttpsLookup(dnsQuery, configuration) : await dnsLookup(dnsQuery, configuration);
+    let responseFromForwardDNS: Buffer;
+    if (useDNSOverHttps)
+        responseFromForwardDNS = await dnsOverHttpsLookup(dnsQuery, configuration);
+    else
+        responseFromForwardDNS = await dnsLookup(dnsQuery, configuration);
 
-    let answerMessage: DNSMessage;
+    Trace({ [`Complete Response`]: responseFromForwardDNS.toString(`hex`) }, { logName: `dns` });
+
+    const answerMessage: DNSMessage = new DNSMessage();
+    answerMessage.FromDNS(responseFromForwardDNS);
+    Debug({ answerMessage }, { logName: `dns` });
+
+    // Do not cache Authoritative responses
+    if (answerMessage.nscount == 0)
+        AddForwardedAnswerToCache(answerMessage);
 
     return answerMessage;
 }
 
 async function dnsOverHttpsLookup(dnsQuery: DNSMessage, configuration: IConfiguration): Promise<Buffer> {
-    const dohResolver = resolveHostForDnsOverHttpsRequests(configuration);
+    const dohResolver = await resolveHostForDnsOverHttpsRequests(configuration);
 
     Trace(`Resolving query in forward D-o-H DNS`, { logName: `dns` });
 
-    return Promise.resolve(Buffer.from([]));
+    const request: HttpRequestOptions = {
+        hostname: dohResolver.ips[0],
+        path: dohResolver.resolver.doh.path,
+        headers: {
+            [`Host`]: dohResolver.resolver.doh.hostname,
+            [`Content-Length`]: dnsQuery.dnsMessage.length,
+        },
+    };
+
+    const useMethod = dohResolver.resolver.doh.methods.find(method => { return method.method == dohResolver.resolver.doh.defaultMethod; });
+
+    request.method = useMethod.method;
+    useMethod.headers.forEach(header => {
+        for (const name in header)
+            request.headers[name] = header[name];
+    });
+
+    Dev({ [`DoH request`]: request }, { logName: `dns` });
+
+    return new Promise((resolve, reject) => {
+        const req = WebRequest(request, res => {
+            Trace({ [`DoH response`]: { status: res.statusCode, headers: res.headers } }, { logName: `dns` });
+
+            const data = [];
+
+            res.on(`data`, chunk => {
+                // chunk is a buffer
+                Dev({ [`Data chunk`]: chunk.toString(`hex`) }, { logName: `dns` });
+                data.push(chunk.toString(`hex`));
+            });
+
+            res.on(`end`, () => {
+                Dev({ data }, { logName: `dns` });
+                resolve(Buffer.from(data.join(``), `hex`));
+            });
+        });
+
+        req.on(`error`, (err) => {
+            Err(err, { logName: `dns` });
+            reject(err);
+        });
+
+        req.write(dnsQuery.dnsMessage);
+        req.end();
+    });
 }
 
 function dnsLookup(dnsQuery: DNSMessage, configuration: IConfiguration): Promise<Buffer> {
     const resolver = getPrimaryForwardResolver(configuration);
+
+    Trace(`Resolving query in forward DNS`, { logName: `dns` });
 
     // Resolve the hostname (may be in cache, or perform a DNS lookup)
     return new Promise((resolve, reject) => {
@@ -164,6 +258,7 @@ function dnsLookup(dnsQuery: DNSMessage, configuration: IConfiguration): Promise
 /**
  * Use a DNS query to resolve the D-o-H server name
  * @param configuration - Server configuration
+ * @returns The D-o-H server configuration, and the resolved IPs
  */
 async function resolveHostForDnsOverHttpsRequests(configuration: IConfiguration) {
     const resolver = getPrimaryForwardResolver(configuration);
@@ -175,8 +270,20 @@ async function resolveHostForDnsOverHttpsRequests(configuration: IConfiguration)
     resolverQuery.AddQuestions([resolver.doh.hostname]);
     resolverQuery.Generate();
 
-    const resolverAnswer = resolveQuery(resolverQuery, configuration, null, false);
+    const resolverAnswer = await resolveQuery(resolverQuery, configuration, null, false);
     Trace({ resolverAnswer }, { logName: `dns` });
+
+    // Get the IPs for the resolver
+    const resolverIPs: Array<string> = [];
+    resolverAnswer.answers.forEach(answer => {
+        answer.rdata.forEach(ip => {
+            if (resolverIPs.indexOf(ip) < 0)
+                resolverIPs.push(ip);
+        });
+    });
+
+    // Return the resolver data, and the IPs
+    return { resolver, ips: resolverIPs };
 }
 
 /** Check configuration for the resolver to use */

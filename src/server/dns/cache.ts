@@ -3,6 +3,7 @@ import { Trace, Debug } from "multi-level-logger";
 
 // Application Modules
 import { Answer } from "./rfc1035/answer";
+import { DNSMessage } from "./rfc1035/dnsMessage";
 import { IConfiguration } from "../../interfaces/configuration/configurationFile";
 import { eDnsClass, eDnsType, ICacheId, IRegisteredHost } from "../../interfaces/configuration/dns";
 
@@ -53,6 +54,22 @@ function addFromConfiguration(configuration: IConfiguration): void {
     }
 }
 
+/** Add answers from within a DNS Message */
+function addFromForwardDns(dnsAnswer: DNSMessage): void {
+    dnsAnswer.answers.forEach(answer => {
+        // Calculate the remaining TTL
+        const currentTime = new Date(),
+            remainingTTL = Math.round((answer.ttlExpiration - currentTime.getTime()) / 1000);
+
+        // Only cache if TTL is > 1000
+        if (remainingTTL > 1) {
+            Debug(`Adding ${answer.label} to cache with removal in ${remainingTTL} seconds`, { logName: `dns` });
+
+            storeInCache(answer, remainingTTL);
+        }
+    });
+}
+
 /** Store a DNS answer in cache for reuse */
 function storeInCache(answer: Answer, ttl: number) {
     const cacheId = generateCacheId(answer);
@@ -80,10 +97,11 @@ function storeInCache(answer: Answer, ttl: number) {
     _cache.set(cacheId.toLowerCase(), answer);
 }
 
+/** Find a matching cache entry for the cache ID, if one exists */
 function lookupInCache(cacheId: string): Answer {
     const { label, typeId, classId } = parseCacheId(cacheId);
     let cacheHit = _cache.get(cacheId.toLowerCase()),
-        cacheReturn: Answer = undefined;
+        cacheReturn: Answer = null;
 
     // Check CNAME aliases for A or AAAA records
     if (!cacheHit && ((typeId == eDnsType.A) || (typeId == eDnsType.AAAA)))
@@ -125,6 +143,7 @@ function parseCacheId(cacheId: string): ICacheId {
     return { label, typeId, classId };
 }
 
+/** Return the entire cache */
 function cacheContents(): Map<string, Answer> {
     // Return the cache
     return _cache;
@@ -132,6 +151,7 @@ function cacheContents(): Map<string, Answer> {
 
 export {
     addFromConfiguration as LoadPreconfiguredRecords,
+    addFromForwardDns as AddForwardedAnswerToCache,
     cacheContents as CacheContents,
     generateCacheId as GenerateCacheId,
     lookupInCache as FindInCache,

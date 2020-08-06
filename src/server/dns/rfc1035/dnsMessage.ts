@@ -1,5 +1,5 @@
 // NPM Modules
-import { Dev, Trace } from "multi-level-logger";
+import { Dev, Trace, GetConfiguredLogging, LogLevels } from "multi-level-logger";
 
 // Application Modules
 import { Answer } from "./answer";
@@ -34,6 +34,33 @@ class DnsMessage {
     // Header ---------------------------------------------------------------------------
     /** Query ID is the first two bytes of the message */
     get queryId(): number { return parseInt(this.hexadecimal.slice(0, 2).join(``), 16); }
+    // Parameters - the next 16 bits (2 bytes) -------------------------------------
+    get _parameters(): string { return this.binary.slice(2, 4).join(``); }
+    // // QR is the first bit on the parameters
+    // get qr() { return +this._parameters.substr(0, 1);}
+    // // Opcode is the next 4 bits
+    // get opcode() { return parseInt(this._parameters.substr(1, 4), 2); }
+    // // Authoritative Answer
+    // get aa() { return +this._parameters.substr(5, 1) === 1; }
+    // // Is answer truncated
+    // get tc() { return +this._parameters.substr(6, 1) === 1; }
+    // Recursion Desired?
+    get rd(): boolean { return +this._parameters.substr(7, 1) === 1; }
+    // // Recursion Available
+    // get ra() { return +this._parameters.substr(8, 1) === 1; }
+    // // Z (reserved for future use)
+    // get z() { return parseInt(this._parameters.substr(9, 3), 2); }
+    // // Response Code
+    // get rcode() { return parseInt(this._parameters.substr(12, 4), 2); }
+    // // End Parameters --------------------------------------------------------------
+    // // Number of Questions
+    // get qdcount() { return parseInt(this.hexadecimal.slice(4, 6).join(``), 16); }
+    // // Number of Answers
+    // get ancount() { return parseInt(this.hexadecimal.slice(6, 8).join(``), 16); }
+    /** Number of Authority Records */
+    get nscount(): number { return parseInt(this.hexadecimal.slice(8, 10).join(``), 16); }
+    // // Number of Additional Records
+    // get arcount() { return parseInt(this.hexadecimal.slice(10, 12).join(``), 16); }
     // End Header -----------------------------------------------------------------------
 
 
@@ -191,6 +218,42 @@ class DnsMessage {
 
         // Write the answers
         this.answers.forEach(answer => answer.EncodeToDNS(this._master));
+    }
+
+    /** Use for logging */
+    toJSON(): any {
+        const data = { source: null, hex: null, bin: null, header: null, questions: null, answers: null };
+
+        const { logLevel } = GetConfiguredLogging();
+        if (logLevel.dns == LogLevels.dev) {
+            data.source = this._master;
+            data.hex = this.hexadecimal;
+            data.bin = this.binary;
+        }
+
+        data.header = {
+            queryId: this.queryId,
+            parameters: {
+                asBinary: this.binary.slice(2, 4).join(``),
+                // qr: this.qr,
+                // opcode: this.opcode,
+                // aa: this.aa,
+                // tc: this.tc,
+                // rd: this.rd,
+                // ra: this.ra,
+                // z: this.z,
+                // rcode: this.rcode,
+            },
+            qdcount: this.qdcount,
+            ancount: this.ancount,
+            nscount: this.nscount,
+            // arcount: this.arcount,
+        };
+
+        data.questions = this.questions;
+        data.answers = this.answers;
+
+        return data;
     }
 }
 
