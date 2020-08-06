@@ -26,41 +26,37 @@ class DnsMessage {
     /** Binary representation of the message array */
     get binary(): Array<string> { return this._master.map(element => element.binary ); }
 
-    /** Number of Answers in message */
-    get ancount(): number { return parseInt(this.hexadecimal.slice(6, 8).join(``), 16); }
-    /** Number of questions in message */
-    get qdcount(): number { return parseInt(this.hexadecimal.slice(4, 6).join(``), 16); }
-
     // Header ---------------------------------------------------------------------------
     /** Query ID is the first two bytes of the message */
     get queryId(): number { return parseInt(this.hexadecimal.slice(0, 2).join(``), 16); }
     // Parameters - the next 16 bits (2 bytes) -------------------------------------
+    /** The 16 bytes following the 2-byte ID at the start of the message */
     get _parameters(): string { return this.binary.slice(2, 4).join(``); }
-    // // QR is the first bit on the parameters
-    // get qr() { return +this._parameters.substr(0, 1);}
-    // // Opcode is the next 4 bits
-    // get opcode() { return parseInt(this._parameters.substr(1, 4), 2); }
-    // // Authoritative Answer
-    // get aa() { return +this._parameters.substr(5, 1) === 1; }
-    // // Is answer truncated
-    // get tc() { return +this._parameters.substr(6, 1) === 1; }
-    // Recursion Desired?
+    /** The first bit on the parameters */
+    get qr(): number { return +this._parameters.substr(0, 1);}
+    /** Bits 2 - 5 on the parameters */
+    get opcode(): number { return parseInt(this._parameters.substr(1, 4), 2); }
+    /** Is this an Authoritative Answer */
+    get aa(): boolean { return +this._parameters.substr(5, 1) === 1; }
+    /** Is answer truncated */
+    get tc(): boolean { return +this._parameters.substr(6, 1) === 1; }
+    /** Is Recursion Desired? */
     get rd(): boolean { return +this._parameters.substr(7, 1) === 1; }
-    // // Recursion Available
-    // get ra() { return +this._parameters.substr(8, 1) === 1; }
-    // // Z (reserved for future use)
-    // get z() { return parseInt(this._parameters.substr(9, 3), 2); }
-    // // Response Code
-    // get rcode() { return parseInt(this._parameters.substr(12, 4), 2); }
-    // // End Parameters --------------------------------------------------------------
-    // // Number of Questions
-    // get qdcount() { return parseInt(this.hexadecimal.slice(4, 6).join(``), 16); }
-    // // Number of Answers
-    // get ancount() { return parseInt(this.hexadecimal.slice(6, 8).join(``), 16); }
+    /** Is Recursion Available */
+    get ra(): boolean { return +this._parameters.substr(8, 1) === 1; }
+    /** Z (reserved for future use) */
+    get z(): number { return parseInt(this._parameters.substr(9, 3), 2); }
+    /** Response Code */
+    get rcode(): number { return parseInt(this._parameters.substr(12, 4), 2); }
+    // End Parameters --------------------------------------------------------------
+    /** Number of Answers in message */
+    get ancount(): number { return parseInt(this.hexadecimal.slice(6, 8).join(``), 16); }
+    /** Number of questions in message */
+    get qdcount(): number { return parseInt(this.hexadecimal.slice(4, 6).join(``), 16); }
     /** Number of Authority Records */
     get nscount(): number { return parseInt(this.hexadecimal.slice(8, 10).join(``), 16); }
-    // // Number of Additional Records
-    // get arcount() { return parseInt(this.hexadecimal.slice(10, 12).join(``), 16); }
+    /** Number of Additional Records */
+    get arcount(): number { return parseInt(this.hexadecimal.slice(10, 12).join(``), 16); }
     // End Header -----------------------------------------------------------------------
 
 
@@ -203,6 +199,7 @@ class DnsMessage {
         });
     }
 
+    /** Generate a DNS wire format message from the existing data on this object */
     Generate(queryId?: number, isReply?: boolean, recursionDesired?: boolean): void {
         // Clear this message
         this._master = [];
@@ -235,14 +232,14 @@ class DnsMessage {
             queryId: this.queryId,
             parameters: {
                 asBinary: this.binary.slice(2, 4).join(``),
-                // qr: this.qr,
-                // opcode: this.opcode,
-                // aa: this.aa,
-                // tc: this.tc,
-                // rd: this.rd,
-                // ra: this.ra,
-                // z: this.z,
-                // rcode: this.rcode,
+                qr: this.qr,
+                opcode: this.opcode,
+                aa: this.aa,
+                tc: this.tc,
+                rd: this.rd,
+                ra: this.ra,
+                z: this.z,
+                rcode: this.rcode,
             },
             qdcount: this.qdcount,
             ancount: this.ancount,
