@@ -1,3 +1,17 @@
+interface IAllocatedAddress {
+    clientId: string;
+    ipAddress: string;
+    isConfirmed: boolean;
+    leaseStart: number;
+    providedHost: string;
+    staticHost: string;
+}
+
+interface IAllocations {
+    byIp: Map<string, IAllocatedAddress>;
+    byClientId: Map<string, string>;
+}
+
 /** Assign a host to a static address */
 interface IStaticAssignment {
     /** Static IP to use */
@@ -47,6 +61,8 @@ interface IConfiguration {
 }
 
 export {
+    IAllocations,
+    IAllocatedAddress,
     IConfiguration,
     IRange,
     IStaticAssignment,

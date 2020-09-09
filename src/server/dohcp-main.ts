@@ -4,6 +4,7 @@ import { Debug, Err } from "multi-level-logger";
 // Application Modules
 import { LoadConfiguration } from "./configuration";
 import { DataServer } from "./control/server";
+import { DHCPServer } from "./dhcp/dhcp-main";
 import { DNSServer } from "./dns/dns-main";
 
 async function initialize() {
@@ -13,6 +14,9 @@ async function initialize() {
 
     if (!!configuration.dns && !configuration.dns.disabled)
         await DNSServer(configuration);
+
+    if (!!configuration.dhcp && !configuration.dhcp.disabled)
+        await DHCPServer(configuration);
 
     await DataServer(configuration);
 }
