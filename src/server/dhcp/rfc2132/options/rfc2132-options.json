@@ -1,0 +1,142 @@
+[
+    { "code": 0, "name": "Pad Option", "isPad": true, "description": "The pad option can be used to cause subsequent fields to align on word boundaries." },
+    { "code": 255, "name": "End Option", "isEnd": true, "description": "The end option marks the end of valid information in the vendor field.  Subsequent octets should be filled with pad options." },
+    {
+        "code": 1,
+        "length": 4,
+        "name": "Subnet Mask",
+        "description": "The subnet mask option specifies the client's subnet mask as per RFC 950",
+        "encoding": { "method": "IPAddress" }
+    },
+    {
+        "code": 3,
+        "length": -1,
+        "name": "Router Option",
+        "description": "The router option specifies a list of IP addresses for routers on the client's subnet.  Routers SHOULD be listed in order of preference.",
+        "encoding": { "isArray": true, "method": "IPAddress" }
+    },
+    { "code": 4, "length": -1, "name": "Time Server Option", "description": "The time server option specifies a list of RFC 868 [6] time servers available to the client.  Servers SHOULD be listed in order of preference." },
+    {
+        "code": 6,
+        "length": -1,
+        "name": "Domain Name Server Option",
+        "description": "The domain name server option specifies a list of Domain Name System (STD 13, RFC 1035 [8]) name servers available to the client.  Servers SHOULD be listed in order of preference.",
+        "encoding": { "isArray": true, "method": "IPAddress" }
+    },
+    {
+        "code": 12,
+        "length": -1,
+        "name": "Host Name Option",
+        "description": "This option specifies the name of the client.  The name may or may not be qualified with the local domain name",
+        "encoding": { "method": "String", "args": ["optionLength"] }
+    },
+    { "code": 13, "length": -1, "name": "Boot File Size Option", "description": "This option specifies the length in 512-octet blocks of the default boot image for the client.  The file length is specified as an unsigned 16-bit integer." },
+    {
+        "code": 15,
+        "length": -1,
+        "name": "Domain Name",
+        "description": "This option specifies the domain name that client should use when resolving hostnames via the Domain Name System.",
+        "encoding": { "method": "String", "args": ["optionLength"] }
+    },
+    { "code": 26, "length": 2, "name": "Interface MTU Option", "description": "This option specifies the MTU to use on this interface.  The MTU is specified as a 16-bit unsigned integer.  The minimum legal value for the MTU is 68." },
+    {
+        "code": 28,
+        "length": 4,
+        "name": "Broadcast Address Option",
+        "description": "This option specifies the broadcast address in use on the client's subnet.  Legal values for broadcast addresses are specified in section 3.2.1.3 of RFC 1122",
+        "encoding": { "method": "IPAddress" }
+    },
+    { "code": 33, "length": -1, "name": "Static Route Option", "description": "This option specifies a list of static routes that the client should install in its routing cache.  If multiple routes to the same destination are specified, they are listed in descending order of priority. The routes consist of a list of IP address pairs.  The first address is the destination address, and the second address is the router for the destination. The default route (0.0.0.0) is an illegal destination for a static route.  See section 3.5 for information about the router option." },
+    { "code": 42, "length": -1, "name": "Network Time Protocol Server Option", "description": "This option specifies a list of IP addresses indicating NTP servers available to the client.  Servers SHOULD be listed in order of preference." },
+    { "code": 43, "length": -1, "name": "Vendor Specific Information", "description": "This option is used by clients and servers to exchange vendor- specific information.  The information is an opaque object of n octets, presumably interpreted by vendor-specific code on the clients and servers.  The definition of this information is vendor specific. The vendor is indicated in the vendor class identifier option." },
+    { "code": 44, "length": -1, "name": "NetBIOS over TCP/IP Name Server Option", "description": "The NetBIOS name server (NBNS) option specifies a list of RFC 1001/1002 [19] [20] NBNS name servers listed in order of preference." },
+    {
+        "code": 50,
+        "length": 4,
+        "name": "Requested IP Address",
+        "description": "This option is used in a client request (DHCPDISCOVER) to allow the client to request that a particular IP address be assigned.",
+        "encoding": { "method": "IPAddress" }
+    },
+    {
+        "code": 51,
+        "length": 4,
+        "name": "IP Address Lease Time",
+        "description": "This option is used in a client request (DHCPDISCOVER or DHCPREQUEST) to allow the client to request a lease time for the IP address.  In a server reply (DHCPOFFER), a DHCP server uses this option to specify the lease time it is willing to offer.\n\nThe time is in units of seconds, and is specified as a 32-bit unsigned integer.",
+        "encoding": { "method": "UInt32" }
+    },
+    {
+        "code": 53,
+        "length": 1,
+        "name": "DHCP Message Type",
+        "description": "This option is used to convey the type of the DHCP message.",
+        "encoding": { "method": "UInt8" },
+        "valueMap": {
+            "1": "DHCPDISCOVER",
+            "2": "DHCPOFFER",
+            "3": "DHCPREQUEST",
+            "4": "DHCPDECLINE",
+            "5": "DHCPACK",
+            "6": "DHCPNAK",
+            "7": "DHCPRELEASE",
+            "8": "DHCPINFORM"
+        }
+    },
+    {
+        "code": 54,
+        "length": 4,
+        "name": "Server Identifier",
+        "description": "This option is used in DHCPOFFER and DHCPREQUEST messages, and may optionally be included in the DHCPACK and DHCPNAK messages.  DHCP servers include this option in the DHCPOFFER in order to allow the client to distinguish between lease offers.  DHCP clients use the contents of the 'server identifier' field as the destination address for any DHCP messages unicast to the DHCP server.  DHCP clients also indicate which of several lease offers is being accepted by including this option in a DHCPREQUEST message.\n\n The identifier is the IP address of the selected server.",
+        "encoding": { "method": "IPAddress" }
+    },
+    {
+        "code": 55,
+        "length": -1,
+        "name": "Parameter Request List",
+        "description": "This option is used by a DHCP client to request values for specified configuration parameters.  The list of requested parameters is specified as n octets, where each octet is a valid DHCP option code as defined in this document.",
+        "encoding": { "method": "String", "args": ["optionLength", "hex"] }
+    },
+    {
+        "code": 57,
+        "length": 2,
+        "name": "Maximum DHCP Message Size",
+        "description": "This option specifies the maximum length DHCP message that it is willing to accept.  The length is specified as an unsigned 16-bit integer.  A client may use the maximum DHCP message size option in DHCPDISCOVER or DHCPREQUEST messages, but should not use the option in DHCPDECLINE messages. The minimum legal value is 576 octets.",
+        "encoding": { "method": "UInt16" }
+    },
+    {
+        "code": 58,
+        "length": 4,
+        "name": "Renewal (T1) Time Value",
+        "propertyName": "renewalTimeValue",
+        "description": "This option specifies the time interval from address assignment until the client transitions to the RENEWING state.\n\nThe value is in units of seconds, and is specified as a 32-bit unsigned integer.",
+        "encoding": { "method": "UInt32" }
+    },
+    {
+        "code": 59,
+        "length": 4,
+        "name": "Rebinding (T2) Time Value",
+        "propertyName": "rebindingTimeValue",
+        "description": "This option specifies the time interval from address assignment until the client transitions to the REBINDING state.\n\nThe value is in units of seconds, and is specified as a 32-bit unsigned integer.",
+        "encoding": { "method": "UInt32" }
+    },
+    {
+        "code": 60,
+        "length": -1,
+        "name": "Vendor Class Identifier",
+        "description": "This option is used by DHCP clients to optionally identify the vendor type and configuration of a DHCP client. Servers not equipped to interpret the class-specific information sent by a client MUST ignore it (although it may be reported). Servers that respond SHOULD only use option 43 to return the vendor-specific information to the client.",
+        "encoding": { "method": "String", "args": ["optionLength"] }
+    },
+    {
+        "code": 61,
+        "length": -1,
+        "name": "Client Identifier",
+        "description": "This option is used by DHCP clients to specify their unique identifier.  DHCP servers use this value to index their database of address bindings.  This value is expected to be unique for all clients in an administrative domain.\n\nIdentifiers SHOULD be treated as opaque objects by DHCP servers.",
+        "encoding": { "method": "String", "args": ["optionLength", "hex"] }
+    },
+    { "code": 66, "length": -1, "name": "TFTP server name", "description": "This option is used to identify a TFTP server when the 'sname' field in the DHCP header has been used for DHCP options." },
+    { "code": 67, "length": -1, "name": "Bootfile name", "description": "This option is used to identify a bootfile when the 'file' field in the DHCP header has been used for DHCP options." },
+    { "code": 81, "length": -1, "name": "The Client FQDN Option", "description": "Clients MAY send the Client FQDN option, setting appropriate Flags values, in both their DHCPDISCOVER and DHCPREQUEST messages.  If a client sends the Client FQDN option in its DHCPDISCOVER message, it MUST send the option in subsequent DHCPREQUEST messages though the contents of the option MAY change." },
+    { "code": 119, "length": -1, "name": "Domain Search List", "description": "Specifies the list of domains to be used by the client when searching bare hostnames." },
+    { "code": 121, "length": -1, "name": "Classless Static Route", "description": "?" },
+    { "code": 145, "length": -1, "name": "Forcerenew Nonce Authentication", "description": "?" },
+    { "code": 252, "length": -1, "name": "Web Proxy Auto Discovery", "description": "?" }
+]

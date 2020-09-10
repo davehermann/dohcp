@@ -12,7 +12,9 @@
   "scripts": {
     "build": "npm run build:cli && npm run build:server",
     "build:cli": "tsc --build src/cli",
+    "prebuild:server": "rm -r ./dist/server",
     "build:server": "tsc --build src/server",
+    "postbuild:server": "cp ./src/server/dhcp/rfc2132/options/rfc2132-options.json ./dist/server/dhcp/rfc2132/options/rfc2132-options.json",
     "dohcp": "node ./dist/cli/index.js",
     "server": "node ./dist/server/dohcp-main.js"
   },

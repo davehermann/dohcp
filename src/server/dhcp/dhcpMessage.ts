@@ -1,5 +1,6 @@
 import { ReadUInt8, ReadUInt32, ReadUInt16, ReadIPAddress, ReadString, MACAddressFromHex } from "../utilities";
 import { IReadBinaryValueToString } from "../../interfaces/server";
+import { DHCPOptions } from "./rfc2132/dhcpOptions";
 
 const MAGIC_COOKIE = Uint8Array.from([99, 130, 83, 99]);
 
@@ -88,7 +89,7 @@ class Message {
     }
 
     /** DHCP Options */
-    private options: number;
+    private options: DHCPOptions;
 
     /** Binary version of the message */
     private binaryMessage: Uint8Array;
@@ -144,6 +145,9 @@ class Message {
         ({ value: this.sname, offsetAfterRead: offset } = ReadString(message, offset, 64));
         ({ value: this.file, offsetAfterRead: offset } = ReadString(message, offset, 128));
         ({ value: this.magicCookie, offsetAfterRead: offset } = this.readMagicCookie(message, offset));
+
+        // As options are the last component of a message, the returned offset isn't needed
+        this.options = new DHCPOptions(message, offset);
     }
 
 
@@ -173,5 +177,6 @@ class Message {
 }
 
 export {
+    hardwareTypes,
     Message as DHCPMessage,
 };
