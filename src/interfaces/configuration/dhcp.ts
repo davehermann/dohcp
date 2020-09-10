@@ -12,6 +12,17 @@ interface IAllocations {
     byClientId: Map<string, string>;
 }
 
+interface IClientIdentifier {
+    uniqueId: string;
+    type?: string;
+    address?: string;
+}
+
+interface IRequestedParameter {
+    code: number;
+    name: string;
+}
+
 /** Assign a host to a static address */
 interface IStaticAssignment {
     /** Static IP to use */
@@ -63,7 +74,9 @@ interface IConfiguration {
 export {
     IAllocations,
     IAllocatedAddress,
+    IClientIdentifier,
     IConfiguration,
     IRange,
+    IRequestedParameter,
     IStaticAssignment,
 };

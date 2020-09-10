@@ -148,10 +148,12 @@ class Message {
 
         // As options are the last component of a message, the returned offset isn't needed
         this.options = new DHCPOptions(message, offset);
+        // Guarantee a client identifier exists in the options
+        this.options.EnsureClientIdentifierExists(this.chaddr, this.htype);
     }
 
 
-    public toJSON(): any {
+    public toJSON(): unknown {
         return {
             op: this.op,
             htype: this.htype,

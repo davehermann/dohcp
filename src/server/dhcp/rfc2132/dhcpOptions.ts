@@ -6,6 +6,9 @@ import { DefineOptions } from "./options/optionDefinitions";
 import { ReadUInt8, ReadIPAddress, ReadString, ReadUInt16, ReadUInt32, MACAddressFromHex } from "../../utilities";
 import { RootOption, encodingTypes } from "./options/rootOption";
 import { hardwareTypes } from "../dhcpMessage";
+import { IClientIdentifier, IRequestedParameter } from "../../../interfaces/configuration/dhcp";
+
+type OptionValue = string | number | IClientIdentifier | Array<IRequestedParameter>;
 
 const optionDefinition = DefineOptions();
 
@@ -22,7 +25,7 @@ class DhcpOptions {
 
     //#region Public properties
 
-    public readonly options: Map<string, string | number> = new Map();
+    public readonly options: Map<string, OptionValue> = new Map();
 
     //#endregion Public properties
 
@@ -56,7 +59,7 @@ class DhcpOptions {
                 // Move one value for a pad
                 offset++;
             else if (!!option && !!option.encoding) {
-                let value: number | string = null;
+                let value: OptionValue = null;
 
                 const passedArguments: Array<unknown> = [this.optionData, offset];
 
@@ -75,7 +78,7 @@ class DhcpOptions {
 
                 Dev({ name: option.name, method: option.encoding.method, args: passedArguments.slice(1) }, { logName: `dhcp` });
 
-                let rawValue: number | string,
+                let rawValue: OptionValue,
                     // eslint-disable-next-line @typescript-eslint/ban-types
                     action: Function;
 
@@ -122,22 +125,22 @@ class DhcpOptions {
         }
     }
 
-    private optionDecoder(option: RootOption, rawValue: number | string): number | string {
-        let value = null;
+    private optionDecoder(option: RootOption, rawValue: OptionValue): OptionValue {
+        let value: OptionValue = null;
 
         switch (option.propertyName) {
             case `clientIdentifier`:
-                value = this.decodeClientIdentifier(rawValue);
+                value = this.decodeClientIdentifier((rawValue as string));
                 break;
 
             case `dhcpMessageType`:
-                value = option.valueMap[rawValue];
+                value = option.valueMap[(rawValue as string)];
                 break;
 
             case `parameterRequestList`: {
                 // This is a list of codes
 
-                const requestedParameters = [];
+                const requestedParameters: Array<IRequestedParameter> = [];
                 while ((rawValue as string).length > 0) {
                     const code = parseInt((rawValue as string).substr(0, 2), 16);
 
@@ -161,11 +164,11 @@ class DhcpOptions {
     }
 
     // rawValue is the hexadecimal type plus the ID
-    private decodeClientIdentifier(rawValue) {
+    private decodeClientIdentifier(rawValue: string): IClientIdentifier {
         if ((rawValue === undefined) || (rawValue === null))
             return null;
 
-        const id = { uniqueId: rawValue, type: null, address: null };
+        const id: IClientIdentifier = { uniqueId: rawValue };
 
         // An ethernet address should be parsed
         const type = parseInt(rawValue.substr(0, 2), 16);
@@ -181,6 +184,15 @@ class DhcpOptions {
     //#endregion Private methods
 
     //#region Public methods
+
+    EnsureClientIdentifierExists(clientHardwareAddress: string, hardwareType: hardwareTypes): void {
+        // Default to the chaddr address
+        if (!this.options.has(`clientIdentifier`) || !!clientHardwareAddress) {
+            const rawValue = hardwareType.toString(16).padStart(2, `0`) + clientHardwareAddress.replace(/:/g, ``);
+
+            this.options.set(`clientIdentifier`, this.decodeClientIdentifier(rawValue));
+        }
+    }
 
     toJSON(): unknown {
         const hex = [];
