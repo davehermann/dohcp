@@ -30,9 +30,7 @@ function readString(typedArray: Uint8Array, offset: number, byteCount, format: B
 
     switch (format) {
         case `hex`:
-            data.forEach(val => {
-                stringData.push(val.toString(16).padStart(2, `0`));
-            });
+            stringData.splice(0, 0, ...toHexadecimal(data));
             break;
 
         case `utf8`:
@@ -60,12 +58,76 @@ function readIpAddress(typedArray: Uint8Array, offset: number): IReadBinaryValue
     return { value: valueToOctets(value, 4).join(`.`), offsetAfterRead };
 }
 
+function isNumber(data: number | Array<number>): data is number {
+    return (data as Array<number>).length === undefined;
+}
+
+function writeBytes(dataArray: Array<number>, data: number | Array<number>, offset: number, byteCount = 1) {
+    let octets: Uint8Array;
+
+    if (isNumber(data))
+        octets = valueToOctets(data, byteCount);
+    else
+        octets = Uint8Array.from(data);
+
+    if (offset < 0)
+        offset = dataArray.length;
+
+    for (let idx = 0; idx < octets.length; idx++)
+        dataArray[offset + idx] = octets[idx];
+}
+
+function writeUInt8(dataArray: Array<number>, data: number, offset = -1): void {
+    // Add a single byte to the array
+    writeBytes(dataArray, data, offset);
+}
+
+function writeUInt16(dataArray: Array<number>, data: number, offset = -1): void {
+    writeBytes(dataArray, data, offset, 2);
+}
+
+function writeUInt32(dataArray: Array<number>, data: number, offset = -1): void {
+    writeBytes(dataArray, data, offset, 4);
+}
+
+function writeString(dataArray: Array<number>, data: string, offset = -1, byteCount = -1, format: BufferEncoding = `utf8`): void {
+    // Convert the string into a useable array based on the format
+    const stringData: Array<number> = [];
+
+    switch (format) {
+        case `hex`: {
+            const hexArray = data.match(/../g);
+            stringData.splice(0, 0, ...hexArray.map(val => parseInt(val, 16)));
+        }
+            break;
+
+        case `utf8`:
+            for (let idx = 0; idx < data.length; idx++)
+                stringData.push(data.charCodeAt(idx));
+            break;
+
+        default: {
+            const err = new Error(`No implementation for "${format}" strings exists`);
+            err.name = `NOT IMPLEMENTED`;
+            throw err;
+        }
+    }
+
+    if (byteCount > -1)
+        while(stringData.length < byteCount)
+            stringData.push(0);
+
+    writeBytes(dataArray, stringData, offset);
+}
+
+function writeIpAddress(dataArray: Array<number>, data: string, offset = -1): void {
+    const ip = Uint8Array.from(data.split(`.`).map(strOctet => +strOctet));
+    writeUInt32(dataArray, octetsToValue(ip));
+}
+
 function octetsToValue(octets: Uint8Array): number {
     // Convert to a hexadecimal string using .forEach as Uint8Array.map() returns another typed array
-    const hexValues: Array<string> = [];
-    octets.forEach(value => {
-        hexValues.push(value.toString(16).padStart(2, `0`));
-    });
+    const hexValues = toHexadecimal(octets);
 
     // Convert to a number from the joined string
     return parseInt(hexValues.join(``), 16);
@@ -97,6 +159,16 @@ function hexValueFromMacAddress(macAddress: string): string {
     return macAddress.split(`:`).join(``);
 }
 
+function toHexadecimal(octets: Uint8Array): Array<string> {
+    const hex: Array<string> = [];
+
+    octets.forEach(oc => {
+        hex.push(oc.toString(16).padStart(2, `0`));
+    });
+
+    return hex;
+}
+
 export {
     octetsToValue as OctetsToNumber,
     valueToOctets as NumberToOctets,
@@ -107,4 +179,10 @@ export {
     readUInt32 as ReadUInt32,
     readIpAddress as ReadIPAddress,
     readString as ReadString,
+    toHexadecimal as ToHexadecimal,
+    writeUInt8 as WriteUInt8,
+    writeUInt16 as WriteUInt16,
+    writeUInt32 as WriteUInt32,
+    writeIpAddress as WriteIPAddress,
+    writeString as WriteString,
 };

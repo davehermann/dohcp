@@ -3,7 +3,7 @@ import * as dgram from "dgram";
 import { NetworkInterfaceInfo } from "os";
 
 // NPM Modules
-import { Info, Err, Trace, Dev } from "multi-level-logger";
+import { Info, Err, Trace, Dev, Debug, GetConfiguredLogging, LogLevels } from "multi-level-logger";
 
 // Application Modules
 import { Addressing } from "./allocation/allocate";
@@ -53,7 +53,20 @@ class IPv4DHCP {
 
             const message = new DHCPMessage();
             message.Decode(msg);
-            Dev({ message }, { logName: `dhcp` });
+
+            // When testing, encode the message
+            const currentLogging = GetConfiguredLogging();
+            if (currentLogging.logLevel[`dhcp`] <= LogLevels.trace) {
+                message.Encode();
+                const hexadecimalMessage = message.toString();
+                Trace({
+                    [`Encoded message`]: hexadecimalMessage,
+                    [`Re-encode matches Decode`]: hexadecimalMessage == msg.toString(`hex`).substr(0, hexadecimalMessage.length),
+                    [`Re-encode == Decode`]: hexadecimalMessage == msg.toString(`hex`),
+                }, { logName: `dhcp` });
+            }
+
+            Debug({ [`Decoded message`]: message }, { logName: `dhcp` });
         });
 
         return new Promise((resolve, reject) => {

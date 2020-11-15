@@ -1,4 +1,7 @@
-import { ReadUInt8, ReadUInt32, ReadUInt16, ReadIPAddress, ReadString, MACAddressFromHex } from "../utilities";
+import {
+    MACAddressFromHex,
+    ReadUInt8, ReadUInt32, ReadUInt16, ReadIPAddress, ReadString, WriteUInt8, ToHexadecimal, WriteUInt32, WriteUInt16, WriteIPAddress, HexFromMACAddress, WriteString,
+} from "../utilities";
 import { IReadBinaryValueToString } from "../../interfaces/server";
 import { DHCPOptions } from "./rfc2132/dhcpOptions";
 
@@ -91,8 +94,8 @@ class Message {
     /** DHCP Options */
     private options: DHCPOptions;
 
-    /** Binary version of the message */
-    private binaryMessage: Uint8Array;
+    /** Binary encoded version of the message */
+    private binaryMessage: Uint8Array = new Uint8Array();
 
     //#endregion Private properties
 
@@ -115,11 +118,24 @@ class Message {
         return { value: address, offsetAfterRead };
     }
 
+    private writeHardwareAddress(encodedMessage: Array<number>): void {
+        const addressAsHexadecimal = HexFromMACAddress(this.chaddr);
+
+        WriteString(encodedMessage, addressAsHexadecimal, undefined, 16, `hex`);
+    }
+
     private readMagicCookie(message: Uint8Array, offset: number) {
         const newOffset = offset + 4,
             vendorIdCookie = message.subarray(offset, newOffset);
 
         return { value: vendorIdCookie, offsetAfterRead: newOffset };
+    }
+
+    private writeMagicCookie(encodedMessage: Array<number>): void {
+        if (!this.magicCookie)
+            this.magicCookie = MAGIC_COOKIE;
+
+        encodedMessage.splice(encodedMessage.length, 0, ...this.magicCookie);
     }
 
     //#endregion Private methods
@@ -148,10 +164,50 @@ class Message {
 
         // As options are the last component of a message, the returned offset isn't needed
         this.options = new DHCPOptions(message, offset);
+
         // Guarantee a client identifier exists in the options
         this.options.EnsureClientIdentifierExists(this.chaddr, this.htype);
     }
 
+    public Encode(): void {
+        const encodedMessage: Array<number> = [];
+
+        WriteUInt8(encodedMessage, this.op);
+        WriteUInt8(encodedMessage, this.htype);
+        WriteUInt8(encodedMessage, this.hlen);
+        WriteUInt8(encodedMessage, this.hops);
+        WriteUInt32(encodedMessage, this.xid);
+        WriteUInt16(encodedMessage, this.secs);
+        WriteUInt16(encodedMessage, this.flags);
+        WriteIPAddress(encodedMessage, this.ciaddr);
+        WriteIPAddress(encodedMessage, this.yiaddr);
+        WriteIPAddress(encodedMessage, this.siaddr);
+        WriteIPAddress(encodedMessage, this.giaddr);
+        this.writeHardwareAddress(encodedMessage);
+        WriteString(encodedMessage, this.sname, undefined, 64);
+        WriteString(encodedMessage, this.file, undefined, 128);
+        this.writeMagicCookie(encodedMessage);
+
+        // As options are the last component of a message, we don't need the offset back
+        this.options.Encode(encodedMessage);
+
+        // End with a single null (0) byte
+        let idxLastDataByte = encodedMessage.length - 1;
+        while (encodedMessage[idxLastDataByte] === 0)
+            idxLastDataByte--;
+        const finalMessage: Array<number> = encodedMessage.slice(0, idxLastDataByte + 1);
+        finalMessage.push(0);
+
+        this.binaryMessage = Uint8Array.from(finalMessage);
+    }
+
+    public toString(format: BufferEncoding = `hex`): string {
+        switch (format) {
+            case `hex`:
+                return ToHexadecimal(this.binaryMessage).join(``);
+                break;
+        }
+    }
 
     public toJSON(): unknown {
         return {
