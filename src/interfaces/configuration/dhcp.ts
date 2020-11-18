@@ -1,17 +1,3 @@
-interface IAllocatedAddress {
-    clientId: string;
-    ipAddress: string;
-    isConfirmed: boolean;
-    leaseStart: number;
-    providedHost: string;
-    staticHost: string;
-}
-
-interface IAllocations {
-    byIp: Map<string, IAllocatedAddress>;
-    byClientId: Map<string, string>;
-}
-
 interface IClientIdentifier {
     uniqueId: string;
     type?: string;
@@ -72,8 +58,6 @@ interface IConfiguration {
 }
 
 export {
-    IAllocations,
-    IAllocatedAddress,
     IClientIdentifier,
     IConfiguration,
     IRange,

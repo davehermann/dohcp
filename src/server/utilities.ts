@@ -1,6 +1,11 @@
 import { IReadBinaryValue, IReadBinaryValueToString } from "../interfaces/server";
 
-/** Read arbitrary numbers of bytes from a typed array, and update the offset */
+/**
+ * Read arbitrary numbers of bytes from a typed array, and update the offset
+ * @param typedArray - Array to read from
+ * @param startingOffset - Starting block
+ * @param byteCount - Number of blocks to read _(Default: **1**)_
+ */
 function readBytes(typedArray: Uint8Array, startingOffset: number, byteCount = 1): IReadBinaryValue {
     const newOffset = startingOffset + byteCount,
         values = typedArray.subarray(startingOffset, newOffset);
@@ -8,19 +13,41 @@ function readBytes(typedArray: Uint8Array, startingOffset: number, byteCount = 1
     return { value: octetsToValue(values), offsetAfterRead: newOffset };
 }
 
+/**
+ * Read a single data block from a Uint8Array
+ * @param typedArray - Array to read from
+ * @param offset - Starting block
+ */
 function readUInt8(typedArray: Uint8Array, offset: number): IReadBinaryValue {
     return readBytes(typedArray, offset);
 }
 
+/**
+ * Read 2 data blocks from a Uint8Array
+ * @param typedArray - Array to read from
+ * @param offset - Starting block
+ */
 function readUInt16(typedArray: Uint8Array, offset: number): IReadBinaryValue {
     return readBytes(typedArray, offset, 2);
 }
 
+/**
+ * Read 4 data blocks from a Uint8Array
+ * @param typedArray - Array to read from
+ * @param offset - Starting block
+ */
 function readUInt32(typedArray: Uint8Array, offset: number): IReadBinaryValue {
     return readBytes(typedArray, offset, 4);
 }
 
-function readString(typedArray: Uint8Array, offset: number, byteCount, format: BufferEncoding = `utf8` ): IReadBinaryValueToString {
+/**
+ * Read string data out of a Uint8Array
+ * @param typedArray - Array to read from
+ * @param offset - Starting block
+ * @param byteCount - Number of blocks to read
+ * @param format - Format string for reading data blocks into
+ */
+function readString(typedArray: Uint8Array, offset: number, byteCount: number, format: BufferEncoding = `utf8` ): IReadBinaryValueToString {
     // Get the subset of the array to read as a string
     const newOffset = offset + byteCount,
         data = typedArray.subarray(offset, newOffset);
@@ -52,16 +79,33 @@ function readString(typedArray: Uint8Array, offset: number, byteCount, format: B
     return { value: returnString, offsetAfterRead: newOffset };
 }
 
+/**
+ * Read an IP address out of a typed array
+ * @param typedArray - Array to read from
+ * @param offset - Starting block
+ */
 function readIpAddress(typedArray: Uint8Array, offset: number): IReadBinaryValueToString {
     const { value, offsetAfterRead } = readUInt32(typedArray, offset);
 
     return { value: valueToOctets(value, 4).join(`.`), offsetAfterRead };
 }
 
+/**
+ * TypeGuard for determining if a value is a number or a number array
+ * @param data - value to check the type of
+ */
 function isNumber(data: number | Array<number>): data is number {
     return (data as Array<number>).length === undefined;
 }
 
+/**
+ * Write arbitrary numbers of bytes to a typed array
+ * @param dataArray - Array to write to
+ * @param data - Data blocks to write into the array
+ * @param offset - Starting data block
+ *   + _(Defaults to adding to the end of the array)_
+ * @param byteCount - Number of blocks to write _(Default: **1**)_
+ */
 function writeBytes(dataArray: Array<number>, data: number | Array<number>, offset: number, byteCount = 1) {
     let octets: Uint8Array;
 
@@ -77,20 +121,53 @@ function writeBytes(dataArray: Array<number>, data: number | Array<number>, offs
         dataArray[offset + idx] = octets[idx];
 }
 
+/**
+ * Write a single data block to a Uint8Array
+ * @param dataArray - Array to write to
+ * @param data - Data blocks to write into the array
+ * @param offset - Starting data block
+ *   + _(Defaults to adding to the end of the array)_
+ */
 function writeUInt8(dataArray: Array<number>, data: number, offset = -1): void {
     // Add a single byte to the array
     writeBytes(dataArray, data, offset);
 }
 
+/**
+ * Write 2 data blocks to a Uint8Array
+ * @param dataArray - Array to write to
+ * @param data - Data blocks to write into the array
+ * @param offset - Starting data block
+ *   + _(Defaults to adding to the end of the array)_
+ */
 function writeUInt16(dataArray: Array<number>, data: number, offset = -1): void {
     writeBytes(dataArray, data, offset, 2);
 }
 
+/**
+ * Write 4 data blocks to a Uint8Array
+ * @param dataArray - Array to write to
+ * @param data - Data blocks to write into the array
+ * @param offset - Starting data block
+ *   + _(Defaults to adding to the end of the array)_
+ */
 function writeUInt32(dataArray: Array<number>, data: number, offset = -1): void {
     writeBytes(dataArray, data, offset, 4);
 }
 
+/**
+ * Write string data to a Uint8Array
+ * @param dataArray - Array to write to
+ * @param data - Data blocks to write into the array
+ * @param offset - Starting data block
+ *   + _(Defaults to adding to the end of the array)_
+ * @param byteCount - Number of blocks to write
+ * @param format - Format string to convert the data from
+ */
 function writeString(dataArray: Array<number>, data: string, offset = -1, byteCount = -1, format: BufferEncoding = `utf8`): void {
+    // Use an empty string for null/undefined values
+    data = data || ``;
+
     // Convert the string into a useable array based on the format
     const stringData: Array<number> = [];
 
@@ -120,11 +197,22 @@ function writeString(dataArray: Array<number>, data: string, offset = -1, byteCo
     writeBytes(dataArray, stringData, offset);
 }
 
+/**
+ * Write an IP address to a typed array
+ * @param dataArray - Array to write to
+ * @param data - Data blocks to write into the array
+ * @param offset - Starting data block
+ *   + _(Defaults to adding to the end of the array)_
+ */
 function writeIpAddress(dataArray: Array<number>, data: string, offset = -1): void {
     const ip = Uint8Array.from(data.split(`.`).map(strOctet => +strOctet));
     writeUInt32(dataArray, octetsToValue(ip));
 }
 
+/**
+ * Convert byte data to a hexadecimal string
+ * @param octets - The Uint8Array data
+ */
 function octetsToValue(octets: Uint8Array): number {
     // Convert to a hexadecimal string using .forEach as Uint8Array.map() returns another typed array
     const hexValues = toHexadecimal(octets);
@@ -133,6 +221,11 @@ function octetsToValue(octets: Uint8Array): number {
     return parseInt(hexValues.join(``), 16);
 }
 
+/**
+ * Convert any numerical value into a Uint8Array representation of that value
+ * @param value - Number to convert
+ * @param expectedOctets - Expected number of bytes in the Uint8Array
+ */
 function valueToOctets(value: number, expectedOctets = 0): Uint8Array {
     // Convert the number to hex
     let strHex = value.toString(16);
@@ -151,15 +244,18 @@ function valueToOctets(value: number, expectedOctets = 0): Uint8Array {
     return Uint8Array.from(numberValues);
 }
 
+/** Convert a hexadecimal string into a colon (:)-separated string of 2-byte values */
 function macAddressFromHex(hexadecimalString: string): string {
     return hexadecimalString.match(/../g).join(`:`);
 }
 
+/** Convert a colon-separated string of 2-byte values into a hexadecimal string with no separator */
 function hexValueFromMacAddress(macAddress: string): string {
     return macAddress.split(`:`).join(``);
 }
 
-function toHexadecimal(octets: Uint8Array): Array<string> {
+/** Convert a Uint8Array into a hexadecimal string representation */
+function toHexadecimal(octets: Uint8Array = new Uint8Array()): Array<string> {
     const hex: Array<string> = [];
 
     octets.forEach(oc => {

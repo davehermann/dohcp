@@ -8,6 +8,7 @@ interface IOptionDefinition {
     byProperty: Map<string, RootOption>;
 }
 
+/** Generates maps of option data by option code and by property name */
 function defineOptions(): IOptionDefinition {
     const options = addOptions();
 
@@ -32,6 +33,8 @@ function addOptions(): Array<RootOption> {
 
     rawData.forEach(rawOpt => {
         const opt = new RootOption(rawOpt.code, rawOpt.name, rawOpt.description);
+        if (!!rawOpt.propertyName)
+            opt.propertyName = rawOpt.propertyName;
         opt.isPad = rawOpt.isPad;
         opt.isEnd = rawOpt.isEnd;
         opt.length = rawOpt.length;
@@ -53,5 +56,6 @@ function addOptions(): Array<RootOption> {
 }
 
 export {
+    IOptionDefinition,
     defineOptions as DefineOptions,
 };

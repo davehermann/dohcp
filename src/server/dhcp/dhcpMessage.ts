@@ -3,7 +3,11 @@ import {
     ReadUInt8, ReadUInt32, ReadUInt16, ReadIPAddress, ReadString, WriteUInt8, ToHexadecimal, WriteUInt32, WriteUInt16, WriteIPAddress, HexFromMACAddress, WriteString,
 } from "../utilities";
 import { IReadBinaryValueToString } from "../../interfaces/server";
-import { DHCPOptions } from "./rfc2132/dhcpOptions";
+import { DHCPOptions, OptionsDefinition as DHCPOptionsDefinition } from "./rfc2132/dhcpOptions";
+import { IClientIdentifier, IRequestedParameter } from "../../interfaces/configuration/dhcp";
+import { AllocatedAddress } from "./allocation/AllocatedAddress";
+import { IConfiguration } from "../../interfaces/configuration/configurationFile";
+import { Dev } from "multi-level-logger";
 
 const MAGIC_COOKIE = Uint8Array.from([99, 130, 83, 99]);
 
@@ -98,6 +102,67 @@ class Message {
     private binaryMessage: Uint8Array = new Uint8Array();
 
     //#endregion Private properties
+
+    //#region Public properties
+
+    /**
+     *  Client's unique identifier
+     *
+     * @remarks
+     * Typically the hardware address of the client
+     */
+    public get clientIdentifier(): IClientIdentifier {
+        if (!!this.options) {
+            const clientId: IClientIdentifier = this.options.options.get(`clientIdentifier`) as IClientIdentifier;
+
+            if (!!clientId)
+                return clientId;
+        }
+
+        return null;
+    }
+
+    /** Client-generated XID for the message */
+    public get clientMessageId(): number { return this.xid; }
+
+    /** Hostname provided from the client */
+    public get clientProvidedHostname(): string {
+        if (!!this.options.options.get(`hostNameOption`))
+            return this.options.options.get(`hostNameOption`) as string;
+
+        return null;
+    }
+
+    /**
+     * The DHCP Message Type, by its name
+     *
+     * @remarks
+     * Possible values
+     *   + DHCPDISCOVER
+     *   + DHCPOFFER
+     *   + DHCPREQUEST
+     *   + DHCPDECLINE
+     *   + DHCPACK
+     *   + DHCPNAK
+     *   + DHCPRELEASE
+     *   + DHCPINFORM
+     */
+    public get messageType(): string {
+        if (!!this.options)
+            return this.options.options.get(`dhcpMessageType`) as string;
+
+        return null;
+    }
+
+    /** Parameter request list coming from the client's message */
+    public get parameterRequestList(): Array<IRequestedParameter> {
+        if (!!this.options)
+            return (this.options.options.get(`parameterRequestList`) as Array<IRequestedParameter>);
+
+        return null;
+    }
+
+    //#endregion Public properties
 
     //#region Private methods
 
@@ -199,6 +264,51 @@ class Message {
         finalMessage.push(0);
 
         this.binaryMessage = Uint8Array.from(finalMessage);
+    }
+
+    /** Create a reply to a DHCP Request message */
+    public GenerateReply(requestMessage: Message, assignedAddress: AllocatedAddress, configuration: IConfiguration, messageType: string): void {
+        this.isReply = true;
+        this.htype = requestMessage.htype;
+        this.hlen = requestMessage.hlen;
+        this.hops = requestMessage.hops;
+        this.xid = requestMessage.xid;
+        this.secs = requestMessage.secs;
+        this.flags = requestMessage.flags;
+        this.ciaddr = `0.0.0.0`;
+        this.yiaddr = assignedAddress.ipAddress;
+        // The IP address of this server
+        this.siaddr = configuration.serverIpAddress || `0.0.0.0`;
+        // Relays are ignored
+        this.giaddr = `0.0.0.0`;
+        this.chaddr = requestMessage.chaddr;
+        // Don't provide a hostname for this server
+        this.sname = null;
+        // Don't provide a boot file path
+        this.file = null;
+
+        // Specify the codes for the parameters the server will include as part of the response
+        const serverDefinedParameters = [
+            `dhcpMessageType`,
+            `serverIdentifier`,
+            `ipAddressLeaseTime`,
+            `renewalTimeValue`,
+            `rebindingTimeValue`
+        ];
+
+        const parametersForResponse = serverDefinedParameters.map(propertyName => DHCPOptionsDefinition.byProperty.get(propertyName));
+
+        Dev({ parametersForResponse }, { logName: `dhcp` });
+        // Supply the requested parameters
+        if (!!requestMessage.parameterRequestList)
+            requestMessage.parameterRequestList.forEach(param => {
+                Dev({ param }, { logName: `dhcp` });
+                if (!parametersForResponse.find(p => (p.code == param.code)))
+                    parametersForResponse.push(DHCPOptionsDefinition.byCode.get(param.code));
+            });
+
+        this.options = new DHCPOptions();
+        this.options.FillParameters(parametersForResponse, configuration, assignedAddress, messageType, this.siaddr);
     }
 
     public toString(format: BufferEncoding = `hex`): string {

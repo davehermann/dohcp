@@ -7,32 +7,51 @@ import { ReadUInt8, ReadIPAddress, ReadString, ReadUInt16, ReadUInt32,
     MACAddressFromHex, ToHexadecimal,
     WriteUInt8, WriteUInt16, WriteUInt32, WriteString, WriteIPAddress } from "../../utilities";
 import { RootOption, encodingTypes } from "./options/rootOption";
-import { hardwareTypes } from "../dhcpMessage";
+import { hardwareTypes, DHCPMessage } from "../dhcpMessage";
 import { IClientIdentifier, IRequestedParameter } from "../../../interfaces/configuration/dhcp";
+import { IConfiguration } from "../../../interfaces/configuration/configurationFile";
+import { AllocatedAddress } from "../allocation/AllocatedAddress";
 
-type OptionValue = string | number | IClientIdentifier | Array<IRequestedParameter>;
+/** Type union for all possible option values */
+type OptionValue = string | number | IClientIdentifier | Array<IRequestedParameter> | Array<string>;
 
+/** All recognized options */
 const optionDefinition = DefineOptions();
 
+/** Handling the DHCP options field */
 class DhcpOptions {
-    constructor(private readonly message: Uint8Array, private readonly optionsOffset: number) {
-        this.parse();
+    constructor(message?: Uint8Array, optionsOffset?: number) {
+        if (!!message) {
+            this.message = message;
+            this.optionsOffset = optionsOffset;
+
+            this.optionData = this.message.subarray(this.optionsOffset);
+
+            this.parse();
+        }
     }
 
     //#region Private properties
 
-    private readonly optionData: Uint8Array = this.message.subarray(this.optionsOffset);
+    /** The original DHCP message */
+    private readonly message: Uint8Array;
+    /** The offset within the original DHCP message where the options field starts */
+    private readonly optionsOffset: number;
+    /** The options portion of the original DHCP message */
+    private readonly optionData: Uint8Array;
 
     //#endregion Private properties
 
     //#region Public properties
 
+    /** Map of all options configured for a DHCP message */
     public readonly options: Map<string, OptionValue> = new Map();
 
     //#endregion Public properties
 
     //#region Private methods
 
+    /** Parse a DHCP message's options block */
     private parse() {
         let offset = 0;
 
@@ -127,6 +146,12 @@ class DhcpOptions {
         }
     }
 
+    /**
+     * Generate encoding parameters for an option
+     * @param option - The option definition
+     * @param args - Expected arguments as part of the option encoding
+     * @param optionLength - Total byte length of the option
+     */
     private encodingParser(option: RootOption, args: Array<Array<number> | string | number>, optionLength?: number) {
         const method = option.encoding.method;
 
@@ -141,12 +166,17 @@ class DhcpOptions {
         return { method, args };
     }
 
+    /**
+     * Translate a byte value for an option into a usable value
+     * @param option - The option definition
+     * @param rawValue - The raw byte value read from the DHCP message data
+     */
     private optionDecoder(option: RootOption, rawValue: OptionValue): OptionValue {
         let value: OptionValue = null;
 
         switch (option.propertyName) {
             case `clientIdentifier`:
-                value = this.decodeClientIdentifier((rawValue as string));
+                value = DhcpOptions.decodeClientIdentifier((rawValue as string));
                 break;
 
             case `dhcpMessageType`:
@@ -179,6 +209,11 @@ class DhcpOptions {
         return value;
     }
 
+    /**
+     * Translate a value as used internally into a byte value for a DHCP message
+     * @param option - The option definition
+     * @param decodedValue - The internally used value for the option
+     */
     private optionEncoder(option: RootOption, decodedValue: OptionValue): OptionValue {
         let value: OptionValue = null;
 
@@ -209,8 +244,15 @@ class DhcpOptions {
         return value;
     }
 
-    // rawValue is the hexadecimal type plus the ID
-    private decodeClientIdentifier(rawValue: string): IClientIdentifier {
+    //#endregion Private methods
+
+    //#region Public methods
+
+    /**
+     * Decode a client-provided unique identifier
+     * @param rawValue - The hexadecimal type ID plus the client-provided identifier
+     */
+    public static decodeClientIdentifier(rawValue: string): IClientIdentifier {
         if ((rawValue === undefined) || (rawValue === null))
             return null;
 
@@ -227,10 +269,10 @@ class DhcpOptions {
         return id;
     }
 
-    //#endregion Private methods
-
-    //#region Public methods
-
+    /**
+     * Encode all included options into DHCP byte data
+     * @param encodedMessage - The DHCP message the option data will be added to
+     */
     Encode(encodedMessage: Array<number>): void {
         for (const [propertyName, value] of this.options.entries()) {
             const option = optionDefinition.byProperty.get(propertyName),
@@ -319,13 +361,76 @@ class DhcpOptions {
         WriteUInt8(encodedMessage, optionDefinition.byProperty.get(`endOption`).code);
     }
 
+    /**
+     * Ensures a client identifier option is configured
+     * @param clientHardwareAddress - The unique identifier for the client
+     *   + _MAC address expected_
+     * @param hardwareType - The hardware type to use for the unique identifier
+     *   + _Ethernet is the only currently available type_
+     */
     EnsureClientIdentifierExists(clientHardwareAddress: string, hardwareType: hardwareTypes): void {
         // Default to the chaddr address
         if (!this.options.has(`clientIdentifier`) || !!clientHardwareAddress) {
             const rawValue = hardwareType.toString(16).padStart(2, `0`) + clientHardwareAddress.replace(/:/g, ``);
 
-            this.options.set(`clientIdentifier`, this.decodeClientIdentifier(rawValue));
+            this.options.set(`clientIdentifier`, DhcpOptions.decodeClientIdentifier(rawValue));
         }
+    }
+
+    /**
+     * Generate DHCP options and values based on a list of expected options
+     * @param parameterList - List of expected options
+     * @param configuration - The DoHCP configuration for this server
+     * @param assignedAddress - Allocated address assigned to the client
+     * @param messageType - The DHCP message type for the DHCP message
+     * @param nextServerIp - Identifier for the next server in the DHCP chain _(Not used in most instances)_
+     */
+    public FillParameters(parameterList: Array<RootOption>, configuration: IConfiguration, assignedAddress: AllocatedAddress, messageType: string, nextServerIp: string): void {
+        parameterList.forEach(dhcpOption => {
+            let value: OptionValue = undefined;
+
+            switch (dhcpOption.propertyName) {
+                case `broadcastAddressOption`: {
+                    // Value is the last address in the subnet for the client's IP
+                    const mask = configuration.dhcp.leases.pool.networkMask.split(`.`),
+                        address = assignedAddress.ipAddress.split(`.`).map((octet, idx) => { return +mask[idx] == 255 ? octet : 255; });
+
+                    value = address.join(`.`);
+                }
+                    break;
+                case `dhcpMessageType`:
+                    // Expect the value of the valueMap to be passed in
+                    value = messageType;
+                    break;
+                case `domainName`:
+                    value = configuration.dns.domain;
+                    break;
+                case `domainNameServerOption`:
+                    value = configuration.dns.servers.map(ip => (ip == `primaryIP` ? configuration.serverIpAddress : ip));
+                    break;
+                case `ipAddressLeaseTime`:
+                    value = configuration.dhcp.leases.pool.leaseSeconds;
+                    break;
+                case `rebindingTimeValue`:
+                    value = Math.round(configuration.dhcp.leases.pool.leaseSeconds * 0.875);
+                    break;
+                case `renewalTimeValue`:
+                    value = Math.round(configuration.dhcp.leases.pool.leaseSeconds * 0.75);
+                    break;
+                case `routerOption`:
+                    value = configuration.dhcp.routers;
+                    break;
+                case `serverIdentifier`:
+                    value = nextServerIp;
+                    break;
+                case `subnetMask`:
+                    value = configuration.dhcp.leases.pool.networkMask;
+                    break;
+            }
+
+            if (value !== undefined)
+                this.options.set(dhcpOption.propertyName, value);
+        });
     }
 
     toJSON(): unknown {
@@ -344,4 +449,5 @@ class DhcpOptions {
 
 export {
     DhcpOptions as DHCPOptions,
+    optionDefinition as OptionsDefinition,
 };

@@ -10,6 +10,11 @@ import { Addressing } from "./allocation/allocate";
 import { IConfiguration } from "../../interfaces/configuration/configurationFile";
 import { DHCPMessage } from "./dhcpMessage";
 
+interface IClientReply {
+    dhcpMessage: DHCPMessage;
+    sendViaBroadcastAddress: boolean;
+}
+
 const DHCP_SERVER_PORT = 67,
     CLIENT_PORT = 68,
     BROADCAST_IP = `255.255.255.255`;
@@ -59,14 +64,23 @@ class IPv4DHCP {
             if (currentLogging.logLevel[`dhcp`] <= LogLevels.trace) {
                 message.Encode();
                 const hexadecimalMessage = message.toString();
-                Trace({
-                    [`Encoded message`]: hexadecimalMessage,
+                Dev({
+                    [`Re-encoded message`]: hexadecimalMessage,
                     [`Re-encode matches Decode`]: hexadecimalMessage == msg.toString(`hex`).substr(0, hexadecimalMessage.length),
                     [`Re-encode == Decode`]: hexadecimalMessage == msg.toString(`hex`),
                 }, { logName: `dhcp` });
             }
 
             Debug({ [`Decoded message`]: message }, { logName: `dhcp` });
+
+            switch (message.messageType) {
+                case `DHCPDISCOVER`:
+                    this.offerAddress(message);
+                    break;
+
+                case `DHCPREQUEST`:
+                    break;
+            }
         });
 
         return new Promise((resolve, reject) => {
@@ -95,6 +109,31 @@ class IPv4DHCP {
             // server.bind({ port: DHCP_SERVER_PORT, address: ipAddress });
             server.bind(DHCP_SERVER_PORT);
         });
+    }
+
+    /**
+     * Allocate an address, and generate a DHCPOFFER message in reply
+     * @param discoverMessage - DHCPDISCOVER message sent by a client
+     */
+    private async offerAddress(discoverMessage: DHCPMessage): Promise<IClientReply> {
+        const assignment = await this.addressing.OfferToClient(discoverMessage);
+
+        if (!!assignment) {
+            // Send a DHCP Offer back to the client
+            const offerMessage = new DHCPMessage();
+
+            // Set the message type to DHCPOFFER
+            offerMessage.GenerateReply(discoverMessage, assignment, this.configuration, `DHCPOFFER`);
+
+            // Encode the message
+            offerMessage.Encode();
+            Trace({ [`Encoded Offer`]: offerMessage.toString(), [`Offer data`]: offerMessage }, { logName: `dhcp` });
+
+            // Send to the client
+            return { dhcpMessage: offerMessage, sendViaBroadcastAddress: true };
+        }
+
+        return null;
     }
 
     public async Start() {
