@@ -1,0 +1,26 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "DoHCP Configuration",
+    "description": "The configuration schema for the DoHCP server implementation",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["logLevel", "interface"],
+    "properties": {
+        "$schema": {
+            "type": "string"
+        },
+        "logLevel": {
+            "$ref": "./log-levels-schema.json"
+        },
+        "interface": {
+            "type": "string",
+            "description": "The system-level hardware interface name this server will bind its services to"
+        },
+        "dhcp": {
+            "$ref": "./dhcp-schema.json"
+        },
+        "dns": {
+            "$ref": "./dns-schema.json"
+        }
+    }
+}

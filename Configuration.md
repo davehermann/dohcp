@@ -1,21 +1,36 @@
 # Configuration Options
 
+## JSON Schema
+
+A complete [JSON schema](https://json-schema.org/) is provided.
+Your configuration file should start as:
+
+```json
+    {
+        "$schema": "./dist/configuration-schemas/dohcp-configuration.json"
+    }
+```
+
+## Getting Started
+
 As noted in the [Readme](./Readme.md), `dohcp init` will walk through the creation of a `configuration.json` file in the application root
 
 The simplest configuration JSON would be
 
+```json
     {
-        logLevel: `warn`,
-        interface: null,
-        dhcp: {
-            disabled: true,
+        "$schema": "./dist/configuration-schemas/dohcp-configuration.json",
+        "logLevel": "warn",
+        "interface": null,
+        "dhcp": {
+            "disabled": true,
         },
-        dns: {
-            disabled: true,
+        "dns": {
+            "disabled": true,
         }
     }
-
-This file won't run either a DHCP or DNS service.
+```
+*This file won't run either a DHCP or DNS service as both are disabled.*
 
 ## logLevel
 **string**
@@ -37,7 +52,7 @@ If you run `dohcp init` *without* a *configuration.json* file in the application
 **object**
 
 ### dhcp.disabled
-**boolean**  
+**boolean**
 *optional*
 
 + **true** turns off the DHCP service
@@ -50,7 +65,7 @@ If you run `dohcp init` *without* a *configuration.json* file in the application
 + Overrides the root-defined logLevel value specifically for the DHCP service
 
 ### dhcp.authoritative
-**boolean**  
+**boolean**
 *optional*
 
 + **true** acts as an authoritative server responding to any DHCPREQUEST even when no server identifier is provided by the client
@@ -114,7 +129,7 @@ If you run `dohcp init` *without* a *configuration.json* file in the application
 **object**
 
 ### dns.disabled
-**boolean**  
+**boolean**
 *optional*
 
 + **true** turns off the DHCP service

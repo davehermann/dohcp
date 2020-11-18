@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Log Levels",
+    "description": "Available log levels within the configuration",
+    "type": "string",
+    "enum": [
+        "dev",
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal"
+    ]
+}
