@@ -45,7 +45,8 @@ function buildActions() {
         description: `Show local DNS cache results`,
         additionalArguments: 1,
         argumentsDescription: [
-            { arg: `--all`, detail: `Include all forwarded DNS cache entries`}
+            { arg: `--all`, detail: `Include all forwarded DNS cache entries`},
+            { arg: `--by-address`, detail: `Sort DNS entries by the IP address (LOCAL-ONLY)`},
         ],
         method: DnsQueryCache,
         usesConfiguration: true,

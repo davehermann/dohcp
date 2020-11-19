@@ -1,12 +1,18 @@
 // Node Modules
 import { get as HttpGet } from "http";
 
+// NPM Modules
+import { Log } from "multi-level-logger";
+
 // Application Modules
 import { IAction, IActionToTake } from "../../interfaces/configuration/cliArguments";
 import { IConfiguration } from "../../interfaces/configuration/configurationFile";
+import { Answer } from "../../server/dns/rfc1035/answer";
 
 function queryCache(action: IActionToTake, allActions: Map<string, IAction>, configuration: IConfiguration): Promise<void> {
-    const urlPath = `/dns/cache-list${(action.additionalArguments.indexOf(`--all`) >= 0) ? `/all` : ``}`;
+    const showForward = action.additionalArguments.indexOf(`--all`) >= 0,
+        sortByAddress = !showForward && (action.additionalArguments.indexOf(`--by-address`) >= 0);
+    const urlPath = `/dns/cache-list${showForward ? `/all` : ``}`;
 
     return new Promise(resolve => {
         HttpGet(
@@ -30,32 +36,31 @@ function queryCache(action: IActionToTake, allActions: Map<string, IAction>, con
                         // eslint-disable-next-line no-console
                         console.log(`\nThe DNS service is not enabled\n`);
                     else {
-                        cacheList.forEach(answer => {
-                            let recordType = `*${answer.typeId}*`;
-                            switch (answer.typeId) {
-                                case 1:
-                                    recordType = `A`;
-                                    break;
-                                case 5:
-                                    recordType = `CNAME`;
-                                    break;
-                                case 28:
-                                    recordType = `AAAA`;
-                                    break;
-                            }
+                        const dnsAnswers = (cacheList as Array<Answer>);
+                        let longestKey = ``;
+                        dnsAnswers.forEach(answer => {
+                            if (answer.label.length > longestKey.length)
+                                longestKey = answer.label;
+                        });
 
-                            let report = `${answer.label} --> [${recordType}] ${answer.rdata}`;
-                            if (!!answer.startingTTL)
-                                report += ` (exp: ${Math.round((answer.ttlExpiration - currentTime) / 1000)} sec)`;
+                        // Sort the answers
+                        dnsAnswers.sort((a, b) => ((sortByAddress ? a.rdata[0] < b.rdata[0] : a.label < b.label) ? -1 : 1));
+
+                        dnsAnswers.forEach(answer => {
+                            const recordType = `[${answer.typeId}]`,
+                                displayTTL = !!answer.startingTTL ? ` (exp: ${Math.round((answer.ttlExpiration - currentTime) / 1000)} sec)` : ``;
+
+                            const report = `${(answer.label + `  `).padEnd(longestKey.length + 2, `-`)}-> ${recordType.padStart(8, ` `)}  ${answer.rdata}${displayTTL}`;
 
                             display.push(report);
                         });
 
-                        // Sort by hostname
-                        display.sort((a, b) => { return a < b ? -1 : 1; });
+                        const displayData =
+                            `---- Entries currently in local DNS ----\n`
+                            + `     - ${display.length} found\n`
+                            + `${display.join(`\n`)}\n`;
 
-                        // eslint-disable-next-line no-console
-                        console.log(`\n---- Entries currently in DNS ----\n${display.join(`\n`)}\n`);
+                        Log(displayData, { configuration: { includeCodeLocation: false, includeTimestamp: false, useColors: false } });
                     }
 
                     resolve();

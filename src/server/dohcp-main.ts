@@ -18,7 +18,8 @@ async function initialize() {
     if (!!configuration.dhcp && !configuration.dhcp.disabled)
         await DHCPServer(configuration);
 
-    await DataServer(configuration);
+    const dataServer = new DataServer(configuration);
+    await dataServer.Initialize();
 }
 
 initialize()

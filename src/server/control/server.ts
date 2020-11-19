@@ -1,5 +1,5 @@
 // Node Modules
-import { createServer as CreateHttpServer } from "http";
+import { createServer as CreateHttpServer, Server } from "http";
 
 // NPM Modules
 import { Info } from "multi-level-logger";
@@ -9,44 +9,61 @@ import { RouteMatch } from "./router";
 import { CacheContents } from "../dns/cache";
 import { Answer } from "../dns/rfc1035/answer";
 import { IConfiguration } from "../../interfaces/configuration/configurationFile";
+import { AddressInfo } from "net";
 
-async function dataServer(configuration: IConfiguration): Promise<void> {
-    const server = CreateHttpServer(async (req, res) => {
-        const routes: Map<string, () => Promise<any>> = new Map();
-
-        routes.set(`GET:/dns/cache-list`, () => dnsListCache(configuration));
-        routes.set(`GET:/dns/cache-list/all`, () => dnsListCache(configuration, true));
-
-        const dataForResponse = await RouteMatch(req, routes);
-
-        res.writeHead(200, { [`Content-Type`]: `application/json` });
-        res.write(JSON.stringify(dataForResponse));
-        res.end();
-    });
-
-    server.on(`listening`, () => {
-        Info(`Starting data server`);
-        Info(server.address());
-    });
-
-    server.listen({ host: configuration.serverIpAddress, port: 45332 });
-}
-
-async function dnsListCache(configuration: IConfiguration, includeAll?: boolean) {
-    if (configuration.dns.disabled)
-        return { disabled: true };
-
-    const fullCache = CacheContents();
-
-    const filteredList: Array<Answer> = [];
-    for (const [cacheId, answer] of fullCache.entries()) {
-        if (includeAll || !answer.startingTTL)
-            filteredList.push(answer);
+class DataServer {
+    constructor(private readonly configuration: IConfiguration) {
+        this.defineRoutes();
     }
 
-    return filteredList;
+    private routes: Map<string, () => Promise<unknown>> = new Map();
+    private server: Server;
+
+    private defineRoutes(): void {
+        this.routes.set(`GET:/dns/cache-list`, () => this.dnsListCache());
+        this.routes.set(`GET:/dns/cache-list/all`, () => this.dnsListCache(true));
+    }
+
+    //#region DNS Data
+
+    private async dnsListCache(includeAll = false) {
+        if (this.configuration.dns.disabled)
+            return { disabled: true };
+
+        const fullCache = CacheContents();
+
+        const filteredList: Array<Answer> = [];
+        for (const [cacheId, answer] of fullCache.entries()) {
+            if (includeAll || !answer.startingTTL)
+                filteredList.push(answer);
+        }
+
+        return filteredList;
+    }
+
+    //#endregion DNS Data
+
+    public Initialize(): Promise<void> {
+        this.server = CreateHttpServer(async (req, res) => {
+            const dataForResponse = await RouteMatch(req, this.routes);
+
+            res.writeHead(200, { [`Content-Type`]: `application/json` });
+            res.write(JSON.stringify(dataForResponse));
+            res.end();
+        });
+
+        return new Promise((resolve, reject) => {
+            this.server.on(`listening`, () => {
+                const address: AddressInfo = this.server.address() as AddressInfo;
+                Info({ [`Data Server listening`]: address });
+                resolve();
+            });
+
+            this.server.listen({ host: this.configuration.serverIpAddress, port: 45332 });
+        });
+    }
 }
 
 export {
-    dataServer as DataServer,
+    DataServer,
 };

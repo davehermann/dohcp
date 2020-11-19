@@ -22,12 +22,11 @@ const DHCP_SERVER_PORT = 67,
     CLIENT_PORT = 68,
     BROADCAST_IP = `255.255.255.255`;
 
-
 async function startServer(configuration: IConfiguration): Promise<void> {
     Info(`Starting DHCP Server`, { logName: `dhcp` });
 
     const ipv4 = new IPv4DHCP(configuration);
-    ipv4.Start();
+    await ipv4.Start();
 }
 
 /** DHCP Service */
@@ -35,6 +34,8 @@ class IPv4DHCP {
     constructor(private readonly configuration: IConfiguration) {}
 
     private addressing: Addressing = new Addressing(this.configuration);
+
+    //#region Socket Initialization
 
     /**
      * Bind the service to all network interfaces/IPs from configuration
@@ -151,6 +152,10 @@ class IPv4DHCP {
         });
     }
 
+    //#endregion Socket Initialization
+
+    //#region DHCP Message Handling
+
     /**
      * In response to a DHCPREQUEST message, confirm the assigned address and reply with a DHCPACK message
      * @param requestMessage - The client-sent DHCPREQUEST message
@@ -266,6 +271,8 @@ class IPv4DHCP {
 
         return null;
     }
+
+    //#endregion DHCP Message Handling
 
     /** Start the DHCP service */
     public async Start() {
