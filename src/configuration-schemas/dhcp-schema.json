@@ -25,6 +25,11 @@
         },
         "leases": {
             "$ref": "#/definitions/leases-schema"
+        },
+        "writeToDisk": {
+            "type": "boolean",
+            "description": "Write all DHCP allocations to disk",
+            "default": true
         }
     },
     "definitions": {

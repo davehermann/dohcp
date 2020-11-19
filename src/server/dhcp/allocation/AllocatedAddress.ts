@@ -67,7 +67,7 @@ class AllocatedAddress implements IAllocatedAddress {
     /** Allocated IP address */
     public ipAddress: string = null;
     /** Start time (millisecond) for the lease */
-    public get leaseStart(): number { return this.leaseStartTime.getTime(); }
+    public get leaseStart(): number { return !!this.leaseStartTime ? this.leaseStartTime.getTime() : null; }
     /** Hostname provided by the client */
     public providedHost: string = null;
     /** Hostname provided by static assignment configuration from the server */
@@ -78,7 +78,12 @@ class AllocatedAddress implements IAllocatedAddress {
     /** The XID of the last client DHCP message involving this allocation */
     public lastMessageId: number;
     /** Configured expiration time for a lease, independent of start time + pool lease length */
-    public get leaseExpirationTimestamp(): Date { return this.leaseExpirationTime; }
+    public get leaseExpirationTimestamp(): Date {
+        if (!!this.leaseExpirationTime)
+            return this.leaseExpirationTime;
+
+        return new Date(this.leaseStart + this.maximumLeaseLengthMilliseconds);
+    }
 
     /**
      * The hostname to use for the client
@@ -90,6 +95,15 @@ class AllocatedAddress implements IAllocatedAddress {
             return this.staticHost;
 
         return this.providedHost;
+    }
+
+    /** Confirm the use of this address */
+    public ConfirmAddress(): void {
+        this.isConfirmed = true;
+        this.lastMessageId = null;
+        this.leaseStartTime = new Date();
+        this.inSession = true;
+        this.leaseExpirationTime = null;
     }
 
     /**

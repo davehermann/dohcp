@@ -55,6 +55,12 @@ interface IConfiguration {
     routers?: Array<string>;
     /** Lease configuration */
     leases?: ILeases;
+    /**
+     * Write DHCP allocations to disk
+     *
+     * @default true
+     */
+    writeToDisk?: boolean;
 }
 
 export {

@@ -105,6 +105,19 @@ class Message {
 
     //#region Public properties
 
+    /** The CHADDR field provided by the client */
+    public get clientHardwareAddress(): string { return this.chaddr; }
+
+    /** The CHADDR field, plus an additional identifier if the hardware type isn't ethernet */
+    public get clientHardwareIdentifier(): string {
+        let clientId = this.chaddr;
+
+        if ((this.htype !== undefined) && (this.htype !== null) && (this.htype !== hardwareTypes.ethernet))
+            clientId += `_${ToHexadecimal(Uint8Array.from([this.htype]))}`;
+
+        return clientId;
+    }
+
     /**
      *  Client's unique identifier
      *
@@ -121,6 +134,9 @@ class Message {
 
         return null;
     }
+
+    /** Existing IP address for a client (CIADDR for the message) */
+    public get clientExistingIP(): string { return this.ciaddr; }
 
     /** Client-generated XID for the message */
     public get clientMessageId(): number { return this.xid; }
@@ -160,6 +176,35 @@ class Message {
             return (this.options.options.get(`parameterRequestList`) as Array<IRequestedParameter>);
 
         return null;
+    }
+
+    /** Client-requested IP from the options list */
+    public get requestedIP(): string {
+        if (!!this.options)
+            return (this.options.options.get(`requestedIpAddress`) as string);
+
+        return null;
+    }
+
+    /** Server IP that the client is responding to, from the options list */
+    public get serverIdentifier(): string {
+        if (!!this.options)
+            return (this.options.options.get(`serverIdentifier`) as string);
+
+        return null;
+    }
+
+    /** Vendor class identifier, from the options list */
+    public get vendorClassIdentifier(): string {
+        if (!!this.options)
+            return (this.options.options.get(`vendorClassIdentifier`) as string);
+
+        return null;
+    }
+
+    /** The raw Uint8Array data blocks representation of this message */
+    public get asData(): Uint8Array {
+        return this.binaryMessage;
     }
 
     //#endregion Public properties

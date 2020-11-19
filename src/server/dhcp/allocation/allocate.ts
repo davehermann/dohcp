@@ -3,7 +3,7 @@ import { promises as fs } from "fs";
 import * as path from "path";
 
 // NPM Modules
-import { Debug, Dev, Trace } from "multi-level-logger";
+import { Debug, Dev, Trace, Info } from "multi-level-logger";
 import { EnsurePathForFile } from "@davehermann/fs-utilities";
 
 // Application Modules
@@ -12,6 +12,8 @@ import { IRange, IClientIdentifier } from "../../../interfaces/configuration/dhc
 import { IConfiguration } from "../../../interfaces/configuration/configurationFile";
 import { DHCPMessage } from "../dhcpMessage";
 import { AllocatedAddress } from "./AllocatedAddress";
+import { AddDHCPToDNS } from "../../dns/cache";
+import { DHCPHistory } from "../history";
 
 interface IAllocations {
     byIp: Map<string, AllocatedAddress>;
@@ -212,6 +214,17 @@ class Addressing {
     //#endregion Allocate Address to client
 
     /**
+     * Pull the address allocation by requested IP
+     * @param dhcpMessage - DHCP message from client
+     */
+    private getAddressAllocationForIP(dhcpMessage: DHCPMessage) {
+        const requestedIp = dhcpMessage.requestedIP || dhcpMessage.clientExistingIP,
+            assignedAddress = this.persistentAllocations.byIp.get(requestedIp);
+
+        return { assignedAddress, requestedIp };
+    }
+
+    /**
      * Track an address allocation in memory and on disk
      * @param assignedAddress - Address allocation assigned to the client
      */
@@ -238,7 +251,7 @@ class Addressing {
         const currentTime = new Date();
 
         // Only write periodically, after the last write expires
-        if (currentTime.getTime() > (this.lastAllocationSaveToDisk.getTime() + MAXIMUM_UNWRITTEN_ALLOCATION_AGE)) {
+        if ((this.configuration.dhcp.writeToDisk !== false) && (currentTime.getTime() > (this.lastAllocationSaveToDisk.getTime() + MAXIMUM_UNWRITTEN_ALLOCATION_AGE))) {
             Debug(`Writing DHCP update to disk at "${PERSISTENT_DHCP_STATUS}"`, { logName: `dhcp` });
 
             await EnsurePathForFile(PERSISTENT_DHCP_STATUS);
@@ -311,13 +324,85 @@ class Addressing {
             if (!!dhcpMessage.clientProvidedHostname)
                 assignedAddress.providedHost = dhcpMessage.clientProvidedHostname;
 
-            // await this.trackAllocatedAddress(assignedAddress);
+            // Track the allocation
+            await this.trackAllocatedAddress(assignedAddress);
 
             return assignedAddress;
         }
 
         return null;
     }
+
+    /**
+     * Confirm an address the client's requesting as issued by this service
+     * @param dhcpMessage - DHCP message sent by the client
+     */
+    public async ConfirmClientAddress(dhcpMessage: DHCPMessage): Promise<AllocatedAddress> {
+        const { assignedAddress, requestedIp} = this.getAddressAllocationForIP(dhcpMessage);
+
+        // Handle instances where the stored allocations have data by Client ID, but not by IP Address
+        //      The addressAllocation may be null and will need to be regenerated
+        //      Only regenerate when this is an authoritative server
+        let addressAllocation = assignedAddress;
+        if (!addressAllocation && this.configuration.dhcp.authoritative)
+            addressAllocation = await this.OfferToClient(dhcpMessage);
+
+        Trace({ clientId: dhcpMessage.clientIdentifier.uniqueId, requestedIp, addressAllocation }, { logName: `dhcp`});
+
+        // If the client identifier matches for the assigned IP
+        if (addressAllocation.clientId == dhcpMessage.clientIdentifier.uniqueId) {
+            // Write the allocation list to disk
+            if (!addressAllocation.isConfirmed)
+                this.lastAllocationSaveToDisk = new Date(0);
+
+            // Mark the address as confirmed
+            addressAllocation.ConfirmAddress();
+
+            // Track the allocation
+            await this.trackAllocatedAddress(addressAllocation);
+
+            // Add to DNS Cache
+            const hostnameInDNS = AddDHCPToDNS(addressAllocation.hostname, addressAllocation.ipAddress, addressAllocation.clientId, dhcpMessage.vendorClassIdentifier, this.configuration.dns.domain, this.configuration.dhcp.leases.pool.leaseSeconds);
+
+            // Add to the DHCP history for the client
+            DHCPHistory.AddAssignment(dhcpMessage, addressAllocation, hostnameInDNS);
+
+            Info(`DHCP: Assigning ${addressAllocation.ipAddress} to ${dhcpMessage.clientHardwareIdentifier}, and in DNS as ${hostnameInDNS}`, { logName: `dhcp` });
+
+            return addressAllocation;
+        }
+
+        return null;
+    }
+
+    /**
+     * Match a client-sent requested IP address to the address allocation this service has
+     * @param dhcpMessage - DHCP message sent by the client
+     */
+    public async MatchRequestToAllocation(dhcpMessage: DHCPMessage): Promise<boolean> {
+        const { assignedAddress } = this.getAddressAllocationForIP(dhcpMessage);
+
+        // The message has to be a request
+        // The message client has to be assigned to the message requested IP
+        if ((dhcpMessage.messageType == `DHCPREQUEST`) && (assignedAddress?.clientId === dhcpMessage.clientIdentifier.uniqueId)) {
+            /*
+            DO WE HAVE TO LOAD FROM STORAGE IN SOME EDGE CASES???
+                - Last Version
+            --------------------------------------------------------------
+                if (!(assignedAddress instanceof AllocatedAddress)) {
+                    let addressObject = new AllocatedAddress();
+                    addressObject.FromStorage(assignedAddress);
+
+                    _addressAllocations.byIp[requestedIp] = addressObject;
+                }
+            --------------------------------------------------------------
+            */
+            return true;
+        }
+
+        return false;
+    }
+
     //#endregion Public methods
 }
 

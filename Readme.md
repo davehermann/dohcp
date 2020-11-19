@@ -85,6 +85,22 @@ The *dhcp.json* file with the example MAC above will look like this when assigni
 }
 ```
 
+### Development Options
+
+#### Don't Persist DHCP Assignments
+
+Writing the DHCP data to disk can be turned off in the configuration file by explicitly setting `false`
+```json
+{ dhcp: { writeToDisk: false } }
+```
+
+#### Don't send DHCP messages to client
+
+*DEVELOPMENT ONLY*
+
+DHCP responses can be blocked by setting a `NO_REPLY` environment variable to `true`.
+A hexadecimal version of the message will be logged to the console instead.
+
 ## Launch
 
 ### In a terminal shell
