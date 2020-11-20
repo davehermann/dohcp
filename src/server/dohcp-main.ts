@@ -12,13 +12,13 @@ async function initialize() {
 
     Debug({ [`Active configuration`]: configuration });
 
-    if (!!configuration.dns && !configuration.dns.disabled)
-        await DNSServer(configuration);
+    const dnsServer = new DNSServer(configuration);
+    await dnsServer.Start();
 
     const dhcpServer = new DHCPServer(configuration);
     await dhcpServer.Start();
 
-    const dataServer = new DataServer(configuration, dhcpServer);
+    const dataServer = new DataServer(configuration, dnsServer, dhcpServer);
     await dataServer.Start();
 }
 

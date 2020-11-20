@@ -6,15 +6,15 @@ import { Info, Log } from "multi-level-logger";
 
 // Application Modules
 import { RouteMatch } from "./router";
-import { CacheContents } from "../dns/cache";
-import { Answer } from "../dns/rfc1035/answer";
 import { IConfiguration } from "../../interfaces/configuration/configurationFile";
 import { AddressInfo } from "net";
+import { DNSServer } from "../dns/dns-main";
+import { Answer } from "../dns/rfc1035/answer";
 import { DHCPServer } from "../dhcp/dhcp-main";
 import { AllocatedAddress } from "../dhcp/allocation/AllocatedAddress";
 
 class DataServer {
-    constructor(private readonly configuration: IConfiguration, private readonly dhcpServer: DHCPServer) {
+    constructor(private readonly configuration: IConfiguration, private readonly dnsServer: DNSServer, private readonly dhcpServer: DHCPServer) {
         this.defineRoutes();
     }
 
@@ -54,7 +54,7 @@ class DataServer {
         if (this.configuration.dns.disabled)
             return { disabled: true };
 
-        const fullCache = CacheContents();
+        const fullCache = this.dnsServer.CurrentCache();
 
         const filteredList: Array<Answer> = [];
         for (const [cacheId, answer] of fullCache.entries()) {
