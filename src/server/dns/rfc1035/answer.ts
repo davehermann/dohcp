@@ -5,6 +5,7 @@ import { Dev } from "multi-level-logger";
 import { MessageByte, WriteBytes } from "./MessageByte";
 import { ResourceRecord } from "./resourceRecord";
 import { eDnsType, eMessageByteComponent, eDnsClass } from "../../../interfaces/configuration/dns";
+import { ReadUInt16, ReadUInt32, ReadIPAddress, ToHexadecimal, WriteUInt16, WriteUInt32, WriteUInt8 } from "../../utilities";
 
 // This interface is only to be used internally by the Answer class
 interface IInstantiateClone {
@@ -59,45 +60,42 @@ class Answer extends ResourceRecord {
         return newAnswer;
     }
 
-    public DecodeFromDNS(message: Array<MessageByte>, offset: number): number {
+    public DecodeFromDNS(message: Array<number>, offset: number): number {
         this.startingOffset = offset;
 
-        Dev({ label: offset }, { logName: `dns` });
+        Dev({ [`Answer label offset`]: offset }, { logName: `dns` });
         ({ value: this.label, offset } = Answer.DecodeLabel(message, offset));
 
         Dev({ typeIdOffset: offset }, { logName: `dns` });
-        this.typeId = parseInt(message.slice(offset, offset + 2).map(element => element.hexadecimal).join(``), 16);
-        offset += 2;
+        ({ value: this.typeId, offsetAfterRead: offset } = ReadUInt16(message, offset));
 
         Dev({ classIdOffset: offset }, { logName: `dns` });
-        this.classId = parseInt(message.slice(offset, offset + 2).map(element => element.hexadecimal).join(``), 16);
-        offset += 2;
+        ({ value: this.classId, offsetAfterRead: offset } = ReadUInt16(message, offset));
 
         Dev({ ttlOffset: offset }, { logName: `dns` });
-        this.startingTTL = parseInt(message.slice(offset, offset + 4).map(element => element.hexadecimal).join(``), 16);
-        offset += 4;
+        ({ value: this.startingTTL, offsetAfterRead: offset} = ReadUInt32(message, offset));
 
         offset = this.setResourceData(message, offset);
 
         return offset;
     }
 
-    public EncodeToDNS(message: Array<MessageByte>): void {
+    public EncodeToDNS(message: Array<number>): void {
         ResourceRecord.EncodeLabel(message, this.label);
 
-        WriteBytes(message, 2, this.typeId);
-        WriteBytes(message, 2, this.classId);
+        WriteUInt16(message, this.typeId);
+        WriteUInt16(message, this.classId);
         // Write the TTL from now for the answer
-        WriteBytes(message, 4, Math.round((this.ttlExpiration - (new Date()).getTime()) / 1000));
+        WriteUInt32(message, Math.round((this.ttlExpiration - (new Date()).getTime()) / 1000));
 
         this.getResourceData(message);
     }
 
-    private setResourceData(message: Array<MessageByte>, offset: number): number {
+    private setResourceData(message: Array<number>, offset: number): number {
         // Get the resource data length
-        const rdLength = parseInt(message.slice(offset, offset + 2).map(element => element.hexadecimal).join(``), 16);
+        let rdLength: number;
+        ({ value: rdLength, offsetAfterRead: offset} = ReadUInt16(message, offset));
         Dev({ rdLengthOffset: offset, rdLength }, { logName: `dns` });
-        offset += 2;
 
         // Parse the resource data
         const source = message.slice(offset, offset + rdLength);
@@ -108,11 +106,9 @@ class Answer extends ResourceRecord {
                 // Decode the IP address(es)
                 let sourceOffset = 0;
                 while (sourceOffset < source.length) {
-                    const ip: Array<number> = [];
-                    for (let idx = 0; idx < 4; idx++)
-                        ip.push(source[idx].decimal);
-                    this.rdata.push(ip.join(`.`));
-                    sourceOffset += 4;
+                    let ipAddress: string;
+                    ({ value: ipAddress, offsetAfterRead: sourceOffset } = ReadIPAddress(source, sourceOffset));
+                    this.rdata.push(ipAddress);
                 }
             }
                 break;
@@ -127,7 +123,7 @@ class Answer extends ResourceRecord {
 
             default:
                 // Use the hexadecimal version of the data
-                this.rdata.push(source.map(element => element.hexadecimal).join(``));
+                this.rdata.push(ToHexadecimal(Uint8Array.from(source)).join(``));
         }
 
         offset += rdLength;
@@ -138,7 +134,7 @@ class Answer extends ResourceRecord {
     /**
      * Add the resource data fields to the message
      */
-    private getResourceData(message: Array<MessageByte>): void {
+    private getResourceData(message: Array<number>): void {
         switch (this.typeId) {
             case eDnsType.CNAME: {
                 this.rdata.forEach(label => {
@@ -146,7 +142,7 @@ class Answer extends ResourceRecord {
 
                     // Insert the length of the label prior to the label
                     const labelAdded = message.splice(message.length - length);
-                    WriteBytes(message, 2, length);
+                    WriteUInt16(message, length);
                     labelAdded.forEach(label => { message.push(label); });
                 });
             }
@@ -154,26 +150,20 @@ class Answer extends ResourceRecord {
 
             // A records (typeId == 1) are included here with everything not CNAME
             default: {
-                const rDataBytes: Array<MessageByte> = [];
+                const rDataBytes: Array<number> = [];
 
                 this.rdata.forEach(data => {
                     // Data will be in hexadecimal format, and needs to split into an array
                     const dataParts = (this.typeId == eDnsType.A) ? data.split(`.`) : data.match(/../g);
 
                     dataParts.forEach(element => {
-                        let elementType = eMessageByteComponent.hexadecimal,
-                            elementValue: string | number = element;
+                        const elementValue: number = (this.typeId == eDnsType.A) ? +element : parseInt(element, 16);
 
-                        if (this.typeId == eDnsType.A) {
-                            elementValue = +element;
-                            elementType = eMessageByteComponent.decimal;
-                        }
-
-                        WriteBytes(rDataBytes, 1, elementValue, elementType);
+                        WriteUInt8(rDataBytes, elementValue);
                     });
                 });
 
-                WriteBytes(message, 2, rDataBytes.length);
+                WriteUInt16(message, rDataBytes.length);
                 rDataBytes.forEach(rdata => message.push(rdata));
             }
                 break;

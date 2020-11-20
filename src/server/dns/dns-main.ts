@@ -10,6 +10,7 @@ import { ResolveDNSQuery } from "./resolver";
 import { DNSMessage } from "./rfc1035/dnsMessage";
 import { IConfiguration } from "../../interfaces/configuration/configurationFile";
 import { Answer } from "./rfc1035/answer";
+import { ToHexadecimal } from "../utilities";
 
 const DNS_SERVER_PORT = 53;
 
@@ -51,46 +52,52 @@ class DNSServer {
         return remainingAddresses;
     }
 
-    private newDnsSocket(ipAddress: string): Promise<void> {
-        return new Promise((resolve, reject) => {
-            const server = dgram.createSocket({ type: `udp4` });
-            let bindingSucceeded = false;
+    /**
+     * Handle every DNS message received by the service
+     * @param msg - The raw DNS message
+     * @param rinfo - The datagram for the remote connection
+     */
+    private messageHandler(msg: Uint8Array, rinfo: dgram.RemoteInfo, server: dgram.Socket) {
+        const timestamp = new Date(),
+            newDenotation = ` New Query `,
+            denotationMask = 45;
 
+        // For Debug or lower levels, add a separator line
+        Debug(newDenotation.padStart(newDenotation.length + denotationMask, `-`).padEnd(newDenotation.length + (denotationMask * 2), `-`), { logName: `dns` });
+
+        Trace({
+            [`Remote address information`]: rinfo,
+            [`Hexadecimal query`]: ToHexadecimal(msg).join(``),
+        }, { logName: `dns` });
+
+        const dnsQuery = new DNSMessage();
+        dnsQuery.FromDNS(msg);
+        Trace({ dnsQuery }, { logName: `dns` });
+
+        ResolveDNSQuery(dnsQuery, this.configuration, rinfo)
+            .then(dnsAnswer => {
+                Info(`DNS Query (${rinfo.address}) - ${dnsQuery.queryId} - ${(new Date()).getTime() - timestamp.getTime()}ms - ${dnsQuery.questions.map(q => { return q.label; }).join(`, `)}: ${dnsAnswer.answers.map(a => { return a.summary; }).join(`, `)}`, { logName: `dns` });
+                // Send response
+                server.send(dnsAnswer.dnsMessage, rinfo.port, rinfo.address);
+            })
+            .catch(err => {
+                Err(err, { logName: `dns` });
+            });
+    }
+
+    private newDnsSocket(ipAddress: string): Promise<void> {
+        const server = dgram.createSocket({ type: `udp4` });
+        let bindingSucceeded = false;
+
+        server.on(`message`, (msg, rinfo) => this.messageHandler(msg, rinfo, server));
+
+        return new Promise((resolve, reject) => {
             server.on(`listening`, () => {
                 const address = server.address();
                 Info({ [`Binding address`]: address }, { logName: `dns` });
 
                 bindingSucceeded = true;
                 resolve();
-            });
-
-            // Every time a message is received
-            server.on(`message`, (msg, rinfo) => {
-                const timestamp = new Date(),
-                    newDenotation = ` New Query `,
-                    denotationMask = 45;
-
-                // For Debug or lower levels, add a separator line
-                Debug(newDenotation.padStart(newDenotation.length + denotationMask, `-`).padEnd(newDenotation.length + (denotationMask * 2), `-`), { logName: `dns` });
-
-                Trace({
-                    [`Remote address information`]: rinfo,
-                    [`Hexadecimal query`]: msg.toString(`hex`),
-                }, { logName: `dns` });
-
-                const dnsQuery = new DNSMessage();
-                dnsQuery.FromDNS(msg);
-                Trace({ dnsQuery }, { logName: `dns` });
-
-                ResolveDNSQuery(dnsQuery, this.configuration, rinfo)
-                    .then(dnsAnswer => {
-                        Info(`DNS Query (${rinfo.address}) - ${dnsQuery.queryId} - ${(new Date()).getTime() - timestamp.getTime()}ms - ${dnsQuery.questions.map(q => { return q.label; }).join(`, `)}: ${dnsAnswer.answers.map(a => { return a.summary; }).join(`, `)}`, { logName: `dns` });
-                        // Send response
-                        server.send(dnsAnswer.dnsMessage, rinfo.port, rinfo.address);
-                    })
-                    .catch(err => {
-                        Err(err, { logName: `dns` });
-                    });
             });
 
             server.on(`error`, (err) => {

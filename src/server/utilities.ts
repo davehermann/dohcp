@@ -6,9 +6,9 @@ import { IReadBinaryValue, IReadBinaryValueToString } from "../interfaces/server
  * @param startingOffset - Starting block
  * @param byteCount - Number of blocks to read _(Default: **1**)_
  */
-function readBytes(typedArray: Uint8Array, startingOffset: number, byteCount = 1): IReadBinaryValue {
+function readBytes(typedArray: Uint8Array | Array<number>, startingOffset: number, byteCount = 1): IReadBinaryValue {
     const newOffset = startingOffset + byteCount,
-        values = typedArray.subarray(startingOffset, newOffset);
+        values = Uint8Array.from(typedArray).subarray(startingOffset, newOffset);
 
     return { value: octetsToValue(values), offsetAfterRead: newOffset };
 }
@@ -18,7 +18,7 @@ function readBytes(typedArray: Uint8Array, startingOffset: number, byteCount = 1
  * @param typedArray - Array to read from
  * @param offset - Starting block
  */
-function readUInt8(typedArray: Uint8Array, offset: number): IReadBinaryValue {
+function readUInt8(typedArray: Uint8Array | Array<number>, offset: number): IReadBinaryValue {
     return readBytes(typedArray, offset);
 }
 
@@ -27,7 +27,7 @@ function readUInt8(typedArray: Uint8Array, offset: number): IReadBinaryValue {
  * @param typedArray - Array to read from
  * @param offset - Starting block
  */
-function readUInt16(typedArray: Uint8Array, offset: number): IReadBinaryValue {
+function readUInt16(typedArray: Uint8Array | Array<number>, offset: number): IReadBinaryValue {
     return readBytes(typedArray, offset, 2);
 }
 
@@ -36,7 +36,7 @@ function readUInt16(typedArray: Uint8Array, offset: number): IReadBinaryValue {
  * @param typedArray - Array to read from
  * @param offset - Starting block
  */
-function readUInt32(typedArray: Uint8Array, offset: number): IReadBinaryValue {
+function readUInt32(typedArray: Uint8Array | Array<number>, offset: number): IReadBinaryValue {
     return readBytes(typedArray, offset, 4);
 }
 
@@ -47,10 +47,10 @@ function readUInt32(typedArray: Uint8Array, offset: number): IReadBinaryValue {
  * @param byteCount - Number of blocks to read
  * @param format - Format string for reading data blocks into
  */
-function readString(typedArray: Uint8Array, offset: number, byteCount: number, format: BufferEncoding = `utf8` ): IReadBinaryValueToString {
+function readString(typedArray: Uint8Array | Array<number>, offset: number, byteCount: number, format: BufferEncoding = `utf8` ): IReadBinaryValueToString {
     // Get the subset of the array to read as a string
     const newOffset = offset + byteCount,
-        data = typedArray.subarray(offset, newOffset);
+        data = Uint8Array.from(typedArray).subarray(offset, newOffset);
 
     // Convert the data into the desired string type array
     const stringData: Array<string> = [];
@@ -84,7 +84,7 @@ function readString(typedArray: Uint8Array, offset: number, byteCount: number, f
  * @param typedArray - Array to read from
  * @param offset - Starting block
  */
-function readIpAddress(typedArray: Uint8Array, offset: number): IReadBinaryValueToString {
+function readIpAddress(typedArray: Uint8Array | Array<number>, offset: number): IReadBinaryValueToString {
     const { value, offsetAfterRead } = readUInt32(typedArray, offset);
 
     return { value: valueToOctets(value, 4).join(`.`), offsetAfterRead };
@@ -265,7 +265,31 @@ function toHexadecimal(octets: Uint8Array = new Uint8Array()): Array<string> {
     return hex;
 }
 
+/**
+ * Convert a typed array to an array of numbers
+ */
+function convertTypedArrayToNumbers(originalArray: Uint8Array | Uint16Array | Uint32Array): Array<number> {
+    const numberArray: Array<number> = [];
+
+    for (let offset = 0, total = originalArray.length; offset < total; offset++)
+        numberArray.push(originalArray[offset]);
+
+    return numberArray;
+}
+
+function convertBinaryToNumbers(binaryString: string, totalBytes = 1): Array<number> {
+    binaryString = binaryString.padStart(totalBytes * 8, `0`);
+
+    // Separate into each 8-bit byte
+    const binaryArray = binaryString.match(/......../g);
+
+    // Add each byte to the array
+    return binaryArray.map(byteString => parseInt(byteString, 2));
+}
+
 export {
+    convertTypedArrayToNumbers as ConvertTypeArrayToNumberArray,
+    convertBinaryToNumbers as BinaryToNumberArray,
     octetsToValue as OctetsToNumber,
     valueToOctets as NumberToOctets,
     macAddressFromHex as MACAddressFromHex,
