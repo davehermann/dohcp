@@ -6,7 +6,7 @@ import { NetworkInterfaceInfo } from "os";
 import { Info, Err, Trace, Dev, Debug, GetConfiguredLogging, LogLevels, Log } from "multi-level-logger";
 
 // Application Modules
-import { Addressing } from "./allocation/allocate";
+import { IAllocations, Addressing } from "./allocation/allocate";
 import { IConfiguration } from "../../interfaces/configuration/configurationFile";
 import { DHCPMessage } from "./dhcpMessage";
 import { DHCPHistory } from "./history";
@@ -22,18 +22,16 @@ const DHCP_SERVER_PORT = 67,
     CLIENT_PORT = 68,
     BROADCAST_IP = `255.255.255.255`;
 
-async function startServer(configuration: IConfiguration): Promise<void> {
-    Info(`Starting DHCP Server`, { logName: `dhcp` });
-
-    const ipv4 = new IPv4DHCP(configuration);
-    await ipv4.Start();
-}
-
 /** DHCP Service */
 class IPv4DHCP {
     constructor(private readonly configuration: IConfiguration) {}
 
     private addressing: Addressing = new Addressing(this.configuration);
+
+    /** DHCP is enabled in configuration */
+    public get isEnabled(): boolean {
+        return !!this.configuration.dhcp && !this.configuration.dhcp.disabled;
+    }
 
     //#region Socket Initialization
 
@@ -274,14 +272,23 @@ class IPv4DHCP {
 
     //#endregion DHCP Message Handling
 
-    /** Start the DHCP service */
-    public async Start() {
-        await this.addressing.Allocate();
+    /** Get the active allocations for this service */
+    public GetAllocations(): IAllocations {
+        return this.addressing.AllAllocations;
+    }
 
-        await this.bindServer();
+    /** Start the DHCP service */
+    public async Start(): Promise<void> {
+        if (this.isEnabled) {
+            Info(`Starting DHCP Server`, { logName: `dhcp` });
+
+            await this.addressing.Allocate();
+
+            await this.bindServer();
+        }
     }
 }
 
 export {
-    startServer as DHCPServer,
+    IPv4DHCP as DHCPServer,
 };

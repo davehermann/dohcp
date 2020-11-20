@@ -40,6 +40,10 @@ class Addressing {
     private lastAllocationSaveToDisk = new Date(0);
     //#endregion Private properties
 
+    public get AllAllocations(): IAllocations {
+        return this.persistentAllocations;
+    }
+
     //#region Private methods
 
     /** Get the address pool(s) and static assignments */
@@ -407,5 +411,6 @@ class Addressing {
 }
 
 export {
+    IAllocations,
     Addressing,
 };

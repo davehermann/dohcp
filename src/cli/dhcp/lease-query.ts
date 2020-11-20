@@ -4,6 +4,7 @@ import { get as HttpGet } from "http";
 // Application Modules
 import { IAction, IActionToTake } from "../../interfaces/configuration/cliArguments";
 import { IConfiguration } from "../../interfaces/configuration/configurationFile";
+import { AllocatedAddress } from "../../server/dhcp/allocation/AllocatedAddress";
 
 function queryLeases(action: IActionToTake, allActions: Map<string, IAction>, configuration: IConfiguration): Promise<void> {
     let urlPath = `/dhcp/leases`,
@@ -44,14 +45,16 @@ function queryLeases(action: IActionToTake, allActions: Map<string, IAction>, co
                         // eslint-disable-next-line no-console
                         console.log(`\n----- ${title} -----\n`);
 
-                        if (dhcpData.leaseData.length == 0)
+                        const leaseDetail = (dhcpData.leaseData as Array<AllocatedAddress>);
+
+                        if (leaseDetail.length == 0)
                             // eslint-disable-next-line no-console
                             console.log(`No leases found`);
                         else {
                             const display = [],
                                 currentTime = (new Date()).getTime();
 
-                            dhcpData.leaseData.forEach(lease => {
+                            leaseDetail.forEach(lease => {
                                 const clientIdType = parseInt(lease.clientId.substr(0, 2), 16);
                                 let clientId = lease.clientId.substr(2);
 
@@ -67,7 +70,7 @@ function queryLeases(action: IActionToTake, allActions: Map<string, IAction>, co
                                     detail += ` (${hostname})`;
 
                                 if (!!lease.leaseStart) {
-                                    const expirationTime = lease.leaseStart + (dhcpData.configuration.dhcp.leases.pool.leaseSeconds * 1000),
+                                    const expirationTime = lease.leaseStart + (configuration.dhcp.leases.pool.leaseSeconds * 1000),
                                         timeToExpiration = Math.round((expirationTime - currentTime) / 1000);
 
                                     detail += (timeToExpiration > 0) ? ` expires in ${timeToExpiration} seconds` : ` lease expired`;

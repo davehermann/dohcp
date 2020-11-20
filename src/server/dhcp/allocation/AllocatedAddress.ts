@@ -97,6 +97,9 @@ class AllocatedAddress implements IAllocatedAddress {
         return this.providedHost;
     }
 
+    /** Was this address assigned, and confirmed, since the last service restart */
+    public get allocatedInSession(): boolean { return this.inSession; }
+
     /** Confirm the use of this address */
     public ConfirmAddress(): void {
         this.isConfirmed = true;

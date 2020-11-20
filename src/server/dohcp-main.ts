@@ -15,11 +15,11 @@ async function initialize() {
     if (!!configuration.dns && !configuration.dns.disabled)
         await DNSServer(configuration);
 
-    if (!!configuration.dhcp && !configuration.dhcp.disabled)
-        await DHCPServer(configuration);
+    const dhcpServer = new DHCPServer(configuration);
+    await dhcpServer.Start();
 
-    const dataServer = new DataServer(configuration);
-    await dataServer.Initialize();
+    const dataServer = new DataServer(configuration, dhcpServer);
+    await dataServer.Start();
 }
 
 initialize()
