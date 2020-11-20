@@ -269,7 +269,7 @@ class Addressing {
 
             this.lastAllocationSaveToDisk = currentTime;
         } else
-            Debug(`NOT writing DHCP update to disk`, { logName: `dhcp` });
+            Debug(`Writing DHCP update to disk is currently disabled.`, { logName: `dhcp` });
     }
 
     //#endregion Private methods

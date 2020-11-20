@@ -59,8 +59,22 @@ interface IConfiguration {
      * Write DHCP allocations to disk
      *
      * @default true
+     *
+     * @remarks
+     * Can be turned off via the _DHCP_NO_PERSIST=true_ environment variable
      */
     writeToDisk?: boolean;
+    /**
+     * Block sending of DHCP reply messages
+     *
+     * @default false
+     *
+     * @remarks
+     * This **SHOULD NOT** be set via the configuration file
+     *   + This is **not** included in the schema
+     *   + Use _DHCP_NO_REPLY=true_ environment variable
+     */
+    blockDhcpReplyMessages?: boolean;
 }
 
 export {

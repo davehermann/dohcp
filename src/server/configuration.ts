@@ -16,10 +16,30 @@ import { FilterIPs } from "../server/addressing";
 const CONFIGURATION_FILE = path.join(__dirname, `..`, `..`, `configuration.json`),
     DNS_RESOLVERS_FILE = path.join(__dirname, `..`, `..`, `dns-resolvers.json`);
 
+/**
+ * Let environment variables set/override configuration settings
+ * @param computedConfig - The configuration for the server
+ */
+function environmentVariableSettings(computedConfig: IConfiguration) {
+    if (process.env.DHCP_DISABLED === `true` && !!computedConfig.dhcp)
+        computedConfig.dhcp.disabled = true;
+
+    if (process.env.DNS_DISABLED === `true` && !!computedConfig.dns)
+        computedConfig.dns.disabled = true;
+
+    if (!!process.env.DHCP_NO_REPLY && !!computedConfig.dhcp)
+        computedConfig.dhcp.blockDhcpReplyMessages = (process.env.DHCP_NO_REPLY.toLowerCase() === `true`);
+
+    if (!!process.env.DHCP_NO_PERSIST && !!computedConfig.dhcp)
+        computedConfig.dhcp.writeToDisk = (process.env.DHCP_NO_PERSIST.toLowerCase() !== `true`);
+}
+
 function buildConfiguration(configuration: Record<string, unknown>, dnsResolvers: IDnsResolver): IConfiguration {
     // Copy the configuration
     const computedConfig: IConfiguration = JSON.parse(JSON.stringify(configuration)),
         interfaces = os.networkInterfaces();
+
+    environmentVariableSettings(computedConfig);
 
     Trace({ [`Found network interfaces`]: os.networkInterfaces() });
 
@@ -71,8 +91,13 @@ async function loadConfiguration(dataServiceHost?: string): Promise<IConfigurati
     const contents = await fs.readFile(CONFIGURATION_FILE, { encoding: `utf8` });
     const config: Record<string, unknown> = JSON.parse(contents);
 
-    // Pass the loaded config object to the logger
-    InitializeLogging(config);
+    // If logging is set via environment variable, generate a dummy config object
+    if (!!process.env.LOG_LEVEL) {
+        const logConfig = { logLevel: process.env.LOG_LEVEL };
+        InitializeLogging(logConfig);
+    } else
+        // Pass the loaded config object to the logger
+        InitializeLogging(config);
 
     // Load upstream resolvers
     const resolversFileContents = await fs.readFile(DNS_RESOLVERS_FILE, { encoding: `utf8` });
@@ -90,6 +115,5 @@ async function loadConfiguration(dataServiceHost?: string): Promise<IConfigurati
 
 export {
     CONFIGURATION_FILE,
-    buildConfiguration as BuildConfiguration,
     loadConfiguration as LoadConfiguration,
 };

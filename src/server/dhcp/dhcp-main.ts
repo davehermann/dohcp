@@ -111,8 +111,8 @@ class IPv4DHCP {
                 // Send the message to the client
                 Debug(`Sending message: ${replyToClient.dhcpMessage.messageType}`, { logName: `dhcp` });
 
-                if (process.env.NO_REPLY === `true`)
-                    Log(`DHCP reply blocked by NO_REPLY environment variable. DHCP Message:\n${replyToClient.dhcpMessage.toString()}`);
+                if (this.configuration.dhcp.blockDhcpReplyMessages)
+                    Log(`DHCP reply blocked by DHCP_NO_REPLY environment variable. DHCP Message:\n${replyToClient.dhcpMessage.toString()}`);
                 else
                     server.send(replyToClient.dhcpMessage.asData, CLIENT_PORT, replyToClient.sendViaBroadcastAddress ? BROADCAST_IP : replyToClient.sendToIP, err => {
                         if (!!err) {

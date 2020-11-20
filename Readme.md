@@ -87,18 +87,28 @@ The *dhcp.json* file with the example MAC above will look like this when assigni
 
 ### Development Options
 
+#### Override configured DHCP
+
+`DHCP_DISABLED=true` will disable DHCP
+
+#### Overried configured DNS
+
+`DNS_DISABLED=true` will disable DNS
+
 #### Don't Persist DHCP Assignments
 
-Writing the DHCP data to disk can be turned off in the configuration file by explicitly setting `false`
+Writing the DHCP data to disk can be turned off in the configuration file by explicitly setting `false` to `writeToDisk`:
 ```json
 { dhcp: { writeToDisk: false } }
 ```
+
+This is also available via a `DHCP_NO_PERSIST` environment variable set to `true`
 
 #### Don't send DHCP messages to client
 
 *DEVELOPMENT ONLY*
 
-DHCP responses can be blocked by setting a `NO_REPLY` environment variable to `true`.
+DHCP responses can be blocked by setting a `DHCP_NO_REPLY` environment variable to `true`.
 A hexadecimal version of the message will be logged to the console instead.
 
 ## Launch
