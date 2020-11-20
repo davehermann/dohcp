@@ -43,7 +43,13 @@ class DnsMessage {
         this._questions = [];
     }
 
-    private _message: Array<number> = [];
+    /**
+     * The DNS message as a numerical array
+     *
+     * @remarks
+     * Instantiated to 10 zeros to handle class accessors that depend on it
+     */
+    private _message: Array<number> = new Array(10).fill(0);
 
     /** List of answers present in message */
     private _answers: Array<Answer>;

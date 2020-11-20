@@ -78,18 +78,21 @@ async function resolveQuery(dnsQuery: DNSMessage, configuration: IConfiguration,
 
         // With the expanded answers, create a new response message
 
+        Dev({ [`Unmanipulated answer`]: answerMessage, nscount: answerMessage.nscount, lastAnswer });
+
         // Anything not expected should return unmanipulated
-        if (!!lastAnswer && (answerMessage.nscount == 0)) {
+        if (!!lastAnswer && ((answerMessage.nscount === 0) || (answerMessage.nscount === null) || (answerMessage.nscount === undefined))) {
+            Dev(`Generating answer`);
             const answerToReturn = new DNSMessage();
             answerToReturn.AddQuestions(dnsQuery.questions.map(question => question.label));
             answerToReturn.AddAnswers(answerMessage.answers);
             answerToReturn.Generate(dnsQuery.queryId, true, dnsQuery.rd);
 
             Trace({ answerToReturn }, { logName: `dns` });
-            Trace({ asHex: answerToReturn.hexadecimal.join(``) }, { logName: `dns` });
 
             answerMessage = answerToReturn;
-        }
+        } else
+            Dev(`Sending unmanipulated answer as response`);
     }
 
     return answerMessage;
