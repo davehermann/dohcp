@@ -2,8 +2,7 @@
 import { Dev, Trace } from "multi-level-logger";
 
 // Application Modules
-import { MessageByte, WriteBytes } from "./MessageByte";
-import { eDnsClass, eDnsType, ILabel, eMessageByteComponent } from "../../../interfaces/configuration/dns";
+import { eDnsClass, eDnsType, ILabel } from "../../../interfaces/configuration/dns";
 import { ReadUInt8, ReadUInt16, ReadString, WriteUInt8, WriteString, ToHexadecimal, WriteUInt16, BinaryToNumberArray } from "../../utilities";
 
 class ResourceRecord {

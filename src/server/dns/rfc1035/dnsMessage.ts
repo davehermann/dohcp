@@ -3,9 +3,8 @@ import { Dev, Trace, GetConfiguredLogging, LogLevels } from "multi-level-logger"
 
 // Application Modules
 import { Answer } from "./answer";
-import { MessageByte, WriteBytes } from "./MessageByte";
 import { Question } from "./question";
-import { eDnsType, eDnsClass, eMessageByteComponent } from "../../../interfaces/configuration/dns";
+import { eDnsType, eDnsClass } from "../../../interfaces/configuration/dns";
 import { ReadUInt16, ConvertTypeArrayToNumberArray, WriteUInt16, BinaryToNumberArray, ToHexadecimal } from "../../utilities";
 
 interface IDnsMessageAsJson {
@@ -53,8 +52,6 @@ class DnsMessage {
 
     /** List of answers present in message */
     private _answers: Array<Answer>;
-    // /** Message represented as array of bytes in different numerical bases */
-    // private _master: Array<MessageByte>;
     /** List of questions present in the message */
     private _questions: Array<Question>;
 
@@ -113,18 +110,6 @@ class DnsMessage {
 
     /** Get this message in DNS wire format */
     get dnsMessage(): Uint8Array { return new Uint8Array(this._message); }
-
-    // /**
-    //  * Convert message into a MessageByte array
-    //  * @param msg - Raw DNS binary message
-    //  */
-    // private mapMessage(msg: Uint8Array): void {
-    //     // Generate a respresentation where each array index contains decimal, hex, and binary representations
-    //     const messageMaster: Array<MessageByte> = [];
-    //     for (let offset = 0; offset < msg.length; offset++)
-    //         messageMaster.push(new MessageByte(msg[offset]));
-    //     this._master = messageMaster;
-    // }
 
     /** Parse question section from the DNS message */
     private parseQuestions(): number {

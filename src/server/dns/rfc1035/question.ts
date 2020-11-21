@@ -1,5 +1,4 @@
 // Application Modules
-import { MessageByte, WriteBytes } from "./MessageByte";
 import { ResourceRecord } from "./resourceRecord";
 import { ReadUInt16, WriteUInt16 } from "../../utilities";
 

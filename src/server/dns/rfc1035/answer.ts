@@ -2,9 +2,8 @@
 import { Dev } from "multi-level-logger";
 
 // Application Modules
-import { MessageByte, WriteBytes } from "./MessageByte";
 import { ResourceRecord } from "./resourceRecord";
-import { eDnsType, eMessageByteComponent, eDnsClass } from "../../../interfaces/configuration/dns";
+import { eDnsType, eDnsClass } from "../../../interfaces/configuration/dns";
 import { ReadUInt16, ReadUInt32, ReadIPAddress, ToHexadecimal, WriteUInt16, WriteUInt32, WriteUInt8 } from "../../utilities";
 
 // This interface is only to be used internally by the Answer class
