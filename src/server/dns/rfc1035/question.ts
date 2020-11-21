@@ -1,28 +1,26 @@
 // Application Modules
-import { MessageByte, WriteBytes } from "./MessageByte";
 import { ResourceRecord } from "./resourceRecord";
+import { ReadUInt16, WriteUInt16 } from "../../utilities";
 
 class Question extends ResourceRecord {
     constructor() {
         super();
     }
 
-    EncodeToDNS(message: Array<MessageByte>): void {
+    EncodeToDNS(message: Array<number>): void {
         ResourceRecord.EncodeLabel(message, this.label);
-        WriteBytes(message, 2, this.typeId);
-        WriteBytes(message, 2, this.classId);
+        WriteUInt16(message, this.typeId);
+        WriteUInt16(message, this.classId);
     }
 
-    DecodeFromDNS(message: Array<MessageByte>, offset: number): number {
+    DecodeFromDNS(message: Array<number>, offset: number): number {
         this.startingOffset = offset;
 
         ({ value: this.label, offset } = ResourceRecord.DecodeLabel(message, offset));
 
-        this.typeId = parseInt(message.slice(offset, offset + 2).map(element => element.hexadecimal).join(``), 16);
-        offset += 2;
+        ({ value: this.typeId, offsetAfterRead: offset } = ReadUInt16(message, offset));
 
-        this.classId = parseInt(message.slice(offset, offset + 2).map(element => element.hexadecimal).join(``), 16);
-        offset += 2;
+        ({ value: this.classId, offsetAfterRead: offset } = ReadUInt16(message, offset));
 
         return offset;
     }

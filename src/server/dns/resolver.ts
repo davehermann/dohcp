@@ -78,18 +78,21 @@ async function resolveQuery(dnsQuery: DNSMessage, configuration: IConfiguration,
 
         // With the expanded answers, create a new response message
 
+        Dev({ [`Unmanipulated answer`]: answerMessage, nscount: answerMessage.nscount, lastAnswer });
+
         // Anything not expected should return unmanipulated
-        if (!!lastAnswer && (answerMessage.nscount == 0)) {
+        if (!!lastAnswer && ((answerMessage.nscount === 0) || (answerMessage.nscount === null) || (answerMessage.nscount === undefined))) {
+            Dev(`Generating answer`);
             const answerToReturn = new DNSMessage();
             answerToReturn.AddQuestions(dnsQuery.questions.map(question => question.label));
             answerToReturn.AddAnswers(answerMessage.answers);
             answerToReturn.Generate(dnsQuery.queryId, true, dnsQuery.rd);
 
             Trace({ answerToReturn }, { logName: `dns` });
-            Trace({ asHex: answerToReturn.hexadecimal.join(``) }, { logName: `dns` });
 
             answerMessage = answerToReturn;
-        }
+        } else
+            Dev(`Sending unmanipulated answer as response`);
     }
 
     return answerMessage;
@@ -133,7 +136,7 @@ async function dnsOverHttpsLookup(dnsQuery: DNSMessage, configuration: IConfigur
         path: dohResolver.resolver.doh.path,
         headers: {
             [`Host`]: dohResolver.resolver.doh.hostname,
-            [`Content-Length`]: dnsQuery.dnsMessage.length,
+            [`Content-Length`]: dnsQuery.typedMessage.length,
         },
     };
 
@@ -182,7 +185,7 @@ async function dnsOverHttpsLookup(dnsQuery: DNSMessage, configuration: IConfigur
         });
 
         // ClientRequest.write() only accepts string or Buffer
-        req.write(Buffer.from(dnsQuery.dnsMessage));
+        req.write(Buffer.from(dnsQuery.typedMessage));
         req.end();
     });
 }
@@ -200,7 +203,7 @@ function dnsLookup(dnsQuery: DNSMessage, configuration: IConfiguration): Promise
             Trace(`DNS query via UDP listening on ${JSON.stringify(client.address())}`, { logName: `dns` });
             Dev({ dnsQuery }, { logName: `dns` });
 
-            client.send(dnsQuery.dnsMessage, 53, resolver.servers[0]);
+            client.send(dnsQuery.typedMessage, 53, resolver.servers[0]);
         });
 
         client.on(`message`, (msg, rinfo) => {

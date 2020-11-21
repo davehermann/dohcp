@@ -13,13 +13,6 @@ enum eDnsType {
     AAAA = 28,
 }
 
-enum eMessageByteComponent {
-    decimal = `decimal`,
-    hexadecimal = `hexadecimal`,
-    binary = `binary`,
-    string = `string`,
-}
-
 interface ICacheId {
     label: string;
     typeId: eDnsType;
@@ -51,13 +44,6 @@ interface ILabel {
     offset: number;
 }
 
-/** Message data block */
-interface IMessageByte {
-    decimal: number;
-    hexadecimal: string;
-    binary: string;
-}
-
 /** A host registered in the local DNS */
 interface IRegisteredHost {
     /** The domain name entry */
@@ -71,10 +57,8 @@ interface IRegisteredHost {
 export {
     eDnsClass,
     eDnsType,
-    eMessageByteComponent,
     ICacheId,
     IConfiguration,
     ILabel,
-    IMessageByte,
     IRegisteredHost,
 };
