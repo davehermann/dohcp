@@ -78,7 +78,7 @@ class DNSServer {
             .then(dnsAnswer => {
                 Info(`DNS Query (${rinfo.address}) - ${dnsQuery.queryId} - ${(new Date()).getTime() - timestamp.getTime()}ms - ${dnsQuery.questions.map(q => { return q.label; }).join(`, `)}: ${dnsAnswer.answers.map(a => { return a.summary; }).join(`, `)}`, { logName: `dns` });
                 // Send response
-                server.send(dnsAnswer.dnsMessage, rinfo.port, rinfo.address);
+                server.send(dnsAnswer.typedMessage, rinfo.port, rinfo.address);
             })
             .catch(err => {
                 Err(err, { logName: `dns` });

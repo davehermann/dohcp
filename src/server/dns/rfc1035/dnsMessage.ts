@@ -36,64 +36,53 @@ interface IDnsHeaderParametersAsJson {
 }
 
 class DnsMessage {
-    constructor() {
-        this._answers = [];
-        // this._master = [];
-        this._questions = [];
-    }
-
     /**
      * The DNS message as a numerical array
      *
      * @remarks
      * Instantiated to 10 zeros to handle class accessors that depend on it
      */
-    private _message: Array<number> = new Array(10).fill(0);
+    private _message: Array<number> = [];
 
     /** List of answers present in message */
-    private _answers: Array<Answer>;
+    private _answers: Array<Answer> = [];
     /** List of questions present in the message */
-    private _questions: Array<Question>;
-
-    /** Hexadecimal representation of the message array */
-    get hexadecimal(): Array<string> { return ToHexadecimal(Uint8Array.from(this._message)); }
-    /** Binary representation of the message array */
-    get binary(): Array<string> { return this._message.map(byteValue => byteValue.toString(2).padStart(8, `0`)); }
+    private _questions: Array<Question> = [];
 
     //#region Header
 
     /** Query ID is the first two bytes of the message */
-    get queryId(): number { return ReadUInt16(this._message, 0).value; }
+    get queryId(): number { return (this._message.length > 0) ? ReadUInt16(this._message, 0).value : null; }
 
     //#region Parameters - the next 16 bits (2 bytes)
     /** The 16 bytes following the 2-byte ID at the start of the message */
-    get _parameters(): string { return ReadUInt16(this._message, 2).value.toString(2).padStart(16, `0`); }
+    get _parameters(): string { return (this._message.length > 0) ? ReadUInt16(this._message, 2).value.toString(2).padStart(16, `0`) : null; }
     /** The first bit on the parameters */
-    get qr(): number { return +this._parameters.substr(0, 1);}
+    get qr(): number { return !!this._parameters ? +this._parameters.substr(0, 1) : null; }
     /** Bits 2 - 5 on the parameters */
-    get opcode(): number { return parseInt(this._parameters.substr(1, 4), 2); }
+    get opcode(): number { return !!this._parameters ? parseInt(this._parameters.substr(1, 4), 2) : null; }
     /** Is this an Authoritative Answer */
-    get aa(): boolean { return +this._parameters.substr(5, 1) === 1; }
+    get aa(): boolean { return !!this._parameters ? +this._parameters.substr(5, 1) === 1 : false; }
     /** Is answer truncated */
-    get tc(): boolean { return +this._parameters.substr(6, 1) === 1; }
+    get tc(): boolean { return !!this._parameters ? +this._parameters.substr(6, 1) === 1 : false; }
     /** Is Recursion Desired? */
-    get rd(): boolean { return +this._parameters.substr(7, 1) === 1; }
+    get rd(): boolean { return !!this._parameters ? +this._parameters.substr(7, 1) === 1 : false; }
     /** Is Recursion Available */
-    get ra(): boolean { return +this._parameters.substr(8, 1) === 1; }
+    get ra(): boolean { return !!this._parameters ? +this._parameters.substr(8, 1) === 1 : false; }
     /** Z (reserved for future use) */
-    get z(): number { return parseInt(this._parameters.substr(9, 3), 2); }
+    get z(): number { return !!this._parameters ? parseInt(this._parameters.substr(9, 3), 2) : null; }
     /** Response Code */
-    get rcode(): number { return parseInt(this._parameters.substr(12, 4), 2); }
+    get rcode(): number { return !!this._parameters ? parseInt(this._parameters.substr(12, 4), 2) : null; }
     //#endregion Parameters
 
     /** Number of Answers in message */
-    get ancount(): number { return ReadUInt16(this._message, 6).value; }
+    get ancount(): number { return (this._message.length > 0) ? ReadUInt16(this._message, 6).value : 0; }
     /** Number of questions in message */
-    get qdcount(): number { return ReadUInt16(this._message, 4).value; }
+    get qdcount(): number { return (this._message.length > 0) ? ReadUInt16(this._message, 4).value : 0; }
     /** Number of Authority Records */
-    get nscount(): number { return ReadUInt16(this._message, 8).value; }
+    get nscount(): number { return (this._message.length > 0) ? ReadUInt16(this._message, 8).value : 0; }
     /** Number of Additional Records */
-    get arcount(): number { return ReadUInt16(this._message, 10).value; }
+    get arcount(): number { return (this._message.length > 0) ? ReadUInt16(this._message, 10).value : 0; }
 
     //#endregion Header
 
@@ -109,7 +98,7 @@ class DnsMessage {
     // End Answers --------------------------------------------------------------------
 
     /** Get this message in DNS wire format */
-    get dnsMessage(): Uint8Array { return new Uint8Array(this._message); }
+    get typedMessage(): Uint8Array { return Uint8Array.from(this._message); }
 
     /** Parse question section from the DNS message */
     private parseQuestions(): number {
@@ -131,8 +120,8 @@ class DnsMessage {
 
     /** Parse answers section from the DNS message */
     private parseAnswers(offset: number): number {
-        this.hexadecimal.forEach((element, idx) => {
-            Dev(`${idx.toString().padStart(3, `0`)}: ${element}`, { logName: `dns` });
+        this._message.forEach((byteValue, idx) => {
+            Dev(`${idx.toString().padStart(3, `0`)}: ${byteValue}`, { logName: `dns` });
         });
 
         const answers: Array<Answer> = [];
@@ -198,8 +187,6 @@ class DnsMessage {
     FromDNS(msg: Uint8Array): void {
         this._message = ConvertTypeArrayToNumberArray(msg);
 
-        // this.mapMessage(msg);
-
         const offset = this.parseQuestions();
 
         this.parseAnswers(offset);
@@ -253,7 +240,7 @@ class DnsMessage {
         const { logLevel } = GetConfiguredLogging();
         if (((logLevel.dns === undefined) && (logLevel.default == LogLevels.dev)) || (logLevel.dns == LogLevels.dev)) {
             data.source = JSON.stringify(this._message);
-            data.sourceAsHex = this.hexadecimal.join(``);
+            data.sourceAsHex = ToHexadecimal(this.typedMessage).join(``);
         }
 
         data.header = {

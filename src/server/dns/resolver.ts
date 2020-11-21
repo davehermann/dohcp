@@ -136,7 +136,7 @@ async function dnsOverHttpsLookup(dnsQuery: DNSMessage, configuration: IConfigur
         path: dohResolver.resolver.doh.path,
         headers: {
             [`Host`]: dohResolver.resolver.doh.hostname,
-            [`Content-Length`]: dnsQuery.dnsMessage.length,
+            [`Content-Length`]: dnsQuery.typedMessage.length,
         },
     };
 
@@ -185,7 +185,7 @@ async function dnsOverHttpsLookup(dnsQuery: DNSMessage, configuration: IConfigur
         });
 
         // ClientRequest.write() only accepts string or Buffer
-        req.write(Buffer.from(dnsQuery.dnsMessage));
+        req.write(Buffer.from(dnsQuery.typedMessage));
         req.end();
     });
 }
@@ -203,7 +203,7 @@ function dnsLookup(dnsQuery: DNSMessage, configuration: IConfiguration): Promise
             Trace(`DNS query via UDP listening on ${JSON.stringify(client.address())}`, { logName: `dns` });
             Dev({ dnsQuery }, { logName: `dns` });
 
-            client.send(dnsQuery.dnsMessage, 53, resolver.servers[0]);
+            client.send(dnsQuery.typedMessage, 53, resolver.servers[0]);
         });
 
         client.on(`message`, (msg, rinfo) => {
