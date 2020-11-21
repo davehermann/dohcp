@@ -2,7 +2,7 @@
 import * as dgram from "dgram";
 
 // NPM Modules
-import { Dev, Trace, Debug, Info, Err } from "multi-level-logger";
+import { Dev, Trace, Debug, Info, Err, Log } from "multi-level-logger";
 
 // Application Modules
 import { LoadPreconfiguredRecords, CacheContents } from "./cache";
@@ -121,7 +121,7 @@ class DNSServer {
     /** Start the DNS service */
     public async Start(): Promise<void> {
         if (this.isEnabled) {
-            Info(`Starting DNS Server`, { logName: `dns` });
+            Log(`Starting DNS Server`, { logName: `dns` });
 
             LoadPreconfiguredRecords(this.configuration);
 

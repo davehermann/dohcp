@@ -1,5 +1,5 @@
 // NPM Modules
-import { Dev } from "multi-level-logger";
+import { Dev, Trace } from "multi-level-logger";
 
 // Application Modules
 import { ResourceRecord } from "./resourceRecord";
@@ -62,7 +62,7 @@ class Answer extends ResourceRecord {
     public DecodeFromDNS(message: Array<number>, offset: number): number {
         this.startingOffset = offset;
 
-        Dev({ [`Answer label offset`]: offset }, { logName: `dns` });
+        Trace(`Decode answer label at offset ${offset}`, { logName: `dns` });
         ({ value: this.label, offset } = Answer.DecodeLabel(message, offset));
 
         Dev({ typeIdOffset: offset }, { logName: `dns` });

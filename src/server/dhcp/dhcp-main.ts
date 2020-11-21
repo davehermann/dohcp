@@ -280,7 +280,7 @@ class IPv4DHCP {
     /** Start the DHCP service */
     public async Start(): Promise<void> {
         if (this.isEnabled) {
-            Info(`Starting DHCP Server`, { logName: `dhcp` });
+            Log(`Starting DHCP Server`, { logName: `dhcp` });
 
             await this.addressing.Allocate();
 

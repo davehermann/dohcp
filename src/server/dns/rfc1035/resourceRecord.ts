@@ -23,17 +23,20 @@ class ResourceRecord {
 
     /** Decode the label(s) from a DNS message */
     static DecodeLabel(messageArray: Array<number>, offset: number): ILabel {
-        const labelData: Array<string> = [];
+        const labelData: Array<string> = [],
+            originalOffset = offset;
         let labelLength: number;
 
-        Trace({ [`Label offset`]: offset, [`Label decode`]: messageArray.slice(offset) });
+        Trace({ [`Label offset`]: offset, [`Offset to end of message decode`]: JSON.stringify(messageArray.slice(offset)) });
         do {
             // Get the 16-bit value at the start of the offset
             const offsetBytesAsBinary: string = messageArray.slice(offset, offset + 2).map(byteValue => byteValue.toString(2).padStart(8, `0`)).join(``);
             // If the first two bits are "11"
             if (offsetBytesAsBinary.substr(0, 2) == `11`) {
                 // Read the binary without the two "11" bits
-                const labelOffset: number = ReadUInt16(BinaryToNumberArray(offsetBytesAsBinary.substr(2), 2), 0).value;
+                const labelOffset = ReadUInt16(BinaryToNumberArray(offsetBytesAsBinary.substr(2), 2), 0).value;
+                Trace(`Compression in-use. Read from offset ${labelOffset}`);
+                // Manually advance the offset as the ReadUInt16 operates on a newly instantiated array
                 offset += 2;
 
                 const { value: label } = ResourceRecord.DecodeLabel(messageArray, labelOffset);
@@ -56,6 +59,7 @@ class ResourceRecord {
                 }
             }
         } while (labelLength != 0);
+        Trace({ [`Decoded label from offset ${originalOffset}`]: `[${labelData.toString().replace(/"/g, ``)}]` }, { logName: `dns` });
 
         return { value: labelData.join(`.`), offset };
     }
@@ -91,11 +95,12 @@ class ResourceRecord {
         const messageHex = ToHexadecimal(Uint8Array.from(message)).join(``);
         let hasMatch = false;
 
-        Dev({ [`Current message`]: messageHex }, { logName: `dns` });
+        Dev({ [`Current message for compression check`]: messageHex }, { logName: `dns` });
 
         do {
             // Ignore the ending null byte when checking for prior matches
             if (encodedParts.length > 1) {
+                // Encode as hexadecimal to utilize string matching
                 let labelHex = ``;
 
                 encodedParts.forEach((encodedLabel, idx) => {
@@ -112,11 +117,13 @@ class ResourceRecord {
                 });
 
                 // Check the message for a match
-                Trace({ [`Checking ${encodedParts.length - 1} parts`]: labelHex }, { logName: `dns` });
+                Dev({ [`Checking ${encodedParts.length - 1} parts for compression`]: labelHex }, { logName: `dns` });
                 const findMatch = messageHex.search(new RegExp(labelHex));
                 Dev({ findMatch }, { logName: `dns` });
 
                 hasMatch = (findMatch >= 0);
+
+                Dev(`Compression match ${hasMatch ? `` : `NOT `}found`);
 
                 // If the section matches, write 16 bits: "11" followed by the location in the string
                 if (hasMatch) {

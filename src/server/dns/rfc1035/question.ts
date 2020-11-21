@@ -1,6 +1,7 @@
 // Application Modules
 import { ResourceRecord } from "./resourceRecord";
 import { ReadUInt16, WriteUInt16 } from "../../utilities";
+import { Trace } from "multi-level-logger";
 
 class Question extends ResourceRecord {
     constructor() {
@@ -16,6 +17,7 @@ class Question extends ResourceRecord {
     DecodeFromDNS(message: Array<number>, offset: number): number {
         this.startingOffset = offset;
 
+        Trace(`Decode question label at offset ${offset}`, { logName: `dns` });
         ({ value: this.label, offset } = ResourceRecord.DecodeLabel(message, offset));
 
         ({ value: this.typeId, offsetAfterRead: offset } = ReadUInt16(message, offset));

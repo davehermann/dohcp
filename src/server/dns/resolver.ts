@@ -105,7 +105,7 @@ async function resolveQuery(dnsQuery: DNSMessage, configuration: IConfiguration,
  * @param useDNSOverHttps - Pass a non-cached request through the DNS-over-HTTPS resolver instead of using standard DNS protocol
  */
 async function answerViaLookup(dnsQuery: DNSMessage, configuration: IConfiguration, useDNSOverHttps: boolean): Promise<DNSMessage> {
-    Trace(`Forwarding to public resolver (via ${useDNSOverHttps ? `DNS-over-HTTPS` : `DNS`})`, { logName: `dns` });
+    Debug(`Forwarding to public resolver (via ${useDNSOverHttps ? `DNS-over-HTTPS` : `DNS`})`, { logName: `dns` });
 
     let responseFromForwardDNS: Uint8Array;
     if (useDNSOverHttps)
@@ -113,7 +113,7 @@ async function answerViaLookup(dnsQuery: DNSMessage, configuration: IConfigurati
     else
         responseFromForwardDNS = await dnsLookup(dnsQuery, configuration);
 
-    Trace({ [`Complete Response`]: responseFromForwardDNS.reduce((prev, cur) => { return prev + cur.toString(16).padStart(2, `0`); }, ``) }, { logName: `dns` });
+    Debug({ [`Complete Response`]: responseFromForwardDNS.toString() }, { logName: `dns` });
 
     const answerMessage: DNSMessage = new DNSMessage();
     answerMessage.FromDNS(responseFromForwardDNS);
@@ -208,10 +208,10 @@ function dnsLookup(dnsQuery: DNSMessage, configuration: IConfiguration): Promise
 
         client.on(`message`, (msg, rinfo) => {
             // msg is a Buffer
-            Debug({ [`DNS response`]: { rinfo, msg } }, { logName: `dns` });
+            Dev({ [`DNS response source`]: { rinfo } }, { logName: `dns` });
 
             client.close();
-            resolve(msg);
+            resolve(Uint8Array.from(msg));
         });
 
         client.on(`error`, (err) => {
