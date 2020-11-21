@@ -23,7 +23,7 @@ class Answer extends ResourceRecord implements ICacheId {
             this.label = answerToClone.label;
             this.typeId = answerToClone.typeId;
             this.classId = answerToClone.classId;
-            // newAnswer.startingTTL = this.startingTTL;
+            this.startingTTL = answerToClone.startingTTL;
             this._ttlTimestamp = answerToClone.ttlTimestamp;
             this.noExpiration = answerToClone.noExpiration;
 
