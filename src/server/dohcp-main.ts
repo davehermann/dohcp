@@ -15,7 +15,7 @@ async function initialize() {
     const dnsServer = new DNSServer(configuration);
     await dnsServer.Start();
 
-    const dhcpServer = new DHCPServer(configuration);
+    const dhcpServer = new DHCPServer(configuration, dnsServer);
     await dhcpServer.Start();
 
     const dataServer = new DataServer(configuration, dnsServer, dhcpServer);

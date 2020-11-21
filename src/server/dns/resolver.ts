@@ -6,11 +6,11 @@ import { request as WebRequest, RequestOptions as HttpRequestOptions } from "htt
 import { Dev, Trace, Debug, Warn, Info, Err } from "multi-level-logger";
 
 // Application Modules
-import { AddForwardedAnswerToCache } from "./cache";
 import { CheckForAnswerInCache } from "./resolver/cacheInteraction";
 import { DNSMessage } from "./rfc1035/dnsMessage";
 import { IConfiguration } from "../../interfaces/configuration/configurationFile";
 import { eDnsClass, eDnsType } from "../../interfaces/configuration/dns";
+import { Cache } from "./dns-cache";
 
 /**
  * Log queries with more than one question to warn, and don't cache or rewrite the answers
@@ -45,17 +45,18 @@ function nonInternetClassQuery(dnsQuery: DNSMessage): boolean {
  * Get the answer to a query
  * @param dnsQuery - Incoming DNS request
  * @param configuration - Server configuration
+ * @param cache - The cache object for the service
  * @param requestSource - DGram information about the source of the request
  * @param useDNSOverHttps - Pass a non-cached request through the DNS-over-HTTPS resolver instead of using standard DNS protocol
  */
-async function resolveQuery(dnsQuery: DNSMessage, configuration: IConfiguration, requestSource: dgram.RemoteInfo, useDNSOverHttps = true): Promise<DNSMessage> {
+async function resolveQuery(dnsQuery: DNSMessage, configuration: IConfiguration, cache: Cache, requestSource: dgram.RemoteInfo, useDNSOverHttps = true): Promise<DNSMessage> {
     const skipAnswerProcessing = multiQuestionQuery(dnsQuery) || nonInternetClassQuery(dnsQuery);
 
-    let answerMessage: DNSMessage = CheckForAnswerInCache(dnsQuery);
+    let answerMessage: DNSMessage = CheckForAnswerInCache(dnsQuery, cache);
 
     // If the cache doesn't hold a record for the query, forward query
     if (!answerMessage)
-        answerMessage = await answerViaLookup(dnsQuery, configuration, useDNSOverHttps);
+        answerMessage = await answerViaLookup(dnsQuery, configuration, cache, useDNSOverHttps);
 
     // Non-standard queries will return as-resolved
     if (!skipAnswerProcessing) {
@@ -70,7 +71,7 @@ async function resolveQuery(dnsQuery: DNSMessage, configuration: IConfiguration,
             subQuery.AddQuestions([lastAnswer.rdata[0]]);
             subQuery.Generate();
 
-            const subAnswer = await resolveQuery(subQuery, configuration, requestSource);
+            const subAnswer = await resolveQuery(subQuery, configuration, cache, requestSource);
 
             answerMessage.AddAnswers(subAnswer.answers);
         }
@@ -104,12 +105,12 @@ async function resolveQuery(dnsQuery: DNSMessage, configuration: IConfiguration,
  * @param configuration - Server configuration
  * @param useDNSOverHttps - Pass a non-cached request through the DNS-over-HTTPS resolver instead of using standard DNS protocol
  */
-async function answerViaLookup(dnsQuery: DNSMessage, configuration: IConfiguration, useDNSOverHttps: boolean): Promise<DNSMessage> {
+async function answerViaLookup(dnsQuery: DNSMessage, configuration: IConfiguration, cache: Cache, useDNSOverHttps: boolean): Promise<DNSMessage> {
     Debug(`Forwarding to public resolver (via ${useDNSOverHttps ? `DNS-over-HTTPS` : `DNS`})`, { logName: `dns` });
 
     let responseFromForwardDNS: Uint8Array;
     if (useDNSOverHttps)
-        responseFromForwardDNS = await dnsOverHttpsLookup(dnsQuery, configuration);
+        responseFromForwardDNS = await dnsOverHttpsLookup(dnsQuery, configuration, cache);
     else
         responseFromForwardDNS = await dnsLookup(dnsQuery, configuration);
 
@@ -121,13 +122,13 @@ async function answerViaLookup(dnsQuery: DNSMessage, configuration: IConfigurati
 
     // Do not cache Authoritative responses
     if (answerMessage.nscount == 0)
-        AddForwardedAnswerToCache(answerMessage);
+        cache.AddFromForwardDns(answerMessage);
 
     return answerMessage;
 }
 
-async function dnsOverHttpsLookup(dnsQuery: DNSMessage, configuration: IConfiguration): Promise<Uint8Array> {
-    const dohResolver = await resolveHostForDnsOverHttpsRequests(configuration);
+async function dnsOverHttpsLookup(dnsQuery: DNSMessage, configuration: IConfiguration, cache: Cache): Promise<Uint8Array> {
+    const dohResolver = await resolveHostForDnsOverHttpsRequests(configuration, cache);
 
     Trace(`Resolving query in forward D-o-H DNS`, { logName: `dns` });
 
@@ -236,7 +237,7 @@ function dnsLookup(dnsQuery: DNSMessage, configuration: IConfiguration): Promise
  * @param configuration - Server configuration
  * @returns The D-o-H server configuration, and the resolved IPs
  */
-async function resolveHostForDnsOverHttpsRequests(configuration: IConfiguration) {
+async function resolveHostForDnsOverHttpsRequests(configuration: IConfiguration, cache: Cache) {
     const resolver = getPrimaryForwardResolver(configuration);
 
     Trace({ [`Loading resolver`]: resolver }, { logName: `dns` });
@@ -246,7 +247,7 @@ async function resolveHostForDnsOverHttpsRequests(configuration: IConfiguration)
     resolverQuery.AddQuestions([resolver.doh.hostname]);
     resolverQuery.Generate();
 
-    const resolverAnswer = await resolveQuery(resolverQuery, configuration, null, false);
+    const resolverAnswer = await resolveQuery(resolverQuery, configuration, cache, null, false);
     Trace({ resolverAnswer }, { logName: `dns` });
 
     // Get the IPs for the resolver

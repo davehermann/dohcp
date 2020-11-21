@@ -57,9 +57,11 @@ class DataServer {
         const fullCache = this.dnsServer.CurrentCache();
 
         const filteredList: Array<Answer> = [];
-        for (const [cacheId, answer] of fullCache.entries()) {
-            if (includeAll || !answer.startingTTL)
-                filteredList.push(answer);
+        for (const [cacheId, cachedAnswers] of fullCache.entries()) {
+            cachedAnswers.forEach(answerInCache => {
+                if (includeAll || !answerInCache.answer.startingTTL)
+                    filteredList.push(answerInCache.answer);
+            });
         }
 
         return filteredList;

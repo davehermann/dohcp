@@ -3,7 +3,7 @@ import { Dev, Trace } from "multi-level-logger";
 
 // Application Modules
 import { ResourceRecord } from "./resourceRecord";
-import { eDnsType, eDnsClass } from "../../../interfaces/configuration/dns";
+import { eDnsType, eDnsClass, ICacheId } from "../../../interfaces/configuration/dns";
 import { ReadUInt16, ReadUInt32, ReadIPAddress, ToHexadecimal, WriteUInt16, WriteUInt32, WriteUInt8 } from "../../utilities";
 
 // This interface is only to be used internally by the Answer class
@@ -12,7 +12,7 @@ interface IInstantiateClone {
 }
 
 /** Object wrapper for an answer to a DNS query */
-class Answer extends ResourceRecord {
+class Answer extends ResourceRecord implements ICacheId {
     constructor({ answerToClone }: IInstantiateClone = {}) {
         super();
 
@@ -26,7 +26,6 @@ class Answer extends ResourceRecord {
             // newAnswer.startingTTL = this.startingTTL;
             this._ttlTimestamp = answerToClone.ttlTimestamp;
             this.noExpiration = answerToClone.noExpiration;
-            this.cacheRemoval = answerToClone.cacheRemoval;
 
             this.rdata = answerToClone.rdata.filter(() => true);
         }
@@ -35,7 +34,6 @@ class Answer extends ResourceRecord {
     // Properties
     private _ttlTimestamp: Date;
 
-    public cacheRemoval: ReturnType<typeof setTimeout>;
     public noExpiration: boolean;
     public rdata: Array<string>;
     public startingTTL: number;

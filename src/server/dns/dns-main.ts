@@ -5,17 +5,24 @@ import * as dgram from "dgram";
 import { Dev, Trace, Debug, Info, Err, Log } from "multi-level-logger";
 
 // Application Modules
-import { LoadPreconfiguredRecords, CacheContents } from "./cache";
+import { CachedAnswer, Cache } from "./dns-cache";
 import { ResolveDNSQuery } from "./resolver";
 import { DNSMessage } from "./rfc1035/dnsMessage";
 import { IConfiguration } from "../../interfaces/configuration/configurationFile";
-import { Answer } from "./rfc1035/answer";
 import { ToHexadecimal } from "../utilities";
 
 const DNS_SERVER_PORT = 53;
 
 class DNSServer {
     constructor(private readonly configuration: IConfiguration) {}
+
+    /**
+     * DNS cached
+     *
+     * @remarks
+     * Public for access in DHCP
+     */
+    public readonly cache: Cache = new Cache(this.configuration);
 
     /** DNS is enabled in configuration */
     public get isEnabled(): boolean {
@@ -74,7 +81,7 @@ class DNSServer {
         dnsQuery.FromDNS(msg);
         Trace({ dnsQuery }, { logName: `dns` });
 
-        ResolveDNSQuery(dnsQuery, this.configuration, rinfo)
+        ResolveDNSQuery(dnsQuery, this.configuration, this.cache, rinfo)
             .then(dnsAnswer => {
                 Info(`DNS Query (${rinfo.address}) - ${dnsQuery.queryId} - ${(new Date()).getTime() - timestamp.getTime()}ms - ${dnsQuery.questions.map(q => { return q.label; }).join(`, `)}: ${dnsAnswer.answers.map(a => { return a.summary; }).join(`, `)}`, { logName: `dns` });
                 // Send response
@@ -114,8 +121,8 @@ class DNSServer {
         });
     }
 
-    public CurrentCache(): Map<string, Answer> {
-        return CacheContents();
+    public CurrentCache(): Map<string, Array<CachedAnswer>> {
+        return this.cache.cacheContents;
     }
 
     /** Start the DNS service */
@@ -123,7 +130,7 @@ class DNSServer {
         if (this.isEnabled) {
             Log(`Starting DNS Server`, { logName: `dns` });
 
-            LoadPreconfiguredRecords(this.configuration);
+            this.cache.Initialize();
 
             await this.listenForDnsRequests();
         }

@@ -2,10 +2,10 @@
 import { Dev, Trace } from "multi-level-logger";
 
 // Application Modules
-import { eDnsClass, eDnsType, ILabel } from "../../../interfaces/configuration/dns";
+import { eDnsClass, eDnsType, ILabel, ICacheId } from "../../../interfaces/configuration/dns";
 import { ReadUInt8, ReadUInt16, ReadString, WriteUInt8, WriteString, ToHexadecimal, WriteUInt16, BinaryToNumberArray } from "../../utilities";
 
-class ResourceRecord {
+class ResourceRecord implements ICacheId {
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     constructor() {}
 

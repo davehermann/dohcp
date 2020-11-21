@@ -12,8 +12,8 @@ import { IRange, IClientIdentifier } from "../../../interfaces/configuration/dhc
 import { IConfiguration } from "../../../interfaces/configuration/configurationFile";
 import { DHCPMessage } from "../dhcpMessage";
 import { AllocatedAddress } from "./AllocatedAddress";
-import { AddDHCPToDNS } from "../../dns/cache";
 import { DHCPHistory } from "../history";
+import { DNSServer } from "../../dns/dns-main";
 
 interface IAllocations {
     byIp: Map<string, AllocatedAddress>;
@@ -26,7 +26,7 @@ const PERSISTENT_DHCP_STATUS = path.join(process.cwd(), `status`, `dhcp.json`);
 const MAXIMUM_UNWRITTEN_ALLOCATION_AGE = 300000;
 
 class Addressing {
-    constructor(private readonly configuration: IConfiguration) {}
+    constructor(private readonly configuration: IConfiguration, private readonly dnsServer: DNSServer) {}
 
     //#region Private properties
     private persistentAllocations: IAllocations;
@@ -366,7 +366,9 @@ class Addressing {
             await this.trackAllocatedAddress(addressAllocation);
 
             // Add to DNS Cache
-            const hostnameInDNS = AddDHCPToDNS(addressAllocation.hostname, addressAllocation.ipAddress, addressAllocation.clientId, dhcpMessage.vendorClassIdentifier, this.configuration.dns.domain, this.configuration.dhcp.leases.pool.leaseSeconds);
+            let hostnameInDNS: string;
+            if (this.dnsServer.isEnabled)
+                hostnameInDNS = this.dnsServer.cache.AddFromDHCP(addressAllocation.hostname, addressAllocation.ipAddress, addressAllocation.clientId, dhcpMessage.vendorClassIdentifier, this.configuration.dhcp.leases.pool.leaseSeconds);
 
             // Add to the DHCP history for the client
             DHCPHistory.AddAssignment(dhcpMessage, addressAllocation, hostnameInDNS);

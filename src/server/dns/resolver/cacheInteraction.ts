@@ -2,22 +2,21 @@
 import { Dev, Trace, Debug } from "multi-level-logger";
 
 // Application Modules
-import { FindInCache, GenerateCacheId } from "../cache";
-import { Answer } from "../rfc1035/answer";
+import { Cache, CachedAnswer } from "../dns-cache";
 import { DNSMessage } from "../rfc1035/dnsMessage";
 
 /**
  * Try to answer a DNS query from cache
  * @param dnsQuery - Query to check
  */
-function checkCacheForAnswer(dnsQuery: DNSMessage): DNSMessage {
+function checkCacheForAnswer(dnsQuery: DNSMessage, cache: Cache): DNSMessage {
     let answerMessage: DNSMessage = null;
 
     // Check cache first, but only for single-question queries
     if (dnsQuery.qdcount === 1) {
         const label = dnsQuery.questions[0].label,
-            cacheId = GenerateCacheId(dnsQuery.questions[0]),
-            cacheHit = FindInCache(cacheId);
+            cacheId = Cache.GenerateCacheId(dnsQuery.questions[0]),
+            cacheHit = cache.FindInCache(cacheId);
 
         Debug({ label, cacheId, cacheHit }, { logName: `dns` });
 
@@ -33,15 +32,15 @@ function checkCacheForAnswer(dnsQuery: DNSMessage): DNSMessage {
  * @param dnsQuery - Query to check
  * @param cachedAnswer - Answer from the stored cache
  */
-function respondFromCache(dnsQuery: DNSMessage, cachedAnswer: Answer) {
+function respondFromCache(dnsQuery: DNSMessage, cachedAnswers: Array<CachedAnswer>) {
     Trace(`Found in cache - responding from cache`, { logName: `dns` });
-    Dev({ dnsQuery, cachedAnswer }, { logName: `dns` });
+    Dev({ dnsQuery, cachedAnswers }, { logName: `dns` });
 
     // Create a new message
     const dnsAnswer = new DNSMessage();
 
-    // Add this answer
-    dnsAnswer.AddAnswers([cachedAnswer]);
+    // Add the matching answers
+    dnsAnswer.AddAnswers(cachedAnswers.map(answer => answer.answer));
 
     return dnsAnswer;
 }

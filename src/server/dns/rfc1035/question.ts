@@ -2,8 +2,9 @@
 import { ResourceRecord } from "./resourceRecord";
 import { ReadUInt16, WriteUInt16 } from "../../utilities";
 import { Trace } from "multi-level-logger";
+import { ICacheId } from "../../../interfaces/configuration/dns";
 
-class Question extends ResourceRecord {
+class Question extends ResourceRecord implements ICacheId {
     constructor() {
         super();
     }

@@ -11,6 +11,7 @@ import { IConfiguration } from "../../interfaces/configuration/configurationFile
 import { DHCPMessage } from "./dhcpMessage";
 import { DHCPHistory } from "./history";
 import { AllocatedAddress } from "./allocation/AllocatedAddress";
+import { DNSServer } from "../dns/dns-main";
 
 interface IClientReply {
     dhcpMessage: DHCPMessage;
@@ -24,9 +25,9 @@ const DHCP_SERVER_PORT = 67,
 
 /** DHCP Service */
 class IPv4DHCP {
-    constructor(private readonly configuration: IConfiguration) {}
+    constructor(private readonly configuration: IConfiguration, private readonly dnsServer: DNSServer) {}
 
-    private addressing: Addressing = new Addressing(this.configuration);
+    private addressing: Addressing = new Addressing(this.configuration, this.dnsServer);
 
     /** DHCP is enabled in configuration */
     public get isEnabled(): boolean {
