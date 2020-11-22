@@ -12,6 +12,7 @@ import { QueryCache as DnsQueryCache } from "./dns/cache-query";
 import { IAction, IActionToTake } from "../interfaces/configuration/cliArguments";
 import { IConfiguration } from "../interfaces/configuration/configurationFile";
 import { LoadConfiguration } from "../server/configuration";
+import { ClientHistory as DnsClientHistory } from "./dns/history";
 
 /** Configure the list of recognized CLI arguments */
 function buildActions() {
@@ -62,6 +63,17 @@ function buildActions() {
             { arg: `--all-known`, detail: `Include any configured leases that have not ever been assigned by the service` },
         ],
         method: DhcpQueryLeases,
+        usesConfiguration: true,
+    });
+
+    definedActions.set(`dns-history`, {
+        description: `Get client history`,
+        additionalArguments: 2,
+        argumentsDescription: [
+            { arg: `--ip`, detail: `Address of client to examine requests` },
+            { arg: `--by-domain`, detail: `Order by domain name` },
+        ],
+        method: DnsClientHistory,
         usesConfiguration: true,
     });
 

@@ -12,19 +12,21 @@ import { DNSServer } from "../dns/dns-main";
 import { Answer } from "../dns/rfc1035/answer";
 import { DHCPServer } from "../dhcp/dhcp-main";
 import { AllocatedAddress } from "../dhcp/allocation/AllocatedAddress";
+import { ClientHistory } from "../history/history";
 
 class DataServer {
-    constructor(private readonly configuration: IConfiguration, private readonly dnsServer: DNSServer, private readonly dhcpServer: DHCPServer) {
+    constructor(private readonly configuration: IConfiguration, private readonly dnsServer: DNSServer, private readonly dhcpServer: DHCPServer, private readonly history: ClientHistory) {
         this.defineRoutes();
     }
 
-    private routes: Map<string, () => Promise<unknown>> = new Map();
+    private routes: Map<string, (params?: any) => Promise<unknown>> = new Map();
     private server: Server;
 
     private defineRoutes(): void {
         this.routes.set(`GET:/dhcp/leases`, () => this.dhcpListLeases());
         this.routes.set(`GET:/dns/cache-list`, () => this.dnsListCache());
         this.routes.set(`GET:/dns/cache-list/all`, () => this.dnsListCache(true));
+        this.routes.set(`GET:/history/dns/:ipAddress`, (params) => this.historyDns(params.ipAddress));
     }
 
     //#region DHCP Data
@@ -68,6 +70,14 @@ class DataServer {
     }
 
     //#endregion DNS Data
+
+    //#region  History
+
+    private async historyDns(ipAddress: string) {
+        return this.history.GetDnsByIp(ipAddress);
+    }
+
+    //#endregion History
 
     public Start(): Promise<void> {
         Log(`Starting data Server`);

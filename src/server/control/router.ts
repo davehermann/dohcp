@@ -1,11 +1,40 @@
 import { IncomingMessage } from "http";
 
-async function router(request: IncomingMessage, routeMap: Map<string, () => Promise<any>>): Promise<any> {
+async function router(request: IncomingMessage, routeMap: Map<string, (params?: any) => Promise<any>>): Promise<any> {
     // Build a route to match
     const requestRoute = `${request.method.toUpperCase()}:${request.url.toLowerCase()}`;
 
     if (routeMap.has(requestRoute))
         return routeMap.get(requestRoute)();
+
+    // Attempt to find a match with parameters
+    const parameterRoutes = [...routeMap.keys()].filter(route => (route.substr(request.method.length + 1).indexOf(`:`) >= 0));
+    for (let idx = 0, total = parameterRoutes.length; idx < total; idx++) {
+        const route = parameterRoutes[idx],
+            routePath = route.substr(request.method.length + 1),
+            routeSegments = routePath.split(`/`),
+            requestSegments = request.url.toLowerCase().split(`/`);
+
+        // Compare route and request segments, ignoring parameters for the comparison, but sending them out
+        if (routeSegments.length == requestSegments.length) {
+            const requestParameters: any = {};
+            let isMatch = true;
+
+            for (let idx = 0, total = routeSegments.length; idx < total; idx++) {
+                const segment = routeSegments[idx];
+
+                if (segment.substr(0, 1) == `:`)
+                    requestParameters[segment.substr(1)] = requestSegments[idx];
+                else if (segment !== requestSegments[idx]) {
+                    isMatch = false;
+                    break;
+                }
+            }
+
+            if (isMatch)
+                return routeMap.get(route)(requestParameters);
+        }
+    }
 
     return null;
 

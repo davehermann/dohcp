@@ -96,17 +96,23 @@ class Addressing {
 
         try {
             const contents = await fs.readFile(PERSISTENT_DHCP_STATUS, { encoding: `utf8` });
-            const objAddressing: IAllocations = JSON.parse(contents);
+            const objAddressing: any = JSON.parse(contents);
 
             // Add the MAC-to-IP map
-            for (const [mac, ip] of objAddressing.byClientId.entries())
+            for (const mac in objAddressing.byClientId) {
+                const ip = objAddressing.byClientId[mac];
                 persistentAllocations.byClientId.set(mac, ip);
+            }
 
             // Add the IP-to-Known-host map
-            for (const [ip, host] of objAddressing.byIp.entries())
-                persistentAllocations.byIp.set(ip, new AllocatedAddress(host, this.configuration.dhcp.leases.pool.leaseSeconds));
+            for (const ip in objAddressing.byIp) {
+                const host = objAddressing.byIp[ip];
+                if (!!host)
+                    persistentAllocations.byIp.set(ip, new AllocatedAddress(host, this.configuration.dhcp.leases.pool.leaseSeconds));
+            }
         } catch (err) {
             // Any error reading can simply be ignored, with the empty object returned
+            Debug(err, { asIs: true, logName: `dns` });
         }
 
         return persistentAllocations;
@@ -299,7 +305,10 @@ class Addressing {
                 this.persistentAllocations.byIp.set(ip, null);
         });
 
-        Dev({ allocations: this.persistentAllocations }, { logName: `dhcp` });
+        Trace({ allocations: {
+            byIp: [...this.persistentAllocations.byIp.entries()],
+            byClientId: [...this.persistentAllocations.byClientId.entries()] }
+        }, { logName: `dhcp` });
     }
 
     /**

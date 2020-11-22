@@ -10,11 +10,12 @@ import { DNSMessage } from "./rfc1035/dnsMessage";
 import { IConfiguration } from "../../interfaces/configuration/configurationFile";
 import { ToHexadecimal } from "../utilities";
 import { Resolver } from "./dns-resolver";
+import { ClientHistory } from "../history/history";
 
 const DNS_SERVER_PORT = 53;
 
 class DNSServer {
-    constructor(private readonly configuration: IConfiguration) {}
+    constructor(private readonly configuration: IConfiguration, private readonly history: ClientHistory) {}
 
     /**
      * DNS cached
@@ -87,6 +88,8 @@ class DNSServer {
             const dnsAnswer = await this.resolver.ResolveQuery(dnsQuery, rinfo);
 
             Info(`DNS Query (${rinfo.address}) - ${dnsQuery.queryId} - ${(new Date()).getTime() - timestamp.getTime()}ms - ${dnsQuery.questions.map(q => { return q.label; }).join(`, `)}: ${dnsAnswer.answers.map(a => { return a.summary; }).join(`, `)}`, { logName: `dns` });
+
+            this.history.AddDnsRequest(rinfo, dnsAnswer);
 
             // Send response
             server.send(dnsAnswer.typedMessage, rinfo.port, rinfo.address);

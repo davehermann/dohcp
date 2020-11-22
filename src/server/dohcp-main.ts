@@ -6,19 +6,22 @@ import { LoadConfiguration } from "./configuration";
 import { DataServer } from "./control/server";
 import { DHCPServer } from "./dhcp/dhcp-main";
 import { DNSServer } from "./dns/dns-main";
+import { ClientHistory } from "./history/history";
 
 async function initialize() {
     const configuration = await LoadConfiguration();
 
     Debug({ [`Active configuration`]: configuration });
 
-    const dnsServer = new DNSServer(configuration);
+    const history = new ClientHistory();
+
+    const dnsServer = new DNSServer(configuration, history);
     await dnsServer.Start();
 
     const dhcpServer = new DHCPServer(configuration, dnsServer);
     await dhcpServer.Start();
 
-    const dataServer = new DataServer(configuration, dnsServer, dhcpServer);
+    const dataServer = new DataServer(configuration, dnsServer, dhcpServer, history);
     await dataServer.Start();
 }
 

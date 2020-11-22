@@ -89,13 +89,19 @@ The *dhcp.json* file with the example MAC above will look like this when assigni
 
 #### Override configured DHCP
 
+*DEVELOPMENT ONLY*
+
 `DHCP_DISABLED=true` will disable DHCP
 
 #### Overried configured DNS
 
+*DEVELOPMENT ONLY*
+
 `DNS_DISABLED=true` will disable DNS
 
 #### Don't Persist DHCP Assignments
+
+*DEVELOPMENT ONLY*
 
 Writing the DHCP data to disk can be turned off in the configuration file by explicitly setting `false` to `writeToDisk`:
 ```json
