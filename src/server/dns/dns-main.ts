@@ -6,10 +6,10 @@ import { Dev, Trace, Debug, Info, Err, Log } from "multi-level-logger";
 
 // Application Modules
 import { CachedAnswer, Cache } from "./dns-cache";
-import { ResolveDNSQuery } from "./resolver";
 import { DNSMessage } from "./rfc1035/dnsMessage";
 import { IConfiguration } from "../../interfaces/configuration/configurationFile";
 import { ToHexadecimal } from "../utilities";
+import { Resolver } from "./dns-resolver";
 
 const DNS_SERVER_PORT = 53;
 
@@ -23,6 +23,8 @@ class DNSServer {
      * Public for access in DHCP
      */
     public readonly cache: Cache = new Cache(this.configuration);
+
+    public readonly resolver: Resolver = new Resolver(this.configuration, this.cache);
 
     /** DNS is enabled in configuration */
     public get isEnabled(): boolean {
@@ -64,7 +66,7 @@ class DNSServer {
      * @param msg - The raw DNS message
      * @param rinfo - The datagram for the remote connection
      */
-    private messageHandler(msg: Uint8Array, rinfo: dgram.RemoteInfo, server: dgram.Socket) {
+    private async messageHandler(msg: Uint8Array, rinfo: dgram.RemoteInfo, server: dgram.Socket) {
         const timestamp = new Date(),
             newDenotation = ` New Query `,
             denotationMask = 45;
@@ -81,15 +83,16 @@ class DNSServer {
         dnsQuery.FromDNS(msg);
         Trace({ dnsQuery }, { logName: `dns` });
 
-        ResolveDNSQuery(dnsQuery, this.configuration, this.cache, rinfo)
-            .then(dnsAnswer => {
-                Info(`DNS Query (${rinfo.address}) - ${dnsQuery.queryId} - ${(new Date()).getTime() - timestamp.getTime()}ms - ${dnsQuery.questions.map(q => { return q.label; }).join(`, `)}: ${dnsAnswer.answers.map(a => { return a.summary; }).join(`, `)}`, { logName: `dns` });
-                // Send response
-                server.send(dnsAnswer.typedMessage, rinfo.port, rinfo.address);
-            })
-            .catch(err => {
-                Err(err, { logName: `dns` });
-            });
+        try {
+            const dnsAnswer = await this.resolver.ResolveQuery(dnsQuery, rinfo);
+
+            Info(`DNS Query (${rinfo.address}) - ${dnsQuery.queryId} - ${(new Date()).getTime() - timestamp.getTime()}ms - ${dnsQuery.questions.map(q => { return q.label; }).join(`, `)}: ${dnsAnswer.answers.map(a => { return a.summary; }).join(`, `)}`, { logName: `dns` });
+
+            // Send response
+            server.send(dnsAnswer.typedMessage, rinfo.port, rinfo.address);
+        } catch (err) {
+            Err(err, { logName: `dns` });
+        }
     }
 
     private newDnsSocket(ipAddress: string): Promise<void> {
