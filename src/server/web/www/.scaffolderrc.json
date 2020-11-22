@@ -1,0 +1,27 @@
+{
+    "composer": "app2020",
+    "configuration": {
+        "installDestination": "/mnt/general/General_Development/dohcp/src/server/web/www",
+        "applicationSlug": "www",
+        "applicationClass": "Www",
+        "hasFrontend": true,
+        "hasBackend": false,
+        "sectionLocations": {
+            "frontend": "src"
+        }
+    },
+    "answers": {
+        "main": {},
+        "base": {
+            "appName": "www",
+            "appDescription": "Web Status Server",
+            "author": "Dave Hermann",
+            "packageNamespace": "",
+            "appType": "web"
+        },
+        "webApp": {
+            "isPwa": false,
+            "useBulma": true
+        }
+    }
+}

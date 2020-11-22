@@ -15,7 +15,7 @@
     "build:cli": "tsc --build src/cli",
     "prebuild:server": "fsutility delete ./dist/server && fsutility delete ./dist/configuration-schemas",
     "build:server": "tsc --build src/server",
-    "postbuild:server": "fsutility copy ./src/server/dhcp/rfc2132/options/rfc2132-options.json ./dist/server/dhcp/rfc2132/options/rfc2132-options.json && fsutility copy ./src/configuration-schemas ./dist/configuration-schemas && fsutility copy ./src/server/web/www ./dist/server/web/www",
+    "postbuild:server": "fsutility copy ./src/server/dhcp/rfc2132/options/rfc2132-options.json ./dist/server/dhcp/rfc2132/options/rfc2132-options.json && fsutility copy ./src/configuration-schemas ./dist/configuration-schemas && fsutility copy ./src/server/web/www/dist ./dist/server/web/www",
     "dohcp": "node ./dist/cli/index.js",
     "server": "node ./dist/server/dohcp-main.js"
   },

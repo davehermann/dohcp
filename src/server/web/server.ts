@@ -33,6 +33,10 @@ class WebServer {
                 case `.html`:
                     contentType = `text/html`;
                     break;
+
+                case `.js`:
+                    contentType = `text/javascript`;
+                    break;
             }
 
             return {
