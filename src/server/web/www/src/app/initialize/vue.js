@@ -17,7 +17,7 @@ app.use(router);
 app.use(store);
 app.mount("#app_holder");
 
-router.replace({ name: "home" });
+// router.replace({ name: "home" });
 
 // RUN HOT MODULE REPLACEMENT IN DEVELOPMENT.
 // REMOVE FOR PRODUCTION

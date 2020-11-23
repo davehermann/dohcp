@@ -77,8 +77,10 @@ class WebServer {
                 contentType
             };
         } catch (err) {
-            // Return undefined for any error, triggering a 404 response
-            return undefined;
+            // Return the root index.html for any 404, to enable an SPA app structure
+            return this.staticFiles(`/`);
+            // // Return undefined for any error, triggering a 404 response
+            // return undefined;
         }
     }
 

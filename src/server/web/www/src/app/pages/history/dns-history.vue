@@ -1,6 +1,6 @@
 <template>
-    <div class="home_page">
-        <router-link :to="{ name: 'dns-history' }">DNS History</router-link>
+    <div class="dns_history_page">
+        <history-ips></history-ips>
     </div>
 </template>
 
@@ -12,6 +12,6 @@
 </script>
 
 <style scoped>
-    /* .home_page {} */
-    /* .home_page >>> .class+id {} */
+    /* .dns_history_page {} */
+    /* .dns_history_page >>> .class+id {} */
 </style>
