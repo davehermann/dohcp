@@ -6,9 +6,9 @@ import { IAction, IActionToTake } from "../../interfaces/configuration/cliArgume
 import { IConfiguration } from "../../interfaces/configuration/configurationFile";
 
 async function stats(action: IActionToTake, allActions: Map<string, IAction>, configuration: IConfiguration): Promise<void> {
-    const requestPath = `/system/memory-usage`;
+    const requestPath = `/system/stats`;
 
-    const memoryUsed = await new Promise(resolve => {
+    const stats = await new Promise(resolve => {
         HttpGet(
             {
                 host: configuration.dataServiceHost,
@@ -28,7 +28,7 @@ async function stats(action: IActionToTake, allActions: Map<string, IAction>, co
         );
     });
 
-    console.log(memoryUsed);
+    console.log(stats);
 }
 
 export {

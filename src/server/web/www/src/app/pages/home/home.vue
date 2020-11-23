@@ -1,6 +1,11 @@
 <template>
     <div class="home_page">
-        <router-link :to="{ name: 'dns-history' }">DNS History</router-link>
+        <p>
+            <router-link :to="{ name: 'dns-history' }">DNS Request History</router-link>
+        </p>
+        <p>
+            <router-link :to="{ name: 'dhcp-history' }">DHCP Request History</router-link>
+        </p>
     </div>
 </template>
 

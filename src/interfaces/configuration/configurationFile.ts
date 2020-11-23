@@ -6,6 +6,8 @@ import { IConfiguration as IWebServerConfiguration } from "./web";
 
 /** Configuration File Object Interface */
 interface IConfiguration {
+    /** Last time the service started */
+    serviceStart?: Date;
     /** The logging level for the entire service */
     logLevel: string;
     /** The network interface name used by the service */

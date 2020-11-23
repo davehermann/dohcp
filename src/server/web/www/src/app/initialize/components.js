@@ -6,6 +6,10 @@ function Register(context) {
 
     context.component("history-ips", defineAsyncComponent(() => import("@src/app/components/ips/history-ips.vue")));
 
+    context.component("dhcp-history-clients", defineAsyncComponent(() => import("@src/app/components/history/dhcp-history-clients.vue")));
+
+    context.component("dhcp-history-for-client", defineAsyncComponent(() => import("@src/app/components/history/dhcp-history-for-client.vue")));
+
     // [NEW IMPORT REGISTRATION]
 }
 

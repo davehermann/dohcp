@@ -4,6 +4,9 @@
             <h1 class="grow is-size-3">DoHCP Status</h1>
             <div v-if="!!systemData" class="is-size-7">
                 <p>
+                    Uptime: {{systemData.uptime}}
+                </p>
+                <p>
                     Total Memory: {{Math.round(systemData.totalMemory * 100) / 100}} MB
                 </p>
                 <p>
@@ -44,24 +47,45 @@
                 await store.dispatch("initialize");
             };
 
-            const getMemoryUsage = async () => {
-                const response = await fetch("/data/system/memory-usage");
+            const getSystemStats = async () => {
+                const response = await fetch("/data/system/stats");
                 const data = await response.json();
 
+                const serviceStarted = new Date(data.startTime);
+                // Convert to the smallest block of days, hours, minutes, seconds
+                let totalSeconds = Math.floor((new Date().getTime() - serviceStarted.getTime()) / 1000);
+
+                let totalMinutes = Math.floor(totalSeconds / 60);
+                totalSeconds -= (totalMinutes * 60);
+
+                let totalHours = Math.floor(totalMinutes / 60);
+                totalMinutes -= (totalHours * 60);
+
+                let totalDays = Math.floor(totalHours / 24);
+                totalHours -= (totalDays * 24);
+
+                let timeParts = [];
+
+                if (totalDays > 0) timeParts.push(totalDays + " Day" + (totalDays === 1 ? "" : "s"));
+                if (totalHours > 0) timeParts.push(totalHours + " Hour" + (totalHours === 1 ? "" : "s"));
+                if (totalMinutes > 0) timeParts.push(totalMinutes + " Minute" + (totalMinutes === 1 ? "" : "s"));
+                if (totalSeconds > 0) timeParts.push(totalSeconds + " Second" + (totalSeconds === 1 ? "" : "s"));
+
                 const system = {
-                    totalMemory: data.rss / (1024 * 1024),
-                    heapSize: data.heapUsed / (1024 * 1024),
-                    heapPercent: data.heapUsed / data.heapTotal,
+                    uptime: timeParts.join(", "),
+                    totalMemory: data.memory.rss / (1024 * 1024),
+                    heapSize: data.memory.heapUsed / (1024 * 1024),
+                    heapPercent: data.memory.heapUsed / data.memory.heapTotal,
                 };
 
                 systemData.value = system;
 
-                setTimeout(() => getMemoryUsage(), 60000);
+                setTimeout(() => getSystemStats(), 60000);
             };
 
             onMounted(async () => {
                 await initializeAppData();
-                await getMemoryUsage();
+                await getSystemStats();
             });
 
             return {

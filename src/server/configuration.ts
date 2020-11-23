@@ -45,6 +45,9 @@ function buildConfiguration(configuration: Record<string, unknown>, dnsResolvers
     const computedConfig: IConfiguration = JSON.parse(JSON.stringify(configuration)),
         interfaces = os.networkInterfaces();
 
+    // Set the service start time
+    computedConfig.serviceStart = new Date();
+
     // Handle missing sections before environment variables
     if (!computedConfig.web)
         computedConfig.web = {};

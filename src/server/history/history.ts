@@ -11,6 +11,11 @@ const MAXIMUM_DNS_CLIENT_REQUESTS = 1000,
     MAXIMUM_EVENTS_STORED_PER_CLIENT = 250,
     DEREGISTRATION_REMOVAL_TIME = 30000;
 
+interface IDHCPClient {
+    clientId: string;
+    lastIP?: string;
+}
+
 class ClientHistory {
     private readonly dnsRequests: Array<DNSEvent> = [];
     private readonly dhcpRequests: Map<string, Array<DHCPEvent>> = new Map();
@@ -152,6 +157,25 @@ class ClientHistory {
         clientDeregistrations.tracks.push(track);
 
         clientDeregistrations.removeId = setTimeout(() => { this.deregistrations.delete(track.clientId); }, DEREGISTRATION_REMOVAL_TIME);
+    }
+
+    public GetDhcpHistoryForClient(clientId: string): Array<DHCPEvent> {
+        return this.dhcpRequests.get(clientId);
+    }
+
+    public GetClientsInDHCPHistory(): Array<IDHCPClient> {
+        const clientList: Array<IDHCPClient> = [];
+        for (const [clientId, dhcpEvents] of this.dhcpRequests.entries()) {
+            clientList.push({ clientId });
+
+            for (let idx = dhcpEvents.length - 1; idx >= 0; idx--)
+                if (!!dhcpEvents[idx].ipAddress) {
+                    clientList[clientList.length - 1].lastIP = dhcpEvents[idx].ipAddress;
+                    break;
+                }
+        }
+
+        return clientList;
     }
 
     //#endregion DHCP

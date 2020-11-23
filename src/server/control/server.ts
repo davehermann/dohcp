@@ -26,9 +26,11 @@ class DataServer {
         this.routes.set(`GET:/dhcp/leases`, () => this.dhcpListLeases());
         this.routes.set(`GET:/dns/cache-list`, () => this.dnsListCache());
         this.routes.set(`GET:/dns/cache-list/all`, () => this.dnsListCache(true));
+        this.routes.set(`GET:/history/dhcp/for-client/:clientId`, (params) => this.historyDhcpForClient(params.clientId));
+        this.routes.set(`GET:/history/dhcp/get-clients`, () => this.historyDhcpClients());
         this.routes.set(`GET:/history/dns/for-ip/:ipAddress`, (params) => this.historyDnsForIp(params.ipAddress));
         this.routes.set(`GET:/history/dns/recent-ips`, () => this.historyDnsIps());
-        this.routes.set(`GET:/system/memory-usage`, () => this.memoryUsage());
+        this.routes.set(`GET:/system/stats`, () => this.systemStats());
     }
 
     //#region DHCP Data
@@ -75,6 +77,14 @@ class DataServer {
 
     //#region  History
 
+    private async historyDhcpClients() {
+        return this.history.GetClientsInDHCPHistory();
+    }
+
+    private async historyDhcpForClient(clientId) {
+        return this.history.GetDhcpHistoryForClient(clientId);
+    }
+
     private async historyDnsIps() {
         return this.history.GetIpsInDnsHistory();
     }
@@ -85,8 +95,13 @@ class DataServer {
 
     //#endregion History
 
-    private async memoryUsage() {
-        return process.memoryUsage();
+    private async systemStats() {
+        const stats = {
+            startTime: this.configuration.serviceStart,
+            memory: process.memoryUsage(),
+        };
+
+        return stats;
     }
 
     public Start(): Promise<void> {
