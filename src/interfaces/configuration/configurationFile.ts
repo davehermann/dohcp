@@ -15,6 +15,13 @@ interface IConfiguration {
     dns?: IDnsConfiguration;
     /** Hostname or IP for the running service */
     dataServiceHost?: string;
+    /**
+     * Port to use for the data service
+     *
+     * @remarks
+     * _Not currently assignable via configuration_
+     */
+    dataServicePort?: number;
     /** IP address assigned to the first interface on this system */
     serverIpAddress?: string;
     /** IPv4 Address information for the interface */

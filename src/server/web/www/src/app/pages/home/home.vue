@@ -1,6 +1,6 @@
 <template>
     <div class="home_page">
-        <h1>Home Page</h1>
+        <history-ips></history-ips>
     </div>
 </template>
 

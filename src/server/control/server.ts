@@ -26,7 +26,8 @@ class DataServer {
         this.routes.set(`GET:/dhcp/leases`, () => this.dhcpListLeases());
         this.routes.set(`GET:/dns/cache-list`, () => this.dnsListCache());
         this.routes.set(`GET:/dns/cache-list/all`, () => this.dnsListCache(true));
-        this.routes.set(`GET:/history/dns/:ipAddress`, (params) => this.historyDns(params.ipAddress));
+        this.routes.set(`GET:/history/dns/for-ip/:ipAddress`, (params) => this.historyDnsForIp(params.ipAddress));
+        this.routes.set(`GET:/history/dns/recent-ips`, () => this.historyDnsIps());
     }
 
     //#region DHCP Data
@@ -73,7 +74,11 @@ class DataServer {
 
     //#region  History
 
-    private async historyDns(ipAddress: string) {
+    private async historyDnsIps() {
+        return this.history.GetIpsInDnsHistory();
+    }
+
+    private async historyDnsForIp(ipAddress: string) {
         return this.history.GetDnsByIp(ipAddress);
     }
 
@@ -97,7 +102,7 @@ class DataServer {
                 resolve();
             });
 
-            this.server.listen({ host: this.configuration.serverIpAddress, port: 45332 });
+            this.server.listen({ host: this.configuration.dataServiceHost, port: this.configuration.dataServicePort });
         });
     }
 }

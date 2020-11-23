@@ -69,6 +69,11 @@ class ClientHistory {
 
         return recordsForIp;
     }
+
+    public GetIpsInDnsHistory(): Array<string> {
+        const ipList = this.dnsRequests.map(request => request.ipAddress);
+        return [...new Set(ipList)];
+    }
 }
 
 export {

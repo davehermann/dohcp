@@ -1,5 +1,5 @@
 import { promises as fs } from "fs";
-import { createServer as CreateWebServer } from "http";
+import { createServer as CreateWebServer, get as HttpGet } from "http";
 import * as path from "path";
 
 import { IConfiguration } from "../../interfaces/configuration/configurationFile";
@@ -9,7 +9,7 @@ const PORT = 8080,
     ROOT_PATH = path.join(__dirname, `www`);
 
 interface IResponse {
-    content: string;
+    content: any;
     contentType: string;
 }
 
@@ -26,10 +26,14 @@ class WebServer {
 
         // Try to read the file
         try {
-            const fileContents = await fs.readFile(filePath, { encoding: `utf8` });
-            let contentType = `application/octet-stream`;
+            let contentType = `application/octet-stream`,
+                fileEncoding: BufferEncoding = `utf8`;
 
             switch (path.extname(filePath)) {
+                case `.css`:
+                    contentType = `text/css`;
+                    break;
+
                 case `.html`:
                     contentType = `text/html`;
                     break;
@@ -37,7 +41,14 @@ class WebServer {
                 case `.js`:
                     contentType = `text/javascript`;
                     break;
+
+                case `.png`:
+                    contentType = `image/png`;
+                    fileEncoding = `binary`;
+                    break;
             }
+
+            const fileContents = await fs.readFile(filePath, { encoding: fileEncoding });
 
             return {
                 content: fileContents,
@@ -49,13 +60,41 @@ class WebServer {
         }
     }
 
+    private async dataSource(requestPath: string): Promise<IResponse> {
+        const response: IResponse = await new Promise(resolve => {
+            HttpGet(
+                {
+                    host: this.configuration.dataServiceHost,
+                    port: this.configuration.dataServicePort,
+                    path: requestPath.replace(/^\/data/, ``),
+                },
+                res => {
+                    let data = ``;
+                    res.on(`data`, (chunk) => {
+                        data += chunk;
+                    });
+
+                    res.on(`end`, () => {
+                        resolve({
+                            content: data,
+                            contentType: res.headers[`content-type`],
+                        });
+                    });
+                }
+            );
+        });
+
+        return response;
+    }
+
     /** Start listening for requests */
     private async initializeServer() {
         const server = CreateWebServer(async (req, res) => {
             let responseData: IResponse = null;
 
             if (req.url.search(/^\/data/) == 0) {
-
+                // Remove the /data, and proxy to the control server
+                responseData = await this.dataSource(req.url);
             } else
                 responseData = await this.staticFiles(req.url);
 

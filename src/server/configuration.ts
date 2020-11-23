@@ -109,6 +109,7 @@ async function loadConfiguration(dataServiceHost?: string): Promise<IConfigurati
 
     // Add the remote host
     configuration.dataServiceHost = dataServiceHost || configuration.serverIpAddress;
+    configuration.dataServicePort = 45332;
 
     return configuration;
 }

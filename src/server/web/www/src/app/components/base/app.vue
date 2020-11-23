@@ -1,6 +1,6 @@
 <template>
     <div class="app_component">
-        <h1>www</h1>
+        <h1>DoHCP Status</h1>
         <template v-if="isInitialized">
             <router-link v-if="($route.name != 'home')" :to="{ name: 'home'}">[Home]</router-link>
             <hr />

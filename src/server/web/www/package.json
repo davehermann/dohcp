@@ -6,6 +6,7 @@
   "author": "Dave Hermann",
   "private": true,
   "devDependencies": {
+    "@davehermann/fs-utilities": "^1.0.0",
     "@snowpack/app-scripts-vue": "^1.8.9",
     "devcert-cli": "^1.0.0",
     "eslint": "^7.14.0",
@@ -13,6 +14,7 @@
     "snowpack": "^2.17.1"
   },
   "scripts": {
+    "prebuild:frontend": "fsutility delete ./dist",
     "build:frontend": "snowpack build",
     "test": "snowpack dev --secure"
   },
