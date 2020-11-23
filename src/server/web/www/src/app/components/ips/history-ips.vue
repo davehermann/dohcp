@@ -27,7 +27,7 @@
             <div class="panel-heading">
                 Recent DNS Request History for {{currentIpHistory}}
             </div>
-            <div v-for="(request, idx) in historyForIp" :key="request.question" class="panel-block request_list" @click.stop.prevent="ToggleRequests(request)">
+            <div v-for="(request, idx) in historyForIp" :key="request.question" class="panel-block column request_list" @click.stop.prevent="ToggleRequests(request)">
                 <div>
                     {{historyForIp.length - idx}})
                     {{request.question}}
@@ -59,13 +59,13 @@
                 LoadIPs();
             });
 
-            async function LoadIPs() {
+            const LoadIPs = async () => {
                 const res = await fetch("/data/history/dns/recent-ips");
                 const data = await res.json();
                 historyIPs.value = data;
-            }
+            };
 
-            async function LoadHistoryForIp(ipAddress) {
+            const LoadHistoryForIp = async (ipAddress) => {
                 currentIpHistory.value = ipAddress;
                 const res = await fetch("/data/history/dns/for-ip/" + ipAddress);
                 const data = await res.json();
@@ -76,12 +76,11 @@
                         showRequests: false,
                     };
                 });
-                console.log(historyForIp.value);
-            }
+            };
 
-            function ToggleRequests(request) {
+            const ToggleRequests = request => {
                 request.showRequests = !request.showRequests;
-            }
+            };
 
             return {
                 // data
@@ -100,6 +99,6 @@
 <style scoped>
     /* .history_i_ps_component {} */
     /* .history_i_ps_component >>> .class+id {} */
-    .request_list { flex-direction: column; align-items: flex-start; }
+    .request_list { align-items: flex-start; }
     .request_list .request { margin-left: 2em; font-size: 0.75em;}
 </style>

@@ -13,6 +13,7 @@ import { IAction, IActionToTake } from "../interfaces/configuration/cliArguments
 import { IConfiguration } from "../interfaces/configuration/configurationFile";
 import { LoadConfiguration } from "../server/configuration";
 import { ClientHistory as DnsClientHistory } from "./dns/history";
+import { SystemStats } from "./system/stats";
 
 /** Configure the list of recognized CLI arguments */
 function buildActions() {
@@ -74,6 +75,12 @@ function buildActions() {
             { arg: `--by-domain`, detail: `Order by domain name` },
         ],
         method: DnsClientHistory,
+        usesConfiguration: true,
+    });
+
+    definedActions.set(`stats`, {
+        description: `Get current stats for the process`,
+        method: SystemStats,
         usesConfiguration: true,
     });
 

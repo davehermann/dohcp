@@ -28,6 +28,7 @@ class DataServer {
         this.routes.set(`GET:/dns/cache-list/all`, () => this.dnsListCache(true));
         this.routes.set(`GET:/history/dns/for-ip/:ipAddress`, (params) => this.historyDnsForIp(params.ipAddress));
         this.routes.set(`GET:/history/dns/recent-ips`, () => this.historyDnsIps());
+        this.routes.set(`GET:/system/memory-usage`, () => this.memoryUsage());
     }
 
     //#region DHCP Data
@@ -83,6 +84,10 @@ class DataServer {
     }
 
     //#endregion History
+
+    private async memoryUsage() {
+        return process.memoryUsage();
+    }
 
     public Start(): Promise<void> {
         Log(`Starting data Server`);

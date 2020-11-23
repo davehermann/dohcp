@@ -45,6 +45,12 @@ function buildConfiguration(configuration: Record<string, unknown>, dnsResolvers
     const computedConfig: IConfiguration = JSON.parse(JSON.stringify(configuration)),
         interfaces = os.networkInterfaces();
 
+    // Handle missing sections before environment variables
+    if (!computedConfig.web)
+        computedConfig.web = {};
+    if (!computedConfig.web.port)
+        computedConfig.web.port = 8080;
+
     environmentVariableSettings(computedConfig);
 
     Trace({ [`Found network interfaces`]: os.networkInterfaces() });
@@ -87,11 +93,6 @@ function buildConfiguration(configuration: Record<string, unknown>, dnsResolvers
 
         computedConfig.dhcp.leases.static = staticMap;
     }
-
-    if (!computedConfig.web)
-        computedConfig.web = {};
-    if (!computedConfig.web.port)
-        computedConfig.web.port = 8080;
 
     return computedConfig;
 }
