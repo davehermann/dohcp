@@ -117,6 +117,20 @@ This is also available via a `DHCP_NO_PERSIST` environment variable set to `true
 DHCP responses can be blocked by setting a `DHCP_NO_REPLY` environment variable to `true`.
 A hexadecimal version of the message will be logged to the console instead.
 
+#### Specify a port for the web status server
+
+Use `WEB_PORT` to override a port set via configuration.
+
+*The default port if none is specified is **8080***
+
+#### Turn off static file caching for the Web Status Server
+
+*DEVELOPMENT ONLY*
+
+Setting `WEB_CACHE=false` will disable the file caching used internally by the web status server.
+
+This is only relevant for development.
+
 ## Launch
 
 ### In a terminal shell

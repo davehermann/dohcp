@@ -32,6 +32,12 @@ function environmentVariableSettings(computedConfig: IConfiguration) {
 
     if (!!process.env.DHCP_NO_PERSIST && !!computedConfig.dhcp)
         computedConfig.dhcp.writeToDisk = (process.env.DHCP_NO_PERSIST.toLowerCase() !== `true`);
+
+    if (!!process.env.WEB_CACHE)
+        computedConfig.web.staticCache = (process.env.WEB_CACHE !== `false`);
+
+    if (!!process.env.WEB_PORT)
+        computedConfig.web.port = +process.env.WEB_PORT;
 }
 
 function buildConfiguration(configuration: Record<string, unknown>, dnsResolvers: IDnsResolver): IConfiguration {
@@ -81,6 +87,11 @@ function buildConfiguration(configuration: Record<string, unknown>, dnsResolvers
 
         computedConfig.dhcp.leases.static = staticMap;
     }
+
+    if (!computedConfig.web)
+        computedConfig.web = {};
+    if (!computedConfig.web.port)
+        computedConfig.web.port = 8080;
 
     return computedConfig;
 }

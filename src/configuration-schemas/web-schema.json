@@ -1,0 +1,17 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Web Status Server Configuration Section",
+    "description": "Top-level configuration for Web Status Server",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "disabled": {
+            "type": "boolean"
+        },
+        "port": {
+            "type": "number",
+            "minimum": 1024,
+            "maximum": 65535
+        }
+    }
+}

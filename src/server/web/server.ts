@@ -3,10 +3,11 @@ import { createServer as CreateWebServer, get as HttpGet } from "http";
 import * as path from "path";
 
 import { IConfiguration } from "../../interfaces/configuration/configurationFile";
-import { Log } from "multi-level-logger";
+import { Log, Trace } from "multi-level-logger";
 
 const PORT = 8080,
-    ROOT_PATH = path.join(__dirname, `www`);
+    ROOT_PATH = path.join(__dirname, `www`),
+    MAXIMUM_STATIC_CACHE_SECONDS = 300;
 
 interface IResponse {
     content: any;
@@ -15,6 +16,27 @@ interface IResponse {
 
 class WebServer {
     constructor(private readonly configuration: IConfiguration) {}
+
+    private staticCache: Map<string, string> = new Map();
+
+    private async loadStaticFile(filePath: string, fileEncoding: BufferEncoding): Promise<string> {
+        if (this.staticCache.has(filePath))
+            return this.staticCache.get(filePath);
+
+        const fileContents = await fs.readFile(filePath, { encoding: fileEncoding });
+        if (this.configuration.web.staticCache) {
+            Trace(`Web Status Server caching ${filePath}`);
+            this.staticCache.set(filePath, fileContents);
+
+            // Expire the cached files
+            setTimeout(() => {
+                this.staticCache.delete(filePath);
+                Trace(`${filePath} removed from Web Status Server cache`);
+            }, MAXIMUM_STATIC_CACHE_SECONDS * 1000);
+        }
+
+        return fileContents;
+    }
 
     /** Serve files out of www */
     private async staticFiles(requestPath: string): Promise<IResponse> {
@@ -48,7 +70,7 @@ class WebServer {
                     break;
             }
 
-            const fileContents = await fs.readFile(filePath, { encoding: fileEncoding });
+            const fileContents = await this.loadStaticFile(filePath, fileEncoding);
 
             return {
                 content: fileContents,

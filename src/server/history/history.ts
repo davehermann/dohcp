@@ -1,5 +1,6 @@
 import * as dgram from "dgram";
 import { DNSMessage } from "../dns/rfc1035/dnsMessage";
+import { Trace, Dev } from "multi-level-logger";
 
 const MAXIMUM_DNS_CLIENT_REQUESTS = 1000,
     MAXIMUM_DNS_REQUEST_HISTORY = 200;
@@ -43,6 +44,7 @@ class ClientHistory {
                 // Remove it from the list if it exists
                 dnsEvent = this.dnsRequests.splice(idxDnsEvent, 1)[0];
             } else {
+                Trace(`Tracking DNS request from ${source.address} for ${q.label}`);
                 // Create a new event if it doesn't
                 dnsEvent = new DNSEvent();
                 dnsEvent.question = q.label;
@@ -50,17 +52,23 @@ class ClientHistory {
             }
 
             // Track the request
+            Dev(`Track for ${dnsEvent.question} from ${dnsEvent.ipAddress} added`);
             dnsEvent.requests.push(new Date());
+
             // Drop the first request if the event list is too long
-            if (dnsEvent.requests.length > MAXIMUM_DNS_REQUEST_HISTORY)
+            if (dnsEvent.requests.length > MAXIMUM_DNS_REQUEST_HISTORY) {
+                Dev(`Oldest track for ${dnsEvent.question} from ${dnsEvent.ipAddress} removed`);
                 dnsEvent.requests.shift();
+            }
 
             // Place the event at the end of the requests list
             this.dnsRequests.push(dnsEvent);
 
             // Drop the first item from the request list if it's too long
-            if (this.dnsRequests.length > MAXIMUM_DNS_CLIENT_REQUESTS)
-                this.dnsRequests.shift();
+            if (this.dnsRequests.length > MAXIMUM_DNS_CLIENT_REQUESTS) {
+                const oldestRequest = this.dnsRequests.shift();
+                Trace(`Dropping DNS request history for ${oldestRequest.question} from ${oldestRequest.ipAddress}`);
+            }
         });
     }
 

@@ -27,10 +27,12 @@
             <div class="panel-heading">
                 Recent DNS Request History for {{currentIpHistory}}
             </div>
-            <div v-for="request in historyForIp" :key="request.question" class="panel-block request_list" @click.stop.prevent="ToggleRequests(request)">
+            <div v-for="(request, idx) in historyForIp" :key="request.question" class="panel-block request_list" @click.stop.prevent="ToggleRequests(request)">
                 <div>
+                    {{historyForIp.length - idx}})
                     {{request.question}}
-                    ({{request.requests.length}} time{{request.requests.length == 1 ? "" : "s"}})
+                    -
+                    {{request.requests.length}} time{{request.requests.length == 1 ? "" : "s"}}
                 </div>
 
                 <template v-if="request.showRequests">
