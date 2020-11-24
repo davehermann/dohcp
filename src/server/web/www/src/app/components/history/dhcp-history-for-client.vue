@@ -7,11 +7,32 @@
             <div
                 v-for="history in clientHistory"
                 :key="history.timestamp"
-                class="panel-block"
+                class="panel-block row"
                 >
-                [{{history.timestamp.toLocaleString(undefined, { year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric" })}}]
-                {{history.ipAddress}}
-                <template v-if="!!history.dnsHostname"> - {{history.dnsHostname}}</template>
+                <template v-if="!!history.ipAddress">
+                    <span class="title-block">
+                        IP Address Assigned:
+                    </span>
+                    <span>
+                        [{{history.timestamp.toLocaleString(undefined, { year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric" })}}]
+                        {{history.ipAddress}}
+                        <template v-if="!!history.dnsHostname"> - {{history.dnsHostname}}</template>
+                    </span>
+                </template>
+
+                <template v-if="!!history.clientMessage">
+                    <span class="title-block">
+                        Received from Client:
+                    </span>
+                    <dhcp-message-summary :dhcp-message="history.clientMessage" :timestamp="history.timestamp"></dhcp-message-summary>
+                </template>
+
+                <template v-if="!!history.serverMessage">
+                    <span class="title-block">
+                        Sent to Client:
+                    </span>
+                    <dhcp-message-summary :dhcp-message="history.serverMessage" :timestamp="history.timestamp"></dhcp-message-summary>
+                </template>
             </div>
         </div>
     </div>
@@ -34,11 +55,13 @@
                 const response = await fetch("/data/history/dhcp/for-client/" + clientId);
                 const data = await response.json();
 
-                const history = data.filter(dhcpEvent => !!dhcpEvent.ipAddress).map(dhcpEvent => {
+                const history = data.map(dhcpEvent => {
                     return {
                         timestamp: new Date(dhcpEvent.timestamp),
                         ipAddress: dhcpEvent.ipAddress,
                         dnsHostname: dhcpEvent.dnsHostname,
+                        clientMessage: dhcpEvent.clientMessage,
+                        serverMessage: dhcpEvent.serverResponse,
                     };
                 });
 
@@ -61,7 +84,8 @@
 </script>
 
 <style scoped>
-    .panel .panel-block { font-size: 0.8em; }
+    .panel .panel-block { font-size: 0.8em; align-items: flex-start; }
+    .panel .panel-block .title-block { font-weight: bold; margin-right: 0.5em; }
     /* .dhcp_history_for_client_component {} */
     /* .dhcp_history_for_client_component >>> .class+id {} */
 </style>

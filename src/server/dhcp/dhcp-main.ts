@@ -90,6 +90,7 @@ class IPv4DHCP {
             }
 
             Debug({ [`Decoded message`]: message }, { logName: `dhcp` });
+            this.history.AddDHCPMessage(message, true);
 
             let replyToClient: IClientReply = null;
 
@@ -104,7 +105,8 @@ class IPv4DHCP {
             }
 
             // Track the message in the client's history
-            this.history.AddDHCPMessage(message, replyToClient?.dhcpMessage);
+            if (!!replyToClient?.dhcpMessage)
+                this.history.AddDHCPMessage(replyToClient.dhcpMessage);
 
             if (!!replyToClient) {
                 // Send the message to the client

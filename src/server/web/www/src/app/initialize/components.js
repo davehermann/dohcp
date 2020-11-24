@@ -10,6 +10,8 @@ function Register(context) {
 
     context.component("dhcp-history-for-client", defineAsyncComponent(() => import("@src/app/components/history/dhcp-history-for-client.vue")));
 
+    context.component("dhcp-message-summary", defineAsyncComponent(() => import("@src/app/components/history/dhcp-message-summary.vue")));
+
     // [NEW IMPORT REGISTRATION]
 }
 

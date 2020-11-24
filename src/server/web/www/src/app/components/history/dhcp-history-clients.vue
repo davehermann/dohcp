@@ -4,18 +4,29 @@
             <div class="panel-heading">
                 Clients Recently Producing DHCP Requests
             </div>
-            <div v-if="!knownClients || (knownClients.length == 0)" class="panel-block">
+            <div v-if="(sortedClients.length == 0)" class="panel-block">
                 <p class="has-text-info">No DHCP clients found</p>
             </div>
             <template v-else>
+                <div class="panel-block">
+                    Sort by:
+                    <div class="tags">
+                        <span class="tag is-light" :class="{ 'is-primary': currentSort == 'clientId' }" @click.stop.prevent="SortBy('clientId')">Client ID</span>
+                        <span class="tag is-light" :class="{ 'is-primary': currentSort == 'lastIP' }" @click.stop.prevent="SortBy('lastIP')">IP Address</span>
+                        <span class="tag is-light" :class="{ 'is-primary': currentSort == 'hostname' }" @click.stop.prevent="SortBy('hostname')">Hostname</span>
+                    </div>
+                </div>
+
                 <router-link
-                    v-for="client in knownClients"
+                    v-for="client in sortedClients"
                     :key="client.clientId"
                     class="panel-block"
                     :to="{ name: 'dhcp-history', params: { clientId: client.clientId } }"
                     >
                     {{client.clientId}}
-                    <template v-if="!!client.lastIP">[{{client.lastIP}}]</template>
+                    <template v-if="!!client.lastIP">
+                        [{{client.lastIP}}<template v-if="!!client.hostname"> - {{client.hostname}}</template>]
+                    </template>
                 </router-link>
             </template>
             <div class="panel-block">
@@ -28,12 +39,28 @@
 </template>
 
 <script>
-    import { onMounted, ref } from "vue";
+    import { onMounted, ref, computed } from "vue";
 
     export default {
         // props: {},
         setup(/*props, { attrs, slots, emit }*/) {
-            const knownClients = ref(null);
+            const knownClients = ref(null),
+                currentSort = ref("clientId");
+
+            const sortedClients = computed(() => {
+                const sort = currentSort.value,
+                    clientList = knownClients.value;
+
+                if (!!clientList) {
+                    clientList.sort((a, b) => {
+                        return a[sort] < b[sort] ? -1 : 1;
+                    });
+
+                    return clientList;
+                }
+
+                return [];
+            });
 
             const LoadClients = async () => {
                 const response = await fetch("/data/history/dhcp/get-clients");
@@ -42,15 +69,21 @@
                 knownClients.value = data;
             };
 
+            const SortBy = async (sort) => {
+                currentSort.value = sort;
+            };
+
             onMounted(async () => {
                 await LoadClients();
             });
 
             return {
                 // data
-                knownClients,
+                sortedClients,
+                currentSort,
                 // methods
                 LoadClients,
+                SortBy,
             };
         },
     };
@@ -58,6 +91,7 @@
 
 <style scoped>
     a.panel-block { font-size: 0.8em; }
+    .tag { cursor: pointer; }
     /* .dhcp_history_clients_component {} */
     /* .dhcp_history_clients_component >>> .class+id {} */
 </style>
