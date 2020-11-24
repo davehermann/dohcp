@@ -1,6 +1,7 @@
 <template>
     <div class="dns_history_page">
-        <history-ips></history-ips>
+        <dns-history-clients></dns-history-clients>
+        <dns-history-for-client></dns-history-for-client>
     </div>
 </template>
 

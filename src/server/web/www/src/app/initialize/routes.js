@@ -15,7 +15,7 @@ let routes = [];
 
 routes.push({ path: "/", name: "home", meta: { title: "Home" }, component: HomePage });
 
-routes.push({ path: "/dns-history", name: "dns-history", meta: { title: "DNS History" }, component: DNSHistoryPage });
+routes.push({ path: "/dns-history/:ipAddress?", name: "dns-history", meta: { title: "DNS History" }, component: DNSHistoryPage });
 
 routes.push({ path: "/dhcp-history/:clientId?", name: "dhcp-history", meta: { title: "Dhcp History" }, component: DhcpHistoryPage });
 

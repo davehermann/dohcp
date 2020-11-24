@@ -20,8 +20,9 @@
                 <router-link
                     v-for="client in sortedClients"
                     :key="client.clientId"
-                    class="panel-block"
                     :to="{ name: 'dhcp-history', params: { clientId: client.clientId } }"
+                    class="panel-block"
+                    :class="{ 'is-active has-background-primary-light': (currentClient == client.clientId) }"
                     >
                     {{client.clientId}}
                     <template v-if="!!client.lastIP">
@@ -39,13 +40,17 @@
 </template>
 
 <script>
-    import { onMounted, ref, computed } from "vue";
+    import { onMounted, ref, computed, watchEffect } from "vue";
+    import { useRouter } from "vue-router";
 
     export default {
         // props: {},
         setup(/*props, { attrs, slots, emit }*/) {
+            const router = useRouter();
+
             const knownClients = ref(null),
-                currentSort = ref("clientId");
+                currentSort = ref("clientId"),
+                currentClient = ref(null);
 
             const sortedClients = computed(() => {
                 const sort = currentSort.value,
@@ -73,6 +78,12 @@
                 currentSort.value = sort;
             };
 
+            watchEffect(() => {
+                const currentRoute = router.currentRoute;
+
+                currentClient.value = currentRoute.value.params.clientId;
+            });
+
             onMounted(async () => {
                 await LoadClients();
             });
@@ -81,6 +92,7 @@
                 // data
                 sortedClients,
                 currentSort,
+                currentClient,
                 // methods
                 LoadClients,
                 SortBy,

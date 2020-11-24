@@ -15,7 +15,7 @@
                     </span>
                     <span>
                         [{{history.timestamp.toLocaleString(undefined, { year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric" })}}]
-                        {{history.ipAddress}}
+                        <router-link :to="{ name: 'dns-history', params: { ipAddress: history.ipAddress } }">{{history.ipAddress}}</router-link>
                         <template v-if="!!history.dnsHostname"> - {{history.dnsHostname}}</template>
                     </span>
                 </template>
@@ -73,6 +73,10 @@
 
                 if (!!route.value.params.clientId)
                     LoadHistoryForClient(route.value.params.clientId);
+                else {
+                    selectedClient.value = null;
+                    clientHistory.value = null;
+                }
             });
 
             return {

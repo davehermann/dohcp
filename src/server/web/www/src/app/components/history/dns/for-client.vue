@@ -1,28 +1,5 @@
 <template>
-    <div class="history_i_ps_component">
-        <div class="panel is-primary">
-            <div class="panel-heading">
-                IPs Recently Producing DNS Requests
-            </div>
-            <a
-                v-for="ipAddress in historyIPs"
-                :key="ipAddress"
-                class="panel-block"
-                href="#"
-                @click.stop.prevent="LoadHistoryForIp(ipAddress)"
-                >
-                {{ipAddress}}
-            </a>
-            <div v-if="!historyIPs || (historyIPs.length == 0)" class="panel-block">
-                <p class="has-text-info">No recent DNS history found</p>
-            </div>
-            <div class="panel-block">
-                <button class="button is-primary is-outlined is-fullwidth" @click.stop.prevent="LoadIPs">
-                    Refresh
-                </button>
-            </div>
-        </div>
-
+    <div class="for_client_component">
         <div v-if="!!historyForIp" class="panel is-info">
             <div class="panel-heading">
                 Recent DNS Request History for {{currentIpHistory}}
@@ -46,24 +23,16 @@
 </template>
 
 <script>
-    import { onMounted, ref } from "vue";
+    import { ref, watchEffect } from "vue";
+    import { useRouter } from "vue-router";
 
     export default {
         // props: {},
         setup(/*props, { attrs, slots, emit }*/) {
-            const historyIPs = ref(null),
-                historyForIp = ref(null),
-                currentIpHistory = ref(null);
+            const router = useRouter();
 
-            onMounted(() => {
-                LoadIPs();
-            });
-
-            const LoadIPs = async () => {
-                const res = await fetch("/data/history/dns/recent-ips");
-                const data = await res.json();
-                historyIPs.value = data;
-            };
+            const currentIpHistory = ref(null),
+                historyForIp = ref(null);
 
             const LoadHistoryForIp = async (ipAddress) => {
                 currentIpHistory.value = ipAddress;
@@ -78,18 +47,24 @@
                 });
             };
 
+            watchEffect(() => {
+                const currentRoute = router.currentRoute;
+
+                if (!!currentRoute.value.params.ipAddress)
+                    LoadHistoryForIp(currentRoute.value.params.ipAddress);
+                else {
+                    currentIpHistory.value = null;
+                    historyForIp.value = null;
+                }
+            });
+
             const ToggleRequests = request => {
                 request.showRequests = !request.showRequests;
             };
 
             return {
-                // data
                 currentIpHistory,
-                historyIPs,
                 historyForIp,
-                // methods
-                LoadHistoryForIp,
-                LoadIPs,
                 ToggleRequests,
             };
         },
@@ -97,8 +72,8 @@
 </script>
 
 <style scoped>
-    /* .history_i_ps_component {} */
-    /* .history_i_ps_component >>> .class+id {} */
+    /* .for_client_component {} */
+    /* .for_client_component >>> .class+id {} */
     .request_list { align-items: flex-start; }
     .request_list .request { margin-left: 2em; font-size: 0.75em;}
 </style>
