@@ -90,9 +90,10 @@
 
             return {
                 // data
-                sortedClients,
                 currentSort,
                 currentClient,
+                // computed
+                sortedClients,
                 // methods
                 LoadClients,
                 SortBy,
