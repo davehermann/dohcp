@@ -1,12 +1,11 @@
 import { promises as fs } from "fs";
-import { createServer as CreateWebServer, get as HttpGet } from "http";
+import { createServer as CreateWebServer, Server as HTTPServer, get as HttpGet } from "http";
 import * as path from "path";
 
 import { IConfiguration } from "../../interfaces/configuration/configurationFile";
-import { Log, Trace } from "multi-level-logger";
+import { Log, Trace, Info } from "multi-level-logger";
 
-const PORT = 8080,
-    ROOT_PATH = path.join(__dirname, `www`),
+const ROOT_PATH = path.join(__dirname, `www`),
     MAXIMUM_STATIC_CACHE_SECONDS = 300;
 
 interface IResponse {
@@ -132,13 +131,31 @@ class WebServer {
             }
         });
 
-        server.listen({ port: PORT });
+        return new Promise((resolve, reject) => {
+            server.on(`listening`, () => {
+                resolve();
+            });
+
+            // Use ANY to compensate for Typescript error type not having .code property
+            server.on(`error`, (err: any) => {
+                if (err.code == `EADDRINUSE`) {
+                    server.close();
+                    Info(`${this.configuration.web.port} in use; trying ${this.configuration.web.port + 1}`);
+
+                    this.configuration.web.port++;
+                    server.listen({ port: this.configuration.web.port });
+                } else
+                    reject(err);
+            });
+
+            server.listen({ port: this.configuration.web.port });
+        });
     }
 
     public async Start(): Promise<void> {
         await this.initializeServer();
 
-        Log(`Web server started on port ${PORT}`);
+        Log(`Web server started on port ${this.configuration.web.port}`);
     }
 }
 

@@ -117,6 +117,14 @@ This is also available via a `DHCP_NO_PERSIST` environment variable set to `true
 DHCP responses can be blocked by setting a `DHCP_NO_REPLY` environment variable to `true`.
 A hexadecimal version of the message will be logged to the console instead.
 
+#### Specify a port for the control data service
+
+*DEVELOPMENT ONLY*
+
+Using `DATA_PORT` with a port number will run the data service on that port.
+
+**NOTE: Set the same port for the CLI on a remote server**
+
 #### Specify a port for the web status server
 
 Use `WEB_PORT` to override a port set via configuration.

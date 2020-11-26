@@ -30,8 +30,8 @@
         setup(props/*, { attrs, slots, emit }*/) {
             const showModal = ref(false);
 
-            const ts = computed(() => props.timestamp.toLocaleString(undefined, { year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric" })),
-                messageType = computed(() => props.dhcpMessage.options.options.find(opt => (opt.name == "dhcpMessageType"))?.value);
+            const ts = ref(props.timestamp.toLocaleString(undefined, { year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric" })),
+                messageType = ref(props.dhcpMessage.options.options.find(opt => (opt.name == "dhcpMessageType"))?.value);
 
             const ToggleModal = () => {
                 showModal.value = !showModal.value;

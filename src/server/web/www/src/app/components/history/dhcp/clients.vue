@@ -26,7 +26,7 @@
                     >
                     {{client.clientId}}
                     <template v-if="!!client.lastIP">
-                        [{{client.lastIP}}<template v-if="!!client.hostname"> - {{client.hostname}}</template>]
+                        [<router-link :to="{ name: 'dns-history', params: { ipAddress: client.lastIP } }">{{client.lastIP}}</router-link><template v-if="!!client.hostname"> - {{client.hostname}}</template>]
                     </template>
                 </router-link>
             </template>

@@ -54,13 +54,23 @@
                 // Load DHCP leases to try to find matching IPs
                 const dhcpLeaseResponse = await fetch("/data/dhcp/leases");
                 const { leaseData } = await dhcpLeaseResponse.json();
-                console.log(leaseData.map(lease => { return { ipAddress: lease.ipAddress, clientId: lease.clientId.substr(2).match(/../g).join(":") }; }));
 
                 const ipMatchedClient = data.map(ipAddress => {
                     return {
                         ipAddress,
                         clientId: leaseData.find(lease => (lease.ipAddress == ipAddress))?.clientId.substr(2).match(/../g).join(":"),
                     };
+                });
+
+                ipMatchedClient.sort((a, b) => {
+                    const aOctets = a.ipAddress.split(".").map(octet => +octet),
+                        bOctets = b.ipAddress.split(".").map(octet => +octet);
+
+                    let idx = 0;
+                    while ((idx < aOctets.length) && (aOctets[idx] == bOctets[idx]))
+                        idx++;
+
+                    return aOctets[idx] - bOctets[idx];
                 });
 
                 historyIPs.value = ipMatchedClient;
