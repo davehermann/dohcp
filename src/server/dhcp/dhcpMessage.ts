@@ -181,7 +181,7 @@ class Message {
     /** Client-requested IP from the options list */
     public get requestedIP(): string {
         if (!!this.options)
-            return (this.options.options.get(`requestedIpAddress`) as string);
+            return (this.options.options.get(`requestedIPAddress`) as string);
 
         return null;
     }

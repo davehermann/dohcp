@@ -47,6 +47,9 @@ class DhcpOptions {
     /** Map of all options configured for a DHCP message */
     public readonly options: Map<string, OptionValue> = new Map();
 
+    /** Track any missing parameters */
+    public readonly undefinedParameters: Array<number> = [];
+
     //#endregion Public properties
 
     //#region Private methods
@@ -192,8 +195,14 @@ class DhcpOptions {
 
                     if (optionDefinition.byCode.has(code))
                         requestedParameters.push({ code, name: optionDefinition.byCode.get(code).name });
-                    else
+                    else {
+                        // Log the missing parameter
                         Warn(`Parameter request list option not found: ${code}`, { logName: `dhcp` });
+
+                        // Track as part of the class data
+                        if (this.undefinedParameters.indexOf(code) < 0)
+                            this.undefinedParameters.push(code);
+                    }
 
                     rawValue = (rawValue as string).substr(2);
                 }
@@ -441,6 +450,7 @@ class DhcpOptions {
         return {
             hex: ToHexadecimal(this.optionData).join(``),
             options: data,
+            undefinedParameters: this.undefinedParameters,
         };
     }
 

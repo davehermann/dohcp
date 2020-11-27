@@ -9,9 +9,9 @@ import { Info, Err, Trace, Dev, Debug, GetConfiguredLogging, LogLevels, Log } fr
 import { IAllocations, Addressing } from "./allocation/allocate";
 import { IConfiguration } from "../../interfaces/configuration/configurationFile";
 import { DHCPMessage } from "./dhcpMessage";
-import { DHCPHistory } from "./history";
 import { AllocatedAddress } from "./allocation/AllocatedAddress";
 import { DNSServer } from "../dns/dns-main";
+import { ClientHistory } from "../history/history";
 
 interface IClientReply {
     dhcpMessage: DHCPMessage;
@@ -25,9 +25,9 @@ const DHCP_SERVER_PORT = 67,
 
 /** DHCP Service */
 class IPv4DHCP {
-    constructor(private readonly configuration: IConfiguration, private readonly dnsServer: DNSServer) {}
+    constructor(private readonly configuration: IConfiguration, private readonly dnsServer: DNSServer, private readonly history: ClientHistory) {}
 
-    private addressing: Addressing = new Addressing(this.configuration, this.dnsServer);
+    private addressing: Addressing = new Addressing(this.configuration, this.dnsServer, this.history);
 
     /** DHCP is enabled in configuration */
     public get isEnabled(): boolean {
@@ -90,6 +90,7 @@ class IPv4DHCP {
             }
 
             Debug({ [`Decoded message`]: message }, { logName: `dhcp` });
+            this.history.AddDHCPMessage(message, true);
 
             let replyToClient: IClientReply = null;
 
@@ -104,7 +105,8 @@ class IPv4DHCP {
             }
 
             // Track the message in the client's history
-            DHCPHistory.AddMessage(message, replyToClient?.dhcpMessage);
+            if (!!replyToClient?.dhcpMessage)
+                this.history.AddDHCPMessage(replyToClient.dhcpMessage);
 
             if (!!replyToClient) {
                 // Send the message to the client
@@ -258,7 +260,7 @@ class IPv4DHCP {
         if (this.configuration.dhcp.authoritative) {
             // Note and track the deregistration
             Debug(`Deregistering ${message.clientIdentifier.uniqueId}`, { logName: `dhcp` });
-            DHCPHistory.TrackDeregistration(message);
+            this.history.TrackDHCPDeregistration(message);
 
             // Create an allocation holder, with an IP of 0.0.0.0
             const unallocatedAddress = new AllocatedAddress(message.clientIdentifier, this.configuration.dhcp.leases.pool.leaseSeconds);

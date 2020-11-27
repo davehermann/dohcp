@@ -7,6 +7,7 @@ import { DataServer } from "./control/server";
 import { DHCPServer } from "./dhcp/dhcp-main";
 import { DNSServer } from "./dns/dns-main";
 import { ClientHistory } from "./history/history";
+import { WebServer } from "./web/server";
 
 async function initialize() {
     const configuration = await LoadConfiguration();
@@ -18,11 +19,14 @@ async function initialize() {
     const dnsServer = new DNSServer(configuration, history);
     await dnsServer.Start();
 
-    const dhcpServer = new DHCPServer(configuration, dnsServer);
+    const dhcpServer = new DHCPServer(configuration, dnsServer, history);
     await dhcpServer.Start();
 
     const dataServer = new DataServer(configuration, dnsServer, dhcpServer, history);
     await dataServer.Start();
+
+    const webServer = new WebServer(configuration);
+    await webServer.Start();
 }
 
 initialize()

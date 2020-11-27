@@ -1,0 +1,7 @@
+html, body, #app_holder { height: 100%; margin: 0px; padding: 0px; }
+body { width: calc(100vw - 20px); }
+
+.row { display: flex; flex-direction: row; }
+.column { display: flex; flex-direction: column; }
+.grow { flex-grow: 1; }
+.shrink { flex-shrink: 1; }

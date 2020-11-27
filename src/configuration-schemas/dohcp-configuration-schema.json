@@ -21,6 +21,9 @@
         },
         "dns": {
             "$ref": "./dns-schema.json"
+        },
+        "web": {
+            "$ref": "./web-schema.json"
         }
     }
 }

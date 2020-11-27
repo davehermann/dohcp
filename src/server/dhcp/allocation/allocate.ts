@@ -3,17 +3,17 @@ import { promises as fs } from "fs";
 import * as path from "path";
 
 // NPM Modules
-import { Debug, Dev, Trace, Info } from "multi-level-logger";
+import { Debug, Trace, Info } from "multi-level-logger";
 import { EnsurePathForFile } from "@davehermann/fs-utilities";
 
 // Application Modules
 import { OctetsToNumber, NumberToOctets } from "../../utilities";
-import { IRange, IClientIdentifier } from "../../../interfaces/configuration/dhcp";
+import { IRange } from "../../../interfaces/configuration/dhcp";
 import { IConfiguration } from "../../../interfaces/configuration/configurationFile";
 import { DHCPMessage } from "../dhcpMessage";
 import { AllocatedAddress } from "./AllocatedAddress";
-import { DHCPHistory } from "../history";
 import { DNSServer } from "../../dns/dns-main";
+import { ClientHistory } from "../../history/history";
 
 interface IAllocations {
     byIp: Map<string, AllocatedAddress>;
@@ -26,7 +26,7 @@ const PERSISTENT_DHCP_STATUS = path.join(process.cwd(), `status`, `dhcp.json`);
 const MAXIMUM_UNWRITTEN_ALLOCATION_AGE = 300000;
 
 class Addressing {
-    constructor(private readonly configuration: IConfiguration, private readonly dnsServer: DNSServer) {}
+    constructor(private readonly configuration: IConfiguration, private readonly dnsServer: DNSServer, private readonly history: ClientHistory) {}
 
     //#region Private properties
     private persistentAllocations: IAllocations;
@@ -380,7 +380,7 @@ class Addressing {
                 hostnameInDNS = this.dnsServer.cache.AddFromDHCP(addressAllocation.hostname, addressAllocation.ipAddress, addressAllocation.clientId, dhcpMessage.vendorClassIdentifier, this.configuration.dhcp.leases.pool.leaseSeconds);
 
             // Add to the DHCP history for the client
-            DHCPHistory.AddAssignment(dhcpMessage, addressAllocation, hostnameInDNS);
+            this.history.AddDHCPAssignment(dhcpMessage, addressAllocation, hostnameInDNS);
 
             Info(`DHCP: Assigning ${addressAllocation.ipAddress} to ${dhcpMessage.clientHardwareIdentifier}, and in DNS as ${hostnameInDNS}`, { logName: `dhcp` });
 

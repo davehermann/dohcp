@@ -15,7 +15,7 @@ async function clientHistory(action: IActionToTake, allActions: Map<string, IAct
         throw `IP address required via the "--ip" flag\n`;
 
     const ipAddress = action.additionalArguments[idxIpFlag + 1];
-    const requestPath = `/history/dns/${ipAddress}`;
+    const requestPath = `/history/dns/for-ip/${ipAddress}`;
 
     const rawData: Array<IDNSEventStream> = await new Promise(resolve => {
         HttpGet(

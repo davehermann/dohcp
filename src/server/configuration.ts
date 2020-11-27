@@ -32,12 +32,27 @@ function environmentVariableSettings(computedConfig: IConfiguration) {
 
     if (!!process.env.DHCP_NO_PERSIST && !!computedConfig.dhcp)
         computedConfig.dhcp.writeToDisk = (process.env.DHCP_NO_PERSIST.toLowerCase() !== `true`);
+
+    if (!!process.env.WEB_CACHE)
+        computedConfig.web.staticCache = (process.env.WEB_CACHE !== `false`);
+
+    if (!!process.env.WEB_PORT)
+        computedConfig.web.port = +process.env.WEB_PORT;
 }
 
 function buildConfiguration(configuration: Record<string, unknown>, dnsResolvers: IDnsResolver): IConfiguration {
     // Copy the configuration
     const computedConfig: IConfiguration = JSON.parse(JSON.stringify(configuration)),
         interfaces = os.networkInterfaces();
+
+    // Set the service start time
+    computedConfig.serviceStart = new Date();
+
+    // Handle missing sections before environment variables
+    if (!computedConfig.web)
+        computedConfig.web = {};
+    if (!computedConfig.web.port)
+        computedConfig.web.port = 8080;
 
     environmentVariableSettings(computedConfig);
 
@@ -109,6 +124,7 @@ async function loadConfiguration(dataServiceHost?: string): Promise<IConfigurati
 
     // Add the remote host
     configuration.dataServiceHost = dataServiceHost || configuration.serverIpAddress;
+    configuration.dataServicePort = +process.env.DATA_PORT || 45332;
 
     return configuration;
 }
