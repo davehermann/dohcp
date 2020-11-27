@@ -4,6 +4,7 @@ const dgram = require(`dgram`);
 const { AllocateAddressing, ConfirmAddress, GetAllocations, MatchRequest, OfferAddress } = require(`./allocations`),
     { TrackDeregistration } = require(`./clientDeregistration`),
     { DHCPMessage } = require(`./dhcpMessage`),
+    { HistoryMessage } = require(`./history`),
     { DHCPOptions } = require(`./rfc2132`),
     { LogLevels, Trace, Debug, Info, Err } = require(`../logging`);
 
@@ -96,6 +97,8 @@ function newV4DhcpSocket(ipAddress) {
 
             pResponse
                 .then(sendMessage => {
+                    HistoryMessage(message, sendMessage);
+
                     if (!!sendMessage)
                         // Send the message
                         return new Promise((resolve, reject) => {
@@ -110,6 +113,7 @@ function newV4DhcpSocket(ipAddress) {
                 })
                 .catch(err => {
                     Err(`Error in DHCP response processing`, `dhcp`);
+                    Err({ [`Client message`]: msg.toString(`hex`) }, `dhcp`);
                     Err(err, true, `dhcp`);
                 });
         });

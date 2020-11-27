@@ -1,0 +1,66 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "DNS Configuration Section",
+    "description": "Top-level configuration for DNS service",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["servers"],
+    "properties": {
+        "disabled": {
+            "type": "boolean"
+        },
+        "logLevel": {
+            "$ref": "./log-levels-schema.json"
+        },
+        "servers": {
+            "description": "DNS server addresses to bind to (and pass to DHCP clients)",
+            "type": "array",
+            "items": {
+                "type": "string",
+                "oneOf": [
+                    { "enum": ["primaryIP"] },
+                    { "$ref": "./ip-address-match-schema.json" }
+                ]
+            },
+            "minItems": 1,
+            "uniqueItems": true
+        },
+        "domain": {
+            "description": "Domain suffix to append to know hosts for queries",
+            "type": "string"
+        },
+        "records": {
+            "type": "array",
+            "title": "Static DNS Records",
+            "description": "Named records within the DNS infrastructure",
+            "items": {
+                "$ref": "#/definitions/dns-record-schema"
+            }
+        }
+    },
+    "definitions": {
+        "dns-record-schema": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name"],
+            "oneOf": [
+                { "required": ["ip"] },
+                { "required": ["alias"] }
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "title": "Hostname"
+                },
+                "ip": {
+                    "title": "A Record",
+                    "$ref": "./ip-address-match-schema.json"
+                },
+                "alias": {
+                    "title": "CNAME Record",
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

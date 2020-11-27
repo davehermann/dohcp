@@ -247,10 +247,11 @@ class Message {
         let parameters = serverDefinedParameters.map(propertyName => { Trace(propertyName, `dhcp`); return DHCPOptions.byProperty[propertyName].code; });
 
         // Supply the requested parameters
-        requestMessage.options.parameterRequestList.forEach(param => {
-            if (parameters.indexOf(param.code) < 0)
-                parameters.push(param.code);
-        });
+        if (!!requestMessage.options.parameterRequestList)
+            requestMessage.options.parameterRequestList.forEach(param => {
+                if (parameters.indexOf(param.code) < 0)
+                    parameters.push(param.code);
+            });
 
         let options = {};
 

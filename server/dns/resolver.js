@@ -189,7 +189,7 @@ function lookupViaDNS(dnsQuery, configuration) {
         });
 
         client.on(`message`, (msg, rinfo) => {
-            Dev({ [`DNS response`]: { rinfo, msg } }, `dns`);
+            Debug({ [`DNS response`]: { rinfo, msg } }, `dns`);
 
             client.close();
             resolve(msg);
@@ -206,7 +206,9 @@ function lookupViaDNS(dnsQuery, configuration) {
         let portRange = [49152, 65535],
             randomPort = Math.round(Math.random() * (portRange[1] - portRange[0])) + portRange[0];
 
-        client.bind({ port: randomPort });
+        // client.bind({ port: randomPort });
+        // Use 0
+        client.bind({ port: 0 });
     });
 }
 

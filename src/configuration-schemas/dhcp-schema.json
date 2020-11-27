@@ -1,0 +1,106 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "DHCP Configuration Section",
+    "description": "Top-level configuration for DHCP service",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["routers", "leases"],
+    "properties": {
+        "disabled": {
+            "type": "boolean"
+        },
+        "logLevel": {
+            "$ref": "./log-levels-schema.json"
+        },
+        "authoritative": {
+            "type": "boolean",
+            "description": "Is this the authoritative server for the subnet?"
+        },
+        "routers": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "$ref": "./ip-address-match-schema.json"
+            }
+        },
+        "leases": {
+            "$ref": "#/definitions/leases-schema"
+        },
+        "writeToDisk": {
+            "type": "boolean",
+            "description": "Write all DHCP allocations to disk",
+            "default": true
+        }
+    },
+    "definitions": {
+        "leases-schema": {
+            "type": "object",
+            "required": ["pool"],
+            "additionalProperties": false,
+            "properties": {
+                "pool": {
+                    "$ref": "#/definitions/pool-schema"
+                },
+                "static": {
+                    "$ref": "#/definitions/static-assignment-schema"
+                }
+            }
+        },
+        "pool-schema": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "leaseSeconds": {
+                    "type": "number",
+                    "minimum": 10
+                },
+                "networkMask": {
+                    "type": "string",
+                    "$ref": "./ip-address-match-schema.json"
+                },
+                "ranges": {
+                    "$ref": "#/definitions/pool-range-schema"
+                }
+            }
+        },
+        "pool-range-schema": {
+            "description": "Set of one or more address ranges for the IP pool",
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "properties": {
+                    "start": {
+                        "description": "Start of range",
+                        "$ref": "./ip-address-match-schema.json"
+                    },
+                    "end": {
+                        "description": "End of range",
+                        "$ref": "./ip-address-match-schema.json"
+                    }
+                }
+            }
+        },
+        "static-assignment-schema": {
+            "description": "Statically assigned hosts",
+            "type": "object",
+            "patternProperties": {
+                "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})|([0-9a-fA-F]{4}\\.[0-9a-fA-F]{4}\\.[0-9a-fA-F]{4})$": {
+                    "description": "Hardware MAC address matching a host",
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["ip"],
+                    "properties": {
+                        "ip": {
+                            "description": "IP Address to assign to the host",
+                            "$ref": "./ip-address-match-schema.json"
+                        },
+                        "hostname": {
+                            "description": "Hostname to assign to the host",
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

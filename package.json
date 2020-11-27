@@ -6,11 +6,32 @@
   "main": "server/server.js",
   "author": "Dave Hermann <6787333+davehermann@users.noreply.github.com>",
   "license": "(MIT or GPL-3)",
-  "engine": { "node": ">=8.10" },
+  "engine": {
+    "node": ">=8.10"
+  },
   "scripts": {
-    "server": "node ./server/server.js"
+    "build": "npm run build:cli && npm run build:server",
+    "prebuild:cli": "fsutility delete ./dist/cli",
+    "build:cli": "tsc --build src/cli",
+    "build:server-frontend": "cd src && cd server && cd web && cd www && npm run build:frontend",
+    "prebuild:server": "fsutility delete ./dist/server && fsutility delete ./dist/configuration-schemas && npm run build:server-frontend",
+    "build:server": "tsc --build src/server",
+    "postbuild:server": "fsutility copy ./src/server/dhcp/rfc2132/options/rfc2132-options.json ./dist/server/dhcp/rfc2132/options/rfc2132-options.json && fsutility copy ./src/configuration-schemas ./dist/configuration-schemas && fsutility copy ./src/server/web/www/dist ./dist/server/web/www && fsutility copy ./src/server/control/mac-vendor ./dist/server/control/mac-vendor",
+    "dohcp": "node ./dist/cli/index.js",
+    "server": "node ./dist/server/dohcp-main.js"
   },
   "bin": {
-    "dohcp": "./utility/index.js"
+    "dohcp": "./dist/cli/index.js"
+  },
+  "devDependencies": {
+    "@types/node": "^14.0.24",
+    "@typescript-eslint/eslint-plugin": "^3.7.0",
+    "@typescript-eslint/parser": "^3.7.0",
+    "eslint": "^7.5.0",
+    "typescript": "^3.9.7"
+  },
+  "dependencies": {
+    "@davehermann/fs-utilities": "^1.0.0",
+    "multi-level-logger": "^2.0.4"
   }
 }

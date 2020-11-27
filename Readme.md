@@ -10,6 +10,8 @@ At present, DoHCP only supports Cloudflare's public HTTPS resolution via POST (m
 ##### Major Features
 + 100% pure Javascript
 + Does not use <u>any</u> dependencies
+    + dev dependencies exist (i.e. eslint, typescript)
+    + command line utility has had some of the functionality broken out into separate modules (i.e. Systemd unit installation), but **all** dependencies come from the same original source (this service)
 + Command line utility `dohcp` for configuration, launch (Linux-only at present), and service queries
 
 ##### Caveats
@@ -53,7 +55,7 @@ Your firewall will need to forward DNS packets as a result.
 By default, Linux kernels don't allow non-root users to bind to ports below 1024.
 You will receive an EACCES error for the IP:PORT at service startup.
 
-+ This can be easily overcome by allowing Node to bind to lower ports.  
++ This can be easily overcome by allowing Node to bind to lower ports.
 `setcap cap_net_bind_service=+ep /usr/bin/node` will allow Node access to port binding.
     + After NodeJS upgrades, this may need to be re-run
 + *NOT RECOMMENDED:* You can run the service as the root user or via sudo
@@ -82,6 +84,60 @@ The *dhcp.json* file with the example MAC above will look like this when assigni
     }
 }
 ```
+
+### Development Options
+
+#### Override configured DHCP
+
+*DEVELOPMENT ONLY*
+
+`DHCP_DISABLED=true` will disable DHCP
+
+#### Overried configured DNS
+
+*DEVELOPMENT ONLY*
+
+`DNS_DISABLED=true` will disable DNS
+
+#### Don't Persist DHCP Assignments
+
+*DEVELOPMENT ONLY*
+
+Writing the DHCP data to disk can be turned off in the configuration file by explicitly setting `false` to `writeToDisk`:
+```json
+{ dhcp: { writeToDisk: false } }
+```
+
+This is also available via a `DHCP_NO_PERSIST` environment variable set to `true`
+
+#### Don't send DHCP messages to client
+
+*DEVELOPMENT ONLY*
+
+DHCP responses can be blocked by setting a `DHCP_NO_REPLY` environment variable to `true`.
+A hexadecimal version of the message will be logged to the console instead.
+
+#### Specify a port for the control data service
+
+*DEVELOPMENT ONLY*
+
+Using `DATA_PORT` with a port number will run the data service on that port.
+
+**NOTE: Set the same port for the CLI on a remote server**
+
+#### Specify a port for the web status server
+
+Use `WEB_PORT` to override a port set via configuration.
+
+*The default port if none is specified is **8080***
+
+#### Turn off static file caching for the Web Status Server
+
+*DEVELOPMENT ONLY*
+
+Setting `WEB_CACHE=false` will disable the file caching used internally by the web status server.
+
+This is only relevant for development.
 
 ## Launch
 
@@ -123,6 +179,10 @@ While not strictly necessary for DoH usage, encapsulating both DNS and DHCP in a
 As of initial release, DHCP and DNS have been dogfooded for months within complex home/home office environments consisting of several dozen devices spanning computers, phones, networking, and IoT.
 
 ## Future Plans
++ Typescript conversion
+    + Given the complexity of a DNS and DHCP server, a strongly typed language is a good choice moving forward
++ DHCP
+    + Spec responses for no available addresses in a pool
 + DoHCP-to-DoHCP communication
     + Geared toward multiple DNS servers on the network with shared internal DNS data
     + Failover DHCP

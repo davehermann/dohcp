@@ -39,12 +39,27 @@ function buildConfiguration(configuration, dnsResolvers) {
     return computedConfig;
 }
 
+function configureLog(configuration, defaultLogLevel, configLogName) {
+    const environmentVariable = `LOG${!!configLogName ? `_${configLogName.toUpperCase()}` : ``}`;
+    let configObject = configuration;
+    if (!!configLogName && !!configObject)
+        configObject = configObject[configLogName];
+
+    const inEV = process.env[environmentVariable],
+        inConfig = !!configObject ? configObject.logLevel : null;
+
+    return !!inEV ? LogLevels[inEV] : (!!inConfig ? LogLevels[inConfig] : defaultLogLevel);
+}
+
 function logLevelsFromConfiguration(configuration) {
     let logLevel = {};
 
-    logLevel.default = !!configuration && !!configuration.logLevel ? LogLevels[configuration.logLevel] : LogLevels[`warn`];
-    logLevel.dhcp = !!configuration && !!configuration.dhcp && !!configuration.dhcp.logLevel ? LogLevels[configuration.dhcp.logLevel] : logLevel.default;
-    logLevel.dns = !!configuration && !!configuration.dns && !!configuration.dns.logLevel ? LogLevels[configuration.dns.logLevel] : logLevel.default;
+    // Default all logging to WARN if nothing defined
+    logLevel.default = configureLog(configuration, LogLevels[`warn`]);
+
+    // Configure the sub-logs
+    logLevel.dhcp = configureLog(configuration, logLevel.default, `dhcp`);
+    logLevel.dns = configureLog(configuration, logLevel.default, `dns`);
 
     // When running as a service, assume the service logger will supply a timestamp
     logLevel.includeTimestamp = (!process.env.IS_SERVICE || (process.env.IS_SERVICE.toLowerCase() !== `true`));
