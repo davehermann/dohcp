@@ -38,6 +38,7 @@ class DataServer {
 
     private defineRoutes(): void {
         this.routes.set(`GET:/dhcp/leases`, () => this.dhcpListLeases());
+        this.routes.set(`GET:/dhcp/leases/all`, () => this.dhcpListLeases(true));
         this.routes.set(`GET:/dns/cache-list`, () => this.dnsListCache());
         this.routes.set(`GET:/dns/cache-list/all`, () => this.dnsListCache(true));
         this.routes.set(`GET:/history/dhcp/for-client/:clientId`, (params) => this.historyDhcpForClient(params.clientId));
@@ -49,7 +50,7 @@ class DataServer {
 
     //#region DHCP Data
 
-    private async dhcpListLeases() {
+    private async dhcpListLeases(includePreRestart = false) {
         if (!this.dhcpServer.isEnabled)
             return { disabled: true };
 
@@ -59,7 +60,10 @@ class DataServer {
 
         for (const [ipAddress, allocatedAddress] of leases.byIp) {
             // By default, only leases that have not expired AND have been given out since the last service restart are included
-            if (!!allocatedAddress && allocatedAddress.allocatedInSession && (allocatedAddress.leaseExpirationTimestamp.getTime() > currentMoment))
+            const isAssignedInSession = !!allocatedAddress && allocatedAddress.allocatedInSession && (allocatedAddress.leaseExpirationTimestamp.getTime() > currentMoment),
+                isAssignedPreviously = !!allocatedAddress && (allocatedAddress.leaseStart + (this.configuration.dhcp.leases.pool.leaseSeconds * 1000) > currentMoment);
+
+            if (isAssignedInSession || (includePreRestart && isAssignedPreviously))
                 leaseData.push(allocatedAddress);
         }
 
